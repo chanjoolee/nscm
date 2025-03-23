@@ -1,0 +1,241 @@
+* Flow Summary
+    - Step1 : Forecast Rule Table 2LV 중복 제거 전처리
+        - process 
+            - load data
+                - read df_in_Forecast_Rule like from input_dataframe['df_in_Forecast_Rule']
+            - get matching condition from df_in_Forecast_Rule: 
+                - FORECAST_RULE AP2 FCST is 2  and
+                - Sales Domain.[Ship To] start with '3'
+            - set 'Sales Domain.[Ship To]' to parent level2
+                - use find_parent_level for finding parent level
+            - remove duplicate rows
+            - return df_in_Forecast_Rule 
+        - output: 
+            - dataframe name : df_step01_remove_duplicate_forecast_rule
+    - Step2 : Enriched SIN data to SIN_DUMMY_SD.
+        - process 
+            - load data
+                - read df_in_Sales_Domain_Dimension like from output_dataframes['df_in_Sales_Domain_Dimension']
+                - read df_in_SIn like from input_dataframes['df_in_SIn']
+            - join df_in_SIn and df_step01_remove_duplicate_forecast_rule
+                - join column 
+                    Sales Domain.[Ship To]
+                - how to join column : inner
+            - return df_in_SIn
+                - data will be below
+                    Version.[Version Name],Sales Domain.[Ship To],Location.[Location],Item.[Product Group],Item.[Item],Time.[Planning Month],Time.[Week],S/In FCST(GI)_AP2,Sales Domain.[Sales Domain LV2],Sales Domain.[Sales Domain LV3],Sales Domain.[Sales Domain LV4],Sales Domain.[Sales Domain LV5],Sales Domain.[Sales Domain LV6],Sales Domain.[Sales Domain LV7]
+                    202414,A5002453,S001,PG 1,SKU 1,202403,202410,100,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 1,SKU 1,202403,202411,110,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 1,SKU 1,202403,202412,125,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 1,SKU 1,202403,202413,155,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 1,SKU 1,202404,202414,100,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 1,SKU 1,202404,202415,100,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 1,SKU 1,202404,202416,100,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 1,SKU 1,202404,202417,100,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202410,100,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202411,110,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202412,125,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202413,155,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202414,120,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202415,100,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202416,100,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202417,100,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 2,SKU 2,202403,202410,100,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 2,SKU 2,202403,202411,110,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 2,SKU 2,202403,202412,125,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 2,SKU 2,202403,202413,155,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 2,SKU 2,202404,202414,0,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 2,SKU 2,202404,202415,0,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 2,SKU 2,202404,202416,0,203,300114,A300114,400362,5002453,A5002453
+                    202414,A5002453,S001,PG 2,SKU 2,202404,202417,0,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202403,202410,100,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202403,202411,110,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202403,202412,125,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202403,202413,155,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202404,202414,120,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202404,202415,0,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202404,202416,0,203,300114,A300114,400362,5002453,A5002453
+                    CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202404,202417,0,203,300114,A300114,400362,5002453,A5002453
+
+        - output: 
+            - dataframe name : df_step02_expand_sin_to_lv2_lv7
+    - Step3 : Add column GBRULE to df_step02_df_in_SIn
+        - concept : this process have purpose to add column GBRULE to df_step02_df_in_SIn
+            - GBRULE is refer to df_in_Forecast_Rule's 'FORECAST_RULE AP2 FCST'
+            - 'Sales Domain.[Ship To]' in df_step02_expand_sin_to_lv2_lv7 is not usefull for this program. 
+                - We have to get data based on 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule
+                - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 2, this is mean we will decide something according to parent level2
+                    - and we have to find value of 'Sales Domain.[Sales Domain LV2]' from df_in_Sales_Domain_Dimension by using 'Sales Domain.[Ship To]' in df_step02_expand_sin_to_lv2_lv7
+                - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 3, this is mean we will decide something according to parent level3
+                    - and we have to find value of 'Sales Domain.[Sales Domain LV3]' from df_in_Sales_Domain_Dimension by using 'Sales Domain.[Ship To]' in df_step02_expand_sin_to_lv2_lv7
+                - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 4, this is mean we will decide something according to parent level4
+                    - and we have to find value of 'Sales Domain.[Sales Domain LV4]' from df_in_Sales_Domain_Dimension by using 'Sales Domain.[Ship To]' in df_step02_expand_sin_to_lv2_lv7
+                - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 5, this is mean we will decide something according to parent level5
+                    - and we have to find value of 'Sales Domain.[Sales Domain LV5]' from df_in_Sales_Domain_Dimension by using 'Sales Domain.[Ship To]' in df_step02_expand_sin_to_lv2_lv7
+                - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 6, this is mean we will decide something according to parent level6
+                    - and we have to find value of 'Sales Domain.[Sales Domain LV6]' from df_in_Sales_Domain_Dimension by using 'Sales Domain.[Ship To]' in df_step02_expand_sin_to_lv2_lv7
+                - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 7, this is mean we will decide something according to parent level7
+                    - and we have to find value of 'Sales Domain.[Sales Domain LV7]' from df_in_Sales_Domain_Dimension by using 'Sales Domain.[Ship To]' in df_step02_expand_sin_to_lv2_lv7
+        - process 
+            - load data
+        - Step3-1 : Perform inner join between df_in_Forecast_Rule and df_step02_expand_sin_to_lv2_lv7 for LV2 branch.
+            - process 
+                - load data
+                    - read df_step02_expand_sin_to_lv2_lv7 like from output_dataframes['df_step02_expand_sin_to_lv2_lv7']
+                    - read df_step01_remove_duplicate_forecast_rule like from output_dataframes['df_step01_remove_duplicate_forecast_rule']
+                - filter df_step01_remove_duplicate_forecast_rule
+                    - filter condition : df_step02_expand_sin_to_lv2_lv7[]'Sales Domain.[Ship To]'] is starts with '2'
+                    - set name : filter_df_step01_forecast_rule_lv2
+                - join filter_df_step01_forecast_rule_lv2 and df_step02_expand_sin_to_lv2_lv7
+                    - join column 
+                        - filter_df_step01_forecast_rule_lv2
+                            - Sales Domain.[Ship To]
+                            - Item.[Product Group]
+                        - df_step02_expand_sin_to_lv2_lv7
+                            - Sales Domain.[Sales Domain LV2]
+                            - Item.[Product Group]
+                    - how to join column : inner
+                    - joined data frame name : return_df
+                - add column GBRULE and set value : use loc in pandas
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 2, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV2]']
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 3, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV3]']
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 4, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV4]']
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 5, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV5]']
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 6, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV6]']
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 7, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV7]']
+                - drop column in return_df
+                    - drop column : 'Sales Domain.[Sales Domain LV2]'
+                    - drop column : 'Sales Domain.[Sales Domain LV3]'
+                    - drop column : 'Sales Domain.[Sales Domain LV4]'
+                    - drop column : 'Sales Domain.[Sales Domain LV5]'
+                    - drop column : 'Sales Domain.[Sales Domain LV6]'
+                    - drop column : 'Sales Domain.[Sales Domain LV7]'
+                - return joined dataframe : return_df
+            - output: 
+                - dataframe name : df_out_step03_1_sin_lv2
+        - Step3-2 : Perform inner join between df_in_Forecast_Rule and df_step02_expand_sin_to_lv2_lv7 for LV3 branch.
+            - process 
+                - load data
+                    - read df_step02_expand_sin_to_lv2_lv7 like from output_dataframes['df_step02_expand_sin_to_lv2_lv7']
+                    - read df_step01_remove_duplicate_forecast_rule like from output_dataframes['df_step01_remove_duplicate_forecast_rule']
+                - remove column 'Version.[Version Name]' in df_step01_remove_duplicate_forecast_rule
+                - filter df_step01_remove_duplicate_forecast_rule
+                    - filter condition : df_step02_expand_sin_to_lv2_lv7[]'Sales Domain.[Ship To]'] is starts with '3'
+                    - set name : filter_df_step01_forecast_rule_lv3
+                - join filter_df_step01_forecast_rule_lv3 and df_step02_expand_sin_to_lv2_lv7
+                    - join column 
+                        - filter_df_step01_forecast_rule_lv3
+                            - Sales Domain.[Ship To]
+                            - Item.[Product Group]
+                        - df_step02_expand_sin_to_lv2_lv7
+                            - Sales Domain.[Sales Domain LV3]
+                            - Item.[Product Group]
+                    - how to join column : inner
+                    - joined data frame name : return_df
+                - add column GBRULE and set value : use loc in pandas
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 2, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV2]']
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 3, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV3]']
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 4, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV4]']
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 5, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV5]']
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 6, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV6]']
+                    - if 'FORECAST_RULE AP2 FCST' in df_in_Forecast_Rule is 7, return_df['GBRULE'] is return_df['Sales Domain.[Sales Domain LV7]']
+                - drop column in return_df
+                    - drop column : 'Sales Domain.[Sales Domain LV2]'
+                    - drop column : 'Sales Domain.[Sales Domain LV3]'
+                    - drop column : 'Sales Domain.[Sales Domain LV4]'
+                    - drop column : 'Sales Domain.[Sales Domain LV5]'
+                    - drop column : 'Sales Domain.[Sales Domain LV6]'
+                    - drop column : 'Sales Domain.[Sales Domain LV7]'
+
+                - return joined dataframe : return_df
+
+            - output: 
+                - dataframe name : df_out_step03_2_sin_lv3
+        
+        - Step3-3 : concatenate df_out_step03_1_sin_lv2 and df_out_step03_2_sin_lv3
+            - process 
+                - load data
+                    - read df_out_step03_1_sin_lv2 like from output_dataframes['df_out_step03_1_sin_lv2']
+                    - read df_out_step03_2_sin_lv3 like from output_dataframes['df_out_step03_2_sin_lv3']
+                - concate df_out_step03_1_sin_lv2 and df_out_step03_2_sin_lv3                
+                - return concated dataframe
+            - output: 
+                - dataframe name : df_out_step03_3_sin_lv2_lv3
+        - Step3-4 : Forecast Rule에 따른 Group By로 실적과 FCST Sum Data 생성
+            - process
+                - load data
+                    - read df_out_step03_3_sin_lv2_lv3 like from output_dataframes['df_out_step03_3_sin_lv2_lv3']
+                - drop column 'Item.[Product Group]' in df_out_step03_3_sin_lv2_lv3
+                - group by df_out_step03_3_sin_lv2_lv3
+                    - Version.[Version Name]
+                    - GBRULE
+                    - Location.[Location]
+                    - Item.[Item] 
+                    - Time.[Week]
+                - set name for grouped dataframe: return_df
+                - return return_df
+            - output: 
+                - dataframe name : df_out_step03_4_sin_lv2_lv3
+        - Step4 : VD SellIn AP2 Rolling 로직 적용 및 S/In FCST(GI)_AP2(Rolling ADJ) Measure 생성
+            - process
+                - load data
+                    - read df_out_step03_4_sin_lv2_lv3 like from output_dataframes['df_out_step03_4_sin_lv2_lv3']
+                - group by df_out_step03_4_sin_lv2_lv3                    
+                    - GBRULE
+                    - Location.[Location]
+                    - Item.[Item] 
+                - set declare return_array as []
+                - set name for grouped dataframe: group_df
+                - for each group in group_df
+                    - comment: data of each group wiill be like below
+                        Version.[Version Name],Sales Domain.[Ship To],Location.[Location],Item.[Product Group],Item.[Item],Time.[Planning Month],Time.[Week],S/In FCST(GI)_AP2
+                        202414,A5002453,S001,PG 1,SKU 1,202403,202410,100
+                        202414,A5002453,S001,PG 1,SKU 1,202403,202411,110
+                        202414,A5002453,S001,PG 1,SKU 1,202403,202412,125
+                        202414,A5002453,S001,PG 1,SKU 1,202403,202413,155
+                        202414,A5002453,S001,PG 1,SKU 1,202404,202414,100
+                        202414,A5002453,S001,PG 1,SKU 1,202404,202415,100
+                        202414,A5002453,S001,PG 1,SKU 1,202404,202416,100
+                        202414,A5002453,S001,PG 1,SKU 1,202404,202417,100
+                        CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202410,100
+                        CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202411,110
+                        CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202412,125
+                        CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202413,155
+                        CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202414,120
+                        CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202415,100
+                        CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202416,100
+                        CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202417,100
+                    - there are 2 groups
+                        - one group have 'CurrentWorkingView' with 'Version.[Version Name]'. I will set name this is df_currnt.
+                        - one group have like '202414' with 'Version.[Version Name]'. I will set name this is df_previous.
+                    - find current 'Time.[Week]' in df_currnt
+                        - use CurrentPartialWeek_normalized to find current 'Time.[Week]'
+                            - condition 
+                                - df_currnt['Time.[Week]'] == CurrentPartialWeek_normalized
+                        - set variable name to row_currentweek_in_current
+                    - find previous 'Time.[Week]' in df_currnt and df_previous
+                        - use CurrentPartialWeek_normalized to find previous 'Time.[Week]'
+                            - previous_week = common.gfn_add_week(CurrentPartialWeek_normalized, -1)
+                            - condition
+                                - df_currnt['Time.[Week]'] == previous_week
+                                - df_previous['Time.[Week]'] == previous_week
+                        - I will declare variable name for what got from df_previous to row_lastweek_in_previous
+                        - I will declare variable name for what got from df_current to row_lastweek_in_current
+                        - check below condition
+                            - if row_lastweek_in_current['Time.[Planning Month]'] == row_current_in_current['Time.[Planning Month]']
+                            - if row_lastweek_in_previous['S/In FCST(GI)_AP2'] != row_lastweek_in_current['S/In FCST(GI)_AP2']
+
+                        - if check condition is True
+                            - create pandas series row have below column
+                                - Version.[Version Name]	: 'CurrentWorkingView'
+                                - Sales Domain.[Ship To]	: GBRULE
+                                - Item.[Item]               : row_currentweek_in_current['Item.[Item]']
+                                - Location.[Location]	    : row_currentweek_in_current['Location.[Location]']
+                                - Time.[Week]	            : row_currentweek_in_current['Time.[Week]']
+                                - S/In FCST(GI)_AP2(Rolling ADJ)
+                                    - row_currentweek_in_current['S/In FCST(GI)_AP2'] - row_lastweek_in_previous['S/In FCST(GI)_AP2'] - row_lastweek_in_current['S/In FCST(GI)_AP2'] 
+                            - add created row to return_array
+                - concat return_array to data frame 
+                - return return_df
+            - output: 
+                - dataframe name : df_out_step4

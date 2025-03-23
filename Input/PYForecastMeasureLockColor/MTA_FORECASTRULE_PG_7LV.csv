@@ -1,0 +1,300 @@
+Version.[Version Name],Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE GC FCST,FORECAST_RULE AP2 FCST,FORECAST_RULE AP1 FCST,FORECAST_RULE CUST FCST,FORECAST_RULE ISVALID
+CurrentWorkingView,AV,300501,6,,,,Y
+CurrentWorkingView,FABRIC CARE,300501,6,6,,,Y
+CurrentWorkingView,VC,300501,6,6,,,Y
+CurrentWorkingView,MOBILE-ETC,300648,6,6,6,,Y
+CurrentWorkingView,MONITOR,300330,6,6,6,,Y
+CurrentWorkingView,MONITOR,300673,3,3,6,,Y
+CurrentWorkingView,TV,300139,3,5,6,,Y
+CurrentWorkingView,MONITOR,300112,6,6,6,,Y
+CurrentWorkingView,TV,300151,6,6,,,Y
+CurrentWorkingView,TV,300168,6,6,,,Y
+CurrentWorkingView,MONITOR,300335,3,3,6,,Y
+CurrentWorkingView,MONITOR,300336,6,6,6,,Y
+CurrentWorkingView,TV,300342,6,,,,Y
+CurrentWorkingView,MONITOR,300111,3,3,6,,Y
+CurrentWorkingView,MONITOR,300116,3,3,6,,Y
+CurrentWorkingView,MONITOR,300123,3,3,6,6,Y
+CurrentWorkingView,TV,300124,3,3,6,,Y
+CurrentWorkingView,TV,300127,3,5,6,,Y
+CurrentWorkingView,MONITOR,300128,3,3,6,6,Y
+CurrentWorkingView,TV,300130,3,3,6,,Y
+CurrentWorkingView,MONITOR,300132,3,3,6,6,Y
+CurrentWorkingView,MONITOR,300137,3,3,6,6,Y
+CurrentWorkingView,MONITOR,300141,3,3,6,,Y
+CurrentWorkingView,TV,300147,3,3,6,,Y
+CurrentWorkingView,MONITOR,300138,3,3,6,,Y
+CurrentWorkingView,AV,300337,6,6,6,,Y
+CurrentWorkingView,AV,300341,6,6,6,,Y
+CurrentWorkingView,AV,300115,3,3,6,6,Y
+CurrentWorkingView,AV,300126,3,3,6,6,Y
+CurrentWorkingView,AV,300134,3,3,6,6,Y
+CurrentWorkingView,AV,300136,3,3,6,,Y
+CurrentWorkingView,MONITOR,211,6,,6,,Y
+CurrentWorkingView,MOBILE,300117,3,5,6,6,Y
+CurrentWorkingView,APS,300508,6,6,6,,Y
+CurrentWorkingView,APS,300111,3,3,6,,Y
+CurrentWorkingView,MOBILE,300504,6,6,6,,Y
+CurrentWorkingView,MOBILE,300140,3,3,6,,Y
+CurrentWorkingView,APS,300510,6,6,6,,Y
+CurrentWorkingView,MOBILE,300510,6,6,6,,Y
+CurrentWorkingView,MOBILE-ETC,300463,3,5,6,,Y
+CurrentWorkingView,APS,300130,3,6,6,,Y
+CurrentWorkingView,MOBILE,300139,6,6,6,,Y
+CurrentWorkingView,MOBILE-ETC,300500,6,6,6,,Y
+CurrentWorkingView,MOBILE,300337,6,6,6,,Y
+CurrentWorkingView,MOBILE,300344,6,6,6,,Y
+CurrentWorkingView,APS,300126,3,5,6,6,Y
+CurrentWorkingView,MOBILE,300127,5,5,6,,Y
+CurrentWorkingView,MOBILE,300499,6,6,6,,Y
+CurrentWorkingView,APS,300110,3,6,6,,Y
+CurrentWorkingView,MOBILE-ETC,300118,6,6,6,6,Y
+CurrentWorkingView,MOBILE,300131,3,6,6,6,Y
+CurrentWorkingView,MOBILE,300137,3,5,6,6,Y
+CurrentWorkingView,MOBILE,300452,3,3,6,,Y
+CurrentWorkingView,MOBILE-ETC,300518,6,6,6,,Y
+CurrentWorkingView,APS,300518,6,6,6,,Y
+CurrentWorkingView,MOBILE,300518,6,6,6,,Y
+CurrentWorkingView,MOBILE,300160,6,6,6,,Y
+CurrentWorkingView,ENTERPRISE,300338,3,6,6,,Y
+CurrentWorkingView,PC,300458,3,3,6,,Y
+CurrentWorkingView,MOTOR,300458,3,3,6,,Y
+CurrentWorkingView,MGT,300458,3,3,6,,Y
+CurrentWorkingView,VC,300458,3,3,6,,Y
+CurrentWorkingView,LAUNDRY,300458,3,3,6,,Y
+CurrentWorkingView,REF,300767,3,3,6,,Y
+CurrentWorkingView,SMART THINGS,300767,3,3,6,,Y
+CurrentWorkingView,MOBILE,300656,6,,,,Y
+CurrentWorkingView,HME,300129,3,3,6,,Y
+CurrentWorkingView,RE_COMP,300160,6,,,,Y
+CurrentWorkingView,FABRIC CARE,300160,6,,,,Y
+CurrentWorkingView,VC,300160,6,,,,Y
+CurrentWorkingView,APS,300502,6,6,6,,Y
+CurrentWorkingView,MOBILE,300439,6,6,6,,Y
+CurrentWorkingView,MOBILE-ETC,300511,6,6,6,,Y
+CurrentWorkingView,APS,300511,6,6,6,,Y
+CurrentWorkingView,MOBILE-ETC,300546,6,6,6,,Y
+CurrentWorkingView,MOTOR,300545,6,,6,,Y
+CurrentWorkingView,MGT,300545,6,,6,,Y
+CurrentWorkingView,FABRIC CARE,300545,6,,6,,Y
+CurrentWorkingView,ENTERPRISE,300135,3,3,6,,Y
+CurrentWorkingView,MONITOR,300545,5,6,6,6,Y
+CurrentWorkingView,TV,300546,6,6,6,,Y
+CurrentWorkingView,MONITOR,300546,6,6,6,,Y
+CurrentWorkingView,PC,300342,6,,,,Y
+CurrentWorkingView,APS,300565,3,3,6,,N
+CurrentWorkingView,AV,300565,3,3,6,,N
+CurrentWorkingView,PC,300127,5,5,6,,Y
+CurrentWorkingView,STB,300143,3,3,6,,Y
+CurrentWorkingView,MEMORY_BRAND,300143,3,3,6,,Y
+CurrentWorkingView,HME,300767,6,,,,Y
+CurrentWorkingView,AV,300725,3,3,6,,Y
+CurrentWorkingView,MONITOR,300725,3,3,6,,Y
+CurrentWorkingView,MOTOR,300591,3,5,6,,Y
+CurrentWorkingView,RO_COMP,300591,3,5,6,,Y
+CurrentWorkingView,SMART THINGS,300591,3,5,6,,Y
+CurrentWorkingView,APS,300591,3,5,6,,Y
+CurrentWorkingView,APS,300534,6,6,6,,Y
+CurrentWorkingView,SC_COMP,300725,3,3,6,,Y
+CurrentWorkingView,APS,300548,3,6,6,,Y
+CurrentWorkingView,MEMORY_BRAND,300126,3,3,6,6,Y
+CurrentWorkingView,REF,300325,3,3,6,,Y
+CurrentWorkingView,FABRIC CARE,300325,3,3,6,,Y
+CurrentWorkingView,LAUNDRY,300441,3,3,6,,Y
+CurrentWorkingView,SMART THINGS,300443,3,3,6,,Y
+CurrentWorkingView,PC,300144,3,3,6,6,Y
+CurrentWorkingView,REF,300644,6,,,,Y
+CurrentWorkingView,DW,300644,6,,,,Y
+CurrentWorkingView,MONITOR,300614,3,5,6,,Y
+CurrentWorkingView,PC,300132,3,6,6,6,Y
+CurrentWorkingView,RE_COMP,300631,3,3,6,6,Y
+CurrentWorkingView,FABRIC CARE,300631,3,3,6,6,Y
+CurrentWorkingView,COOKING,300631,3,3,6,6,Y
+CurrentWorkingView,DW,300631,3,3,6,6,Y
+CurrentWorkingView,A/C_SAC,300630,3,5,6,,Y
+CurrentWorkingView,LAUNDRY,300634,6,,,,Y
+CurrentWorkingView,AV,300460,5,,,,Y
+CurrentWorkingView,AV,300462,5,,,,Y
+CurrentWorkingView,PC,300124,3,3,6,,Y
+CurrentWorkingView,PC,300142,3,3,6,,Y
+CurrentWorkingView,REF,300149,6,,,,Y
+CurrentWorkingView,MGT,300149,6,,,,Y
+CurrentWorkingView,FABRIC CARE,300149,6,,,,Y
+CurrentWorkingView,COOKING,300149,6,,,,Y
+CurrentWorkingView,SMART THINGS,300149,6,,,,Y
+CurrentWorkingView,REF,300151,6,,,,Y
+CurrentWorkingView,COOKING,300153,6,,,,Y
+CurrentWorkingView,COOKING,300155,6,,,,Y
+CurrentWorkingView,LAUNDRY,300155,6,,,,Y
+CurrentWorkingView,RE_COMP,300157,6,,,,Y
+CurrentWorkingView,FABRIC CARE,300157,6,,,,Y
+CurrentWorkingView,SMART THINGS,300157,6,,,,Y
+CurrentWorkingView,MGT,300164,6,6,6,,Y
+CurrentWorkingView,FABRIC CARE,300166,6,,,,Y
+CurrentWorkingView,RE_COMP,300168,6,6,,,Y
+CurrentWorkingView,VC,300168,6,6,,,Y
+CurrentWorkingView,REF,300334,6,,,,Y
+CurrentWorkingView,VC,300334,6,,,,Y
+CurrentWorkingView,SC_COMP,300335,3,3,6,,Y
+CurrentWorkingView,RO_COMP,300335,3,3,6,,Y
+CurrentWorkingView,SMART THINGS,300335,3,3,6,,Y
+CurrentWorkingView,DW,300337,6,6,6,,Y
+CurrentWorkingView,VC,300338,3,3,6,,Y
+CurrentWorkingView,SMART THINGS,300338,3,3,6,,Y
+CurrentWorkingView,DW,300338,3,3,6,,Y
+CurrentWorkingView,SC_COMP,300340,6,6,6,,Y
+CurrentWorkingView,MOTOR,300341,3,6,6,,Y
+CurrentWorkingView,FABRIC CARE,300342,6,,,,Y
+CurrentWorkingView,SMART THINGS,300342,6,,,,Y
+CurrentWorkingView,REF,300343,6,6,6,,Y
+CurrentWorkingView,SC_COMP,300343,6,6,6,,Y
+CurrentWorkingView,LAUNDRY,300343,6,6,6,,Y
+CurrentWorkingView,RO_COMP,300343,6,6,6,,Y
+CurrentWorkingView,RE_COMP,300344,6,6,6,,Y
+CurrentWorkingView,FABRIC CARE,300344,6,6,6,,Y
+CurrentWorkingView,FABRIC CARE,300345,6,,,,Y
+CurrentWorkingView,SC_COMP,300345,6,,,,Y
+CurrentWorkingView,DW,300345,6,,,,Y
+CurrentWorkingView,MGT,300414,6,,6,,Y
+CurrentWorkingView,VC,300414,6,,6,,Y
+CurrentWorkingView,MGT,300439,3,3,6,,Y
+CurrentWorkingView,DW,300440,6,,,,Y
+CurrentWorkingView,REF,300110,3,3,6,,Y
+CurrentWorkingView,MGT,300110,3,3,6,,Y
+CurrentWorkingView,SC_COMP,300110,3,3,6,,Y
+CurrentWorkingView,FABRIC CARE,300111,3,3,6,,Y
+CurrentWorkingView,COOKING,300116,3,3,6,,Y
+CurrentWorkingView,VC,300116,3,3,6,,Y
+CurrentWorkingView,MGT,300117,3,3,6,6,Y
+CurrentWorkingView,SC_COMP,300117,3,3,6,6,Y
+CurrentWorkingView,FABRIC CARE,300119,3,3,6,,Y
+CurrentWorkingView,SC_COMP,300119,3,3,6,,Y
+CurrentWorkingView,LAUNDRY,300119,3,3,6,,Y
+CurrentWorkingView,DW,300119,3,3,6,,Y
+CurrentWorkingView,RE_COMP,300120,3,3,6,,Y
+CurrentWorkingView,LAUNDRY,300120,3,3,6,,Y
+CurrentWorkingView,MOTOR,300122,3,3,6,,Y
+CurrentWorkingView,FABRIC CARE,300122,3,3,6,,Y
+CurrentWorkingView,MOTOR,300123,3,3,6,,Y
+CurrentWorkingView,FABRIC CARE,300123,3,3,6,,Y
+CurrentWorkingView,COOKING,300123,3,3,6,,Y
+CurrentWorkingView,RO_COMP,300123,3,3,6,,Y
+CurrentWorkingView,MGT,300124,3,3,6,,Y
+CurrentWorkingView,COOKING,300124,3,3,6,,Y
+CurrentWorkingView,FABRIC CARE,300126,3,3,6,6,Y
+CurrentWorkingView,SMART THINGS,300128,3,3,6,6,Y
+CurrentWorkingView,DW,300128,3,3,6,6,Y
+CurrentWorkingView,REF,300129,3,3,6,,Y
+CurrentWorkingView,COOKING,300129,3,3,6,,Y
+CurrentWorkingView,VC,300129,3,3,6,,Y
+CurrentWorkingView,COOKING,300130,3,3,6,,Y
+CurrentWorkingView,RO_COMP,300132,3,3,6,,Y
+CurrentWorkingView,SMART THINGS,300132,3,3,6,,Y
+CurrentWorkingView,RE_COMP,300133,3,3,6,6,Y
+CurrentWorkingView,RE_COMP,300134,3,3,6,6,Y
+CurrentWorkingView,MOTOR,300134,3,3,6,6,Y
+CurrentWorkingView,MOTOR,300137,3,3,6,,Y
+CurrentWorkingView,MGT,300137,3,3,6,,Y
+CurrentWorkingView,LAUNDRY,300138,3,3,6,,Y
+CurrentWorkingView,RE_COMP,300139,3,3,6,,Y
+CurrentWorkingView,MGT,300139,3,3,6,,Y
+CurrentWorkingView,SMART THINGS,300139,3,3,6,,Y
+CurrentWorkingView,RE_COMP,300140,3,3,6,,Y
+CurrentWorkingView,FABRIC CARE,300140,3,3,6,,Y
+CurrentWorkingView,COOKING,300141,3,3,6,,Y
+CurrentWorkingView,SMART THINGS,300141,3,3,6,,Y
+CurrentWorkingView,MOTOR,300142,3,3,6,,Y
+CurrentWorkingView,COOKING,300142,3,3,6,,Y
+CurrentWorkingView,REF,300143,3,3,6,,Y
+CurrentWorkingView,SC_COMP,300143,3,3,6,,Y
+CurrentWorkingView,RE_COMP,300144,3,3,6,,Y
+CurrentWorkingView,RO_COMP,300144,3,3,6,,Y
+CurrentWorkingView,DW,300147,3,3,6,,Y
+CurrentWorkingView,A3 COPIER,300645,6,,,,Y
+CurrentWorkingView,SC_COMP,300452,3,3,6,,Y
+CurrentWorkingView,MOBILE-ETC,300631,5,5,6,,Y
+CurrentWorkingView,TV,300632,3,3,6,,Y
+CurrentWorkingView,FAX/MFP,300725,3,3,6,,Y
+CurrentWorkingView,FAX/MFP,300498,3,5,6,,Y
+CurrentWorkingView,FAX/MFP,300627,6,,,,Y
+CurrentWorkingView,SOLUTION S/W,300757,3,3,6,,Y
+CurrentWorkingView,FAX/MFP,300758,3,3,6,,Y
+CurrentWorkingView,FAX/MFP,300647,6,6,6,,Y
+CurrentWorkingView,FAX/MFP,300761,3,3,6,,Y
+CurrentWorkingView,A3 COPIER,300761,3,3,6,,Y
+CurrentWorkingView,PRINTER,300672,3,3,6,,Y
+CurrentWorkingView,FAX/MFP,300138,3,3,6,,Y
+CurrentWorkingView,A3 COPIER,300139,3,3,6,,Y
+CurrentWorkingView,A3 COPIER,300141,3,3,6,,Y
+CurrentWorkingView,FAX/MFP,300144,3,3,6,,Y
+CurrentWorkingView,PRINTER,300147,3,3,6,,Y
+CurrentWorkingView,SOLUTION S/W,300148,3,3,6,,Y
+CurrentWorkingView,FAX/MFP,300151,6,,,,Y
+CurrentWorkingView,SOLUTION S/W,300164,6,,,,Y
+CurrentWorkingView,PRINTER,300164,6,,,,Y
+CurrentWorkingView,PRINTER,300114,3,6,6,,Y
+CurrentWorkingView,MOBILE-ETC,300340,6,6,6,6,Y
+CurrentWorkingView,SOLUTION S/W,300336,6,6,6,,Y
+CurrentWorkingView,MGT,300148,3,3,6,,Y
+CurrentWorkingView,VC,300329,3,3,6,,Y
+CurrentWorkingView,COOKING,300332,3,3,6,,Y
+CurrentWorkingView,LAUNDRY,300332,3,3,6,,Y
+CurrentWorkingView,RE_COMP,300349,3,3,5,,Y
+CurrentWorkingView,FABRIC CARE,300349,3,3,5,,Y
+CurrentWorkingView,DW,300349,3,3,5,,Y
+CurrentWorkingView,VC,300352,3,3,6,,Y
+CurrentWorkingView,FABRIC CARE,300442,3,3,6,,Y
+CurrentWorkingView,COOKING,211,6,,,,Y
+CurrentWorkingView,SOLUTION S/W,300339,6,,,,Y
+CurrentWorkingView,A/C_RAC,300644,6,,,,Y
+CurrentWorkingView,MONITOR,300645,6,,,,Y
+CurrentWorkingView,MGT,300673,3,3,6,,Y
+CurrentWorkingView,DW,300673,3,3,6,,Y
+CurrentWorkingView,AV,300345,6,,,,Y
+CurrentWorkingView,AV,300325,3,3,6,,Y
+CurrentWorkingView,MONITOR,300114,3,6,6,6,Y
+CurrentWorkingView,AV,300672,3,3,6,,Y
+CurrentWorkingView,MOTOR,300114,3,5,6,6,Y
+CurrentWorkingView,REF,300672,3,3,6,,Y
+CurrentWorkingView,MOTOR,300672,3,3,6,,Y
+CurrentWorkingView,MGT,300672,3,3,6,,Y
+CurrentWorkingView,DW,300498,3,3,6,,Y
+CurrentWorkingView,TV,300498,3,5,6,,Y
+CurrentWorkingView,MONITOR,300498,3,5,6,,Y
+CurrentWorkingView,MOBILE-ETC,300615,3,3,6,,Y
+CurrentWorkingView,MOBILE,300615,3,3,6,,Y
+CurrentWorkingView,MD,300492,2,3,6,,Y
+CurrentWorkingView,MGT,300594,3,3,6,,Y
+CurrentWorkingView,COOKING,300594,3,3,6,,Y
+CurrentWorkingView,TV,300723,3,3,6,6,Y
+CurrentWorkingView,PC,300671,3,6,6,6,Y
+CurrentWorkingView,DW,300669,3,3,6,,Y
+CurrentWorkingView,PC,300669,3,3,6,,Y
+CurrentWorkingView,RE_COMP,300671,3,5,6,6,Y
+CurrentWorkingView,REF,300671,3,5,6,6,Y
+CurrentWorkingView,AV,300671,3,5,6,6,Y
+CurrentWorkingView,A/C_RAC,300622,3,3,6,,Y
+CurrentWorkingView,MOTOR,300622,3,3,6,,Y
+CurrentWorkingView,SMART THINGS,300622,3,3,6,,Y
+CurrentWorkingView,PC,300651,3,3,6,,Y
+CurrentWorkingView,HME,300671,5,5,6,,Y
+CurrentWorkingView,SYSTEM,300142,6,6,6,,Y
+CurrentWorkingView,SYSTEM,300139,6,6,6,,Y
+CurrentWorkingView,MOBILE-ETC,300414,6,6,6,,Y
+CurrentWorkingView,MOBILE,300414,6,6,6,,Y
+CurrentWorkingView,TV,300612,6,6,6,,Y
+CurrentWorkingView,A/C_RAC,300672,3,3,6,,Y
+CurrentWorkingView,REF,300612,6,6,6,,Y
+CurrentWorkingView,FABRIC CARE,300612,6,6,6,,Y
+CurrentWorkingView,SMART HOME,300669,3,3,6,,Y
+CurrentWorkingView,PC,300452,3,3,6,,Y
+CurrentWorkingView,A/C_SAC,300548,3,3,6,,Y
+CurrentWorkingView,PC,300630,5,5,6,,Y
+CurrentWorkingView,MOBILE,300114,6,6,6,6,Y
+CurrentWorkingView,MGT,300723,3,3,6,,Y
+CurrentWorkingView,SMART HOME,300414,6,6,6,,Y
+CurrentWorkingView,ACP,300414,6,6,6,,Y
+CurrentWorkingView,MONITOR,300440,5,,,,Y
+CurrentWorkingView,MOBILE,300335,6,6,6,,Y
+CurrentWorkingView,ACP,300126,3,3,6,6,Y
+CurrentWorkingView,REF,300645,6,,,,Y

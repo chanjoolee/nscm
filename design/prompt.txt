@@ -1,0 +1,41 @@
+    please make code for me after read this document of specification .
+
+    in Input Table , you can read files  in described in "input file location".
+    until not,  I maded spec to Step1-2.
+
+    there is currently function before I created. but it i ok if you remove this functions
+    before generate code , please read csv files in declared in  Input Tables.
+    In this case, don't read all csv file. just read 10 line. Because this is possible block sending large file data.
+    But this is applicable when you read file .  when genrating code, in code block, please read all file.
+
+
+    please generate function in detail steps in this document described in "Flow Summary".    
+    if there is Step1 , and there is Step1-1 , and there is Step1-2, please generate function in detail steps in this document.
+    And, if there is function related to Step1-1 aleady , please modify it. and if there is not function related to Step1-1 , please generate new function related to Step1-1.
+    And, if there is function related to Step1-2 aleady , please modify it. and if there is not function related to Step1-2 , please generate function related to Step1-2.
+    And go to next step as what I said.
+
+    I described "dataframe name" in detail steps in detail steps . 
+    If "dataframe name" is df_step01_2_convert_date_to_partial_week, in this case  call script is like below.
+    
+    ################################################################################################################
+    # Step 2  : Step1의 Result에 Time을 Partial Week 으로 변환
+    ################################################################################################################
+    dict_log = {
+        'p_step_no': 20,
+        'p_step_desc': 'Step 2  : Step1의 Result에 Time을 Partial Week 으로 변환 '
+    }
+    df_step01_2_convert_date_to_partial_week = fn_step02_convert_date_to_partial_week(df_01_joined_rts_eos, **dict_log)
+    fn_check_input_table(df_step01_2_convert_date_to_partial_week, 'df_step01_2_convert_date_to_partial_week', '0')
+    # print for test  
+    output_dataframes["df_step01_2_convert_date_to_partial_week"] = df_step01_2_convert_date_to_partial_week
+
+    if step is 01_2 then , 'p_step_no' is 102.
+    
+    if there is description in Flow Summary like "당주 주차부터 8주 구간에 대해",
+    in this case, I will use function common.gfn_add_weeek .   and apply like below.
+        common.gfn_add_week(current_week_normalized, 7)
+    because 8주 include this week.
+    if there is description like "제외하고" or "Except", in this case, I will use function common.gfn_add_weeek .   and apply like below.
+        common.gfn_add_week(current_week_normalized, 8)
+    because 8주 exclude this week.

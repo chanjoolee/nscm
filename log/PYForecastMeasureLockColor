@@ -1,0 +1,223 @@
+[START] PYForecastMeasureLockColor 2025-03-20 - 22:32:44
+[NSCMLOG];PYForecastMeasureLockColor;Start;96 MB
+PYForecastMeasureLockColor;[fn_process_in_df_mst] Total time is 0.03704 sec.;98 MB
+PYForecastMeasureLockColor;Param_OUT_VERSION : CurrentWorkingView;98 MB
+PYForecastMeasureLockColor;Param_Exception_Flag : N;98 MB
+PYForecastMeasureLockColor;df_in_Sales_Domain_Dimension
+    Sales Domain.[Sales Domain LV2]    Sales Domain.[Sales Domain LV3]    Sales Domain.[Sales Domain LV4]    Sales Domain.[Sales Domain LV5]    Sales Domain.[Sales Domain LV6]    Sales Domain.[Sales Domain LV7]    Sales Domain.[Ship To]
+    (object)                           (object)                           (object)                           (object)                           (object)                           (object)                           (object)
+--  ---------------------------------  ---------------------------------  ---------------------------------  ---------------------------------  ---------------------------------  ---------------------------------  ------------------------
+0   203                                203                                203                                203                                203                                203                                203
+1   203                                300114                             300114                             300114                             300114                             300114                             300114
+2   203                                300114                             A300114                            A300114                            A300114                            A300114                            A300114
+3   203                                300114                             A300114                            400362                             400362                             400362                             400362
+4   203                                300114                             A300114                            400362                             5002453                            5002453                            5002453
+DataFrame Shape: 26 Rows x 7 Columns;98 MB
+PYForecastMeasureLockColor;df_in_Time_Partial_Week
+    Time.[Partial Week]
+    (object)
+--  ---------------------
+0   202152B
+1   202201
+2   202202
+3   202203
+4   202204
+DataFrame Shape: 313 Rows x 1 Column;98 MB
+PYForecastMeasureLockColor;df_in_Item_CLASS
+    Version.[Version Name]    Item.[Item]     Sales Domain.[Ship To]    Location.[Location]    ITEMCLASS Class
+    (object)                  (object)        (object)                  (object)               (object)
+--  ------------------------  --------------  ------------------------  ---------------------  -----------------
+0   CurrentWorkingView        HA-EOP-YELLOW1  5002453                   S356                   X
+DataFrame Shape: 1 Row x 5 Columns;98 MB
+PYForecastMeasureLockColor;df_in_Item_TAT
+    Version.[Version Name]    Item.[Item]     Location.[Location]    ITEMTAT TATTERM    ITEMTAT TATTERM_SET
+    (object)                  (object)        (object)               (int64)            (int64)
+--  ------------------------  --------------  ---------------------  -----------------  ---------------------
+0   CurrentWorkingView        LH85QMCEBGCXUE  S708WD88               12                 2
+1   CurrentWorkingView        LH85QMCEBGCXUE  S713WEPS               9                  2
+2   CurrentWorkingView        LH85QMCEBGCXUE  S771                   15                 8
+3   CurrentWorkingView        LH85QMCEBGCXUE  S772WD40               9                  2
+4   CurrentWorkingView        LH85QMCEBGCXUE  S772WD44               9                  2
+DataFrame Shape: 299 Rows x 5 Columns;98 MB
+PYForecastMeasureLockColor;df_in_MST_EOS
+    Version.[Version Name]    Item.[Item]     Sales Domain.[Ship To]    EOS_STATUS    EOS_INIT_DATE    EOS_CHG_DATE    EOS_COM_DATE
+    (object)                  (object)        (object)                  (object)      (object)         (object)        (object)
+--  ------------------------  --------------  ------------------------  ------------  ---------------  --------------  --------------
+0   CurrentWorkingView        BSM-A032F/32D   300114                    COM           2021-08-05       2021-08-05      2021-08-05
+1   CurrentWorkingView        RF29BB8600QLAA  300114                    INI           2023-02-28       2027-03-01      nan
+2   CurrentWorkingView        SM-S911ULIAATT  300114                    INI           2024-02-07       2025-01-05      nan
+3   CurrentWorkingView        SM-S911UZKEATT  300114                    INI           2024-02-07       2025-01-05      nan
+4   CurrentWorkingView        SM-S921UZKAAIO  300114                    INI           2025-01-21       2026-01-07      nan
+DataFrame Shape: 16 Rows x 7 Columns;98 MB
+PYForecastMeasureLockColor;df_in_MST_RTS
+    Version.[Version Name]    Item.[Item]     Sales Domain.[Ship To]    RTS_STATUS    RTS_ISVALID    RTS_INIT_DATE    RTS_DEV_DATE    RTS_COM_DATE
+    (object)                  (object)        (object)                  (object)      (object)       (object)         (object)        (object)
+--  ------------------------  --------------  ------------------------  ------------  -------------  ---------------  --------------  --------------
+0   CurrentWorkingView        RF29BB8600QLAA  300114                    COM           Y              2022-02-28       2022-02-28      2022-03-04
+1   CurrentWorkingView        SM-S911ULIAATT  300114                    COM           Y              2022-12-20       2022-12-13      2023-01-20
+2   CurrentWorkingView        SM-S911UZKEATT  300114                    COM           Y              2022-12-20       2022-12-13      2023-01-20
+3   CurrentWorkingView        SM-S921UZKAAIO  300114                    COM           Y              2023-12-12       2024-01-14      2024-01-14
+4   CurrentWorkingView        SM-S921UZKAATT  300114                    COM           Y              2023-12-12       2024-01-14      2024-01-14
+DataFrame Shape: 15 Rows x 8 Columns;98 MB
+PYForecastMeasureLockColor;df_in_Sales_Product_ASN
+    Version.[Version Name]    Sales Domain.[Ship To]    Item.[Item]     Location.[Location]    SalesProductASN_ISVALID
+    (object)                  (object)                  (object)        (object)               (object)
+--  ------------------------  ------------------------  --------------  ---------------------  -------------------------
+0   CurrentWorkingView        5002453                   RF29BB8600QLAA  S359WC18               Y
+1   CurrentWorkingView        5002453                   RF29BB8600QLAA  S377                   Y
+2   CurrentWorkingView        5002453                   RF29BB8600QLAA  S376                   Y
+3   CurrentWorkingView        5002453                   RF29BB8600QLAA  S348WDB1               Y
+4   CurrentWorkingView        5002453                   RF29BB8600QLAA  S359                   Y
+DataFrame Shape: 29 Rows x 5 Columns;98 MB
+PYForecastMeasureLockColor;df_in_Forecast_Rule
+    Version.[Version Name]    Item.[Product Group]    Sales Domain.[Ship To]    FORECAST_RULE GC FCST    FORECAST_RULE AP2 FCST    FORECAST_RULE AP1 FCST    FORECAST_RULE CUST FCST    FORECAST_RULE ISVALID
+    (object)                  (object)                (int64)                   (int64)                  (float64)                 (float64)                 (float64)                  (object)
+--  ------------------------  ----------------------  ------------------------  -----------------------  ------------------------  ------------------------  -------------------------  -----------------------
+0   CurrentWorkingView        AV                      300501                    6                        nan                       nan                       nan                        Y
+1   CurrentWorkingView        FABRIC CARE             300501                    6                        6.0                       nan                       nan                        Y
+2   CurrentWorkingView        VC                      300501                    6                        6.0                       nan                       nan                        Y
+3   CurrentWorkingView        MOBILE-ETC              300648                    6                        6.0                       6.0                       nan                        Y
+4   CurrentWorkingView        MONITOR                 300330                    6                        6.0                       6.0                       nan                        Y
+DataFrame Shape: 299 Rows x 8 Columns;98 MB
+PYForecastMeasureLockColor;df_in_Item_Master
+    Item.[Item Type]    Item.[Item GBM]    Item.[Product Group]    Item.[Item]
+    (object)            (object)           (object)                (object)
+--  ------------------  -----------------  ----------------------  --------------
+0   BAS                 MOBILE             MOBILE                  BSM-A032F/32D
+1   NOR                 VD                 MONITOR                 LH65WAFWLGCXZA
+2   NOR                 VD                 TV                      QA65QN70FAJXXZ
+3   NOR                 SHA                REF                     RF29BB8600QLAA
+4   NOR                 MOBILE             MOBILE                  SM-S911NLIEKOC
+DataFrame Shape: 16 Rows x 4 Columns;98 MB
+PYForecastMeasureLockColor;[fn_step01_join_rts_eos] Total time is 0.01466 sec.;99 MB
+[NSCMLOG];PYForecastMeasureLockColor;Step.010;Step 1  : df_in_MST_RTS 와 df_in_MST_EOS 를 Item 과 ShipTo를 기준으로 inner Join;99 MB;( 0.084 sec)
+PYForecastMeasureLockColor;df_01_joined_rts_eos
+    Item.[Item]     Sales Domain.[Ship To]    RTS_STATUS    RTS_ISVALID    RTS_INIT_DATE    RTS_DEV_DATE    RTS_COM_DATE    EOS_STATUS    EOS_INIT_DATE    EOS_CHG_DATE    EOS_COM_DATE    Item_Lv
+    (object)        (object)                  (object)      (object)       (object)         (object)        (object)        (object)      (object)         (object)        (object)        (int32)
+--  --------------  ------------------------  ------------  -------------  ---------------  --------------  --------------  ------------  ---------------  --------------  --------------  ---------
+0   RF29BB8600QLAA  300114                    COM           Y              2022-02-28       2022-02-28      2022-03-04      INI           2023-02-28       2027-03-01      nan             3
+1   SM-S911ULIAATT  300114                    COM           Y              2022-12-20       2022-12-13      2023-01-20      INI           2024-02-07       2025-01-05      nan             3
+2   SM-S911UZKEATT  300114                    COM           Y              2022-12-20       2022-12-13      2023-01-20      INI           2024-02-07       2025-01-05      nan             3
+3   SM-S921UZKAAIO  300114                    COM           Y              2023-12-12       2024-01-14      2024-01-14      INI           2025-01-21       2026-01-07      nan             3
+4   SM-S921UZKAATT  300114                    COM           Y              2023-12-12       2024-01-14      2024-01-14      INI           2024-11-11       2026-01-07      nan             3
+DataFrame Shape: 15 Rows x 12 Columns;99 MB
+PYForecastMeasureLockColor;df_01_joined_rts_eos
+    Item.[Item]     Sales Domain.[Ship To]    RTS_STATUS    RTS_ISVALID    RTS_INIT_DATE    RTS_DEV_DATE    RTS_COM_DATE    EOS_STATUS    EOS_INIT_DATE    EOS_CHG_DATE    EOS_COM_DATE    Item_Lv
+    (object)        (object)                  (object)      (object)       (object)         (object)        (object)        (object)      (object)         (object)        (object)        (int32)
+--  --------------  ------------------------  ------------  -------------  ---------------  --------------  --------------  ------------  ---------------  --------------  --------------  ---------
+0   RF29BB8600QLAA  300114                    COM           Y              2022-02-28       2022-02-28      2022-03-04      INI           2023-02-28       2027-03-01      nan             3
+1   SM-S911ULIAATT  300114                    COM           Y              2022-12-20       2022-12-13      2023-01-20      INI           2024-02-07       2025-01-05      nan             3
+2   SM-S911UZKEATT  300114                    COM           Y              2022-12-20       2022-12-13      2023-01-20      INI           2024-02-07       2025-01-05      nan             3
+3   SM-S921UZKAAIO  300114                    COM           Y              2023-12-12       2024-01-14      2024-01-14      INI           2025-01-21       2026-01-07      nan             3
+4   SM-S921UZKAATT  300114                    COM           Y              2023-12-12       2024-01-14      2024-01-14      INI           2024-11-11       2026-01-07      nan             3
+DataFrame Shape: 15 Rows x 12 Columns;100 MB
+PYForecastMeasureLockColor;[fn_step02_convert_date_to_partial_week] Total time is 0.02910 sec.;100 MB
+[NSCMLOG];PYForecastMeasureLockColor;Step.020;Step 2  : Step1의 Result에 Time을 Partial Week 으로 변환 ;100 MB;( 0.044 sec)
+PYForecastMeasureLockColor;df_02_date_to_partial_week
+    Item.[Item]     Sales Domain.[Ship To]    RTS_STATUS    RTS_ISVALID    RTS_INIT_DATE    RTS_DEV_DATE    RTS_COM_DATE    EOS_STATUS    EOS_INIT_DATE    EOS_CHG_DATE    EOS_COM_DATE    Item_Lv    RTS_PARTIAL_WEEK    EOS_PARTIAL_WEEK    RTS_WEEK_NORMALIZED    RTS_WEEK_NORMALIZED_MINUST_1    RTS_WEEK_NORMALIZED_PLUS_3    MAX_RTS_CURRENTWEEK    EOS_WEEK_NORMALIZED    EOS_WEEK_NORMALIZED_MINUS_1    EOS_WEEK_NORMALIZED_MINUS_4    RTS_INITIAL_WEEK_NORMALIZED    EOS_INITIAL_WEEK_NORMALIZED    MIN_EOSINI_MAXWEEK
+    (object)        (object)                  (object)      (object)       (object)         (object)        (object)        (object)      (object)         (object)        (object)        (int64)    (object)            (object)            (object)               (object)                        (object)                      (object)               (object)               (object)                       (object)                       (object)                       (object)                       (object)
+--  --------------  ------------------------  ------------  -------------  ---------------  --------------  --------------  ------------  ---------------  --------------  --------------  ---------  ------------------  ------------------  ---------------------  ------------------------------  ----------------------------  ---------------------  ---------------------  -----------------------------  -----------------------------  -----------------------------  -----------------------------  --------------------
+0   RF29BB8600QLAA  300114                    COM           Y              202209A          202209A         202209B         INI           202309A          202709A                         3          202209B             202709A             202209                 202208                          202212                        202447                 202709                 202708                         202705                         202209                         202309                         202309
+1   SM-S911ULIAATT  300114                    COM           Y              202251A          202250A         202303A         INI           202406A          202501B                         3          202303A             202501B             202303                 202302                          202306                        202447                 202501                 202452                         202449                         202251                         202406                         202406
+2   SM-S911UZKEATT  300114                    COM           Y              202251A          202250A         202303A         INI           202406A          202501B                         3          202303A             202501B             202303                 202302                          202306                        202447                 202501                 202452                         202449                         202251                         202406                         202406
+3   SM-S921UZKAAIO  300114                    COM           Y              202350A          202402A         202402A         INI           202504A          202602A                         3          202402A             202602A             202402                 202401                          202405                        202447                 202602                 202601                         202550                         202350                         202504                         202504
+4   SM-S921UZKAATT  300114                    COM           Y              202350A          202402A         202402A         INI           202446A          202602A                         3          202402A             202602A             202402                 202401                          202405                        202447                 202602                 202601                         202550                         202350                         202446                         202446
+DataFrame Shape: 15 Rows x 24 Columns;100 MB
+PYForecastMeasureLockColor;df_02_date_to_partial_week
+    Item.[Item]     Sales Domain.[Ship To]    RTS_STATUS    RTS_ISVALID    RTS_INIT_DATE    RTS_DEV_DATE    RTS_COM_DATE    EOS_STATUS    EOS_INIT_DATE    EOS_CHG_DATE    EOS_COM_DATE    Item_Lv    RTS_PARTIAL_WEEK    EOS_PARTIAL_WEEK    RTS_WEEK_NORMALIZED    RTS_WEEK_NORMALIZED_MINUST_1    RTS_WEEK_NORMALIZED_PLUS_3    MAX_RTS_CURRENTWEEK    EOS_WEEK_NORMALIZED    EOS_WEEK_NORMALIZED_MINUS_1    EOS_WEEK_NORMALIZED_MINUS_4    RTS_INITIAL_WEEK_NORMALIZED    EOS_INITIAL_WEEK_NORMALIZED    MIN_EOSINI_MAXWEEK
+    (object)        (object)                  (object)      (object)       (object)         (object)        (object)        (object)      (object)         (object)        (object)        (int64)    (object)            (object)            (object)               (object)                        (object)                      (object)               (object)               (object)                       (object)                       (object)                       (object)                       (object)
+--  --------------  ------------------------  ------------  -------------  ---------------  --------------  --------------  ------------  ---------------  --------------  --------------  ---------  ------------------  ------------------  ---------------------  ------------------------------  ----------------------------  ---------------------  ---------------------  -----------------------------  -----------------------------  -----------------------------  -----------------------------  --------------------
+0   RF29BB8600QLAA  300114                    COM           Y              202209A          202209A         202209B         INI           202309A          202709A                         3          202209B             202709A             202209                 202208                          202212                        202447                 202709                 202708                         202705                         202209                         202309                         202309
+1   SM-S911ULIAATT  300114                    COM           Y              202251A          202250A         202303A         INI           202406A          202501B                         3          202303A             202501B             202303                 202302                          202306                        202447                 202501                 202452                         202449                         202251                         202406                         202406
+2   SM-S911UZKEATT  300114                    COM           Y              202251A          202250A         202303A         INI           202406A          202501B                         3          202303A             202501B             202303                 202302                          202306                        202447                 202501                 202452                         202449                         202251                         202406                         202406
+3   SM-S921UZKAAIO  300114                    COM           Y              202350A          202402A         202402A         INI           202504A          202602A                         3          202402A             202602A             202402                 202401                          202405                        202447                 202602                 202601                         202550                         202350                         202504                         202504
+4   SM-S921UZKAATT  300114                    COM           Y              202350A          202402A         202402A         INI           202446A          202602A                         3          202402A             202602A             202402                 202401                          202405                        202447                 202602                 202601                         202550                         202350                         202446                         202446
+DataFrame Shape: 15 Rows x 24 Columns;100 MB
+PYForecastMeasureLockColor;[fn_step03_join_rts_eos] Total time is 0.00173 sec.;100 MB
+[NSCMLOG];PYForecastMeasureLockColor;Step.030;Step 3  : df_in_MST_RTS 와 df_in_MST_EOS의 ITEM * ShipTo로 Inner Join하여 새로운 DF 생성 ( Output Data ) ;100 MB;( 0.018 sec)
+PYForecastMeasureLockColor;df_03_joined_rts_eos
+    Item.[Item]     Sales Domain.[Ship To]
+    (object)        (object)
+--  --------------  ------------------------
+0   RF29BB8600QLAA  300114
+1   SM-S911ULIAATT  300114
+2   SM-S911UZKEATT  300114
+3   SM-S921UZKAAIO  300114
+4   SM-S921UZKAATT  300114
+DataFrame Shape: 15 Rows x 2 Columns;100 MB
+PYForecastMeasureLockColor;df_03_joined_rts_eos
+    Item.[Item]     Sales Domain.[Ship To]
+    (object)        (object)
+--  --------------  ------------------------
+0   RF29BB8600QLAA  300114
+1   SM-S911ULIAATT  300114
+2   SM-S911UZKEATT  300114
+3   SM-S921UZKAAIO  300114
+4   SM-S921UZKAATT  300114
+DataFrame Shape: 15 Rows x 2 Columns;100 MB
+PYForecastMeasureLockColor;[fn_step04_add_partialweek_measurecolumn] Total time is 0.17175 sec.;102 MB
+[NSCMLOG];PYForecastMeasureLockColor;Step.040;Step 4  : Step3의 df에 Partial Week 및 Measure Column 추가 ;102 MB;( 0.181 sec)
+PYForecastMeasureLockColor;df_04_partialweek_measurecolumn
+    Item.[Item]     Sales Domain.[Ship To]    Time.[Partial Week]    Item_Lv    current_row_partial_week_normalized    CURRENTWEEK_NORMALIZED_PLUS_8    S/In FCST(GI)_GC.Lock    S/In FCST Color Condition
+    (object)        (object)                  (object)               (int64)    (object)                               (object)                         (object)                 (object)
+--  --------------  ------------------------  ---------------------  ---------  -------------------------------------  -------------------------------  -----------------------  ---------------------------
+0   RF29BB8600QLAA  300114                    202152B                3          202152                                 202208                           True                     19_GRAY
+1   RF29BB8600QLAA  300114                    202201                 3          202201                                 202209                           True                     19_GRAY
+2   RF29BB8600QLAA  300114                    202202                 3          202202                                 202210                           True                     19_GRAY
+3   RF29BB8600QLAA  300114                    202203                 3          202203                                 202211                           True                     19_GRAY
+4   RF29BB8600QLAA  300114                    202204                 3          202204                                 202212                           True                     19_GRAY
+DataFrame Shape: 4695 Rows x 8 Columns;102 MB
+PYForecastMeasureLockColor;df_04_partialweek_measurecolumn
+    Item.[Item]     Sales Domain.[Ship To]    Time.[Partial Week]    Item_Lv    current_row_partial_week_normalized    CURRENTWEEK_NORMALIZED_PLUS_8    S/In FCST(GI)_GC.Lock    S/In FCST Color Condition
+    (object)        (object)                  (object)               (int64)    (object)                               (object)                         (object)                 (object)
+--  --------------  ------------------------  ---------------------  ---------  -------------------------------------  -------------------------------  -----------------------  ---------------------------
+0   RF29BB8600QLAA  300114                    202152B                3          202152                                 202208                           True                     19_GRAY
+1   RF29BB8600QLAA  300114                    202201                 3          202201                                 202209                           True                     19_GRAY
+2   RF29BB8600QLAA  300114                    202202                 3          202202                                 202210                           True                     19_GRAY
+3   RF29BB8600QLAA  300114                    202203                 3          202203                                 202211                           True                     19_GRAY
+4   RF29BB8600QLAA  300114                    202204                 3          202204                                 202212                           True                     19_GRAY
+DataFrame Shape: 4695 Rows x 8 Columns;102 MB
+PYForecastMeasureLockColor;[fn_step05_set_lock_values] Total time is 0.02161 sec.;103 MB
+[NSCMLOG];PYForecastMeasureLockColor;Step.050;Step 5  : Step4의 df에 당주주차부터 RTS 와 EOS 반영 및 Color 표시 ;103 MB;( 0.063 sec)
+PYForecastMeasureLockColor;df_05_set_lock_values
+    Item.[Item]     Sales Domain.[Ship To]    Time.[Partial Week]    Item_Lv    current_row_partial_week_normalized    CURRENTWEEK_NORMALIZED_PLUS_8    S/In FCST(GI)_GC.Lock    S/In FCST Color Condition
+    (object)        (object)                  (object)               (int64)    (int32)                                (object)                         (object)                 (object)
+--  --------------  ------------------------  ---------------------  ---------  -------------------------------------  -------------------------------  -----------------------  ---------------------------
+0   RF29BB8600QLAA  300114                    202152B                3          202152                                 202208                           True                     19_GRAY
+1   RF29BB8600QLAA  300114                    202201                 3          202201                                 202209                           True                     19_GRAY
+2   RF29BB8600QLAA  300114                    202202                 3          202202                                 202210                           True                     19_GRAY
+3   RF29BB8600QLAA  300114                    202203                 3          202203                                 202211                           True                     19_GRAY
+4   RF29BB8600QLAA  300114                    202204                 3          202204                                 202212                           True                     19_GRAY
+DataFrame Shape: 4695 Rows x 8 Columns;103 MB
+PYForecastMeasureLockColor;df_05_set_lock_values
+    Item.[Item]     Sales Domain.[Ship To]    Time.[Partial Week]    Item_Lv    current_row_partial_week_normalized    CURRENTWEEK_NORMALIZED_PLUS_8    S/In FCST(GI)_GC.Lock    S/In FCST Color Condition
+    (object)        (object)                  (object)               (int64)    (int32)                                (object)                         (object)                 (object)
+--  --------------  ------------------------  ---------------------  ---------  -------------------------------------  -------------------------------  -----------------------  ---------------------------
+0   RF29BB8600QLAA  300114                    202152B                3          202152                                 202208                           True                     19_GRAY
+1   RF29BB8600QLAA  300114                    202201                 3          202201                                 202209                           True                     19_GRAY
+2   RF29BB8600QLAA  300114                    202202                 3          202202                                 202210                           True                     19_GRAY
+3   RF29BB8600QLAA  300114                    202203                 3          202203                                 202211                           True                     19_GRAY
+4   RF29BB8600QLAA  300114                    202204                 3          202204                                 202212                           True                     19_GRAY
+DataFrame Shape: 4695 Rows x 8 Columns;103 MB
+PYForecastMeasureLockColor;[fn_step06_addcolumn_green_for_wireless_bas_array_based] Total time is 310.05875 sec.;105 MB
+[NSCMLOG];PYForecastMeasureLockColor;Step.060;Step 6  : Step5의 df에 Item Master 정보 추가 및 Color 조건 업데이트 ;105 MB;( 310.103 sec)
+PYForecastMeasureLockColor;df_06_addcolumn_green_for_wireless_bas
+    Item.[Item]     Sales Domain.[Ship To]    Time.[Partial Week]    Item_Lv    current_row_partial_week_normalized    CURRENTWEEK_NORMALIZED_PLUS_8    S/In FCST(GI)_GC.Lock    S/In FCST Color Condition
+    (object)        (object)                  (object)               (int64)    (int32)                                (int32)                          (object)                 (object)
+--  --------------  ------------------------  ---------------------  ---------  -------------------------------------  -------------------------------  -----------------------  ---------------------------
+0   RF29BB8600QLAA  300114                    202152B                3          202152                                 202208                           True                     19_GRAY
+1   RF29BB8600QLAA  300114                    202201                 3          202201                                 202209                           True                     19_GRAY
+2   RF29BB8600QLAA  300114                    202202                 3          202202                                 202210                           True                     19_GRAY
+3   RF29BB8600QLAA  300114                    202203                 3          202203                                 202211                           True                     19_GRAY
+4   RF29BB8600QLAA  300114                    202204                 3          202204                                 202212                           True                     19_GRAY
+DataFrame Shape: 4695 Rows x 8 Columns;105 MB
+PYForecastMeasureLockColor;df_06_addcolumn_green_for_wireless_bas
+    Item.[Item]     Sales Domain.[Ship To]    Time.[Partial Week]    Item_Lv    current_row_partial_week_normalized    CURRENTWEEK_NORMALIZED_PLUS_8    S/In FCST(GI)_GC.Lock    S/In FCST Color Condition
+    (object)        (object)                  (object)               (int64)    (int32)                                (int32)                          (object)                 (object)
+--  --------------  ------------------------  ---------------------  ---------  -------------------------------------  -------------------------------  -----------------------  ---------------------------
+0   RF29BB8600QLAA  300114                    202152B                3          202152                                 202208                           True                     19_GRAY
+1   RF29BB8600QLAA  300114                    202201                 3          202201                                 202209                           True                     19_GRAY
+2   RF29BB8600QLAA  300114                    202202                 3          202202                                 202210                           True                     19_GRAY
+3   RF29BB8600QLAA  300114                    202203                 3          202203                                 202211                           True                     19_GRAY
+4   RF29BB8600QLAA  300114                    202204                 3          202204                                 202212                           True                     19_GRAY
+DataFrame Shape: 4695 Rows x 8 Columns;105 MB

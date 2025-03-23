@@ -1,0 +1,152 @@
+* Input Tables
+    - Input 1: 
+        - name : df_in_SIn					
+        - query				
+           Select ([Version].[Version Name]		* Version 에 대한 범위 제한은 Procedure 실행 시에 걸어줌. ( CurrentWorkingView 와 이전 Version )																
+            * [Sales Domain].[Ship To] 																		
+            * [Location].[Location] 																		
+            * [Item].[Product Group] 																		
+            * [Item].[Item] 																		
+            * [Time].[Planning Month]		* Time 에 대한 범위 제한은 Procedure 실행 시에 걸어줌. ( 전월과 당월 )																
+            * [Time].[Week] ) on row, 																		
+        ( { Measure.[S/In FCST(GI)_AP2] } ) on column																		
+        where { [Item].[Item GBM].[VD] } ;		
+        
+        - data				
+                Version.[Version Name],Sales Domain.[Ship To],Location.[Location],Item.[Product Group],Item.[Item],Time.[Planning Month],Time.[Week],S/In FCST(GI)_AP2
+                202414,A5002453,S001,PG 1,SKU 1,202403,202410,100
+                202414,A5002453,S001,PG 1,SKU 1,202403,202411,110
+                202414,A5002453,S001,PG 1,SKU 1,202403,202412,125
+                202414,A5002453,S001,PG 1,SKU 1,202403,202413,155
+                202414,A5002453,S001,PG 1,SKU 1,202404,202414,100
+                202414,A5002453,S001,PG 1,SKU 1,202404,202415,100
+                202414,A5002453,S001,PG 1,SKU 1,202404,202416,100
+                202414,A5002453,S001,PG 1,SKU 1,202404,202417,100
+                CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202410,100
+                CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202411,110
+                CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202412,125
+                CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202403,202413,155
+                CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202414,120
+                CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202415,100
+                CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202416,100
+                CurrentWorkingView,A5002453,S001,PG 1,SKU 1,202404,202417,100
+                202414,A5002453,S001,PG 2,SKU 2,202403,202410,100
+                202414,A5002453,S001,PG 2,SKU 2,202403,202411,110
+                202414,A5002453,S001,PG 2,SKU 2,202403,202412,125
+                202414,A5002453,S001,PG 2,SKU 2,202403,202413,155
+                202414,A5002453,S001,PG 2,SKU 2,202404,202414,
+                202414,A5002453,S001,PG 2,SKU 2,202404,202415,
+                202414,A5002453,S001,PG 2,SKU 2,202404,202416,
+                202414,A5002453,S001,PG 2,SKU 2,202404,202417,
+                CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202403,202410,100
+                CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202403,202411,110
+                CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202403,202412,125
+                CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202403,202413,155
+                CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202404,202414,120
+                CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202404,202415,
+                CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202404,202416,
+                CurrentWorkingView,A5002453,S001,PG 2,SKU 2,202404,202417,
+                202414,5002453,S001,PG 2,SKU 2,202403,202410,
+                202414,5002453,S001,PG 2,SKU 2,202403,202411,
+                202414,5002453,S001,PG 2,SKU 2,202403,202412,
+                202414,5002453,S001,PG 2,SKU 2,202403,202413,
+                202414,5002453,S001,PG 2,SKU 2,202404,202414,100
+                202414,5002453,S001,PG 2,SKU 2,202404,202415,100
+                202414,5002453,S001,PG 2,SKU 2,202404,202416,100
+                202414,5002453,S001,PG 2,SKU 2,202404,202417,100
+                CurrentWorkingView,5002453,S001,PG 2,SKU 2,202403,202410,
+                CurrentWorkingView,5002453,S001,PG 2,SKU 2,202403,202411,
+                CurrentWorkingView,5002453,S001,PG 2,SKU 2,202403,202412,
+                CurrentWorkingView,5002453,S001,PG 2,SKU 2,202403,202413,
+                CurrentWorkingView,5002453,S001,PG 2,SKU 2,202404,202414,
+                CurrentWorkingView,5002453,S001,PG 2,SKU 2,202404,202415,100
+                CurrentWorkingView,5002453,S001,PG 2,SKU 2,202404,202416,100
+                CurrentWorkingView,5002453,S001,PG 2,SKU 2,202404,202417,100
+
+    - Input 2:   Forecast Rule 정보					
+        - name : df_in_Forecast_Rule	
+        - query			
+            Select ([Version].[Version Name]																		
+                * [Item].[Product Group] 																		
+                * [Sales Domain].[Ship To] )  on row, 		2,3LV구성																
+            ( { Measure.[FORECAST_RULE AP2 FCST] } ) on column																		
+            where {  Measure.[FORECAST_RULE ISVALID] == 'Y' } ;	
+
+                        
+        - data		
+            Version.[Version Name],Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE AP2 FCST
+            CurrentWorkingView,PG 1,211,7
+            CurrentWorkingView,PG 2,211,6
+            CurrentWorkingView,PG 3,211,5
+            CurrentWorkingView,PG 4,211,4
+            CurrentWorkingView,PG 5,211,3
+            CurrentWorkingView,PG 6,211,2
+            CurrentWorkingView,PG 1,300114,7
+            CurrentWorkingView,PG 2,300114,6
+            CurrentWorkingView,PG 3,300114,5
+            CurrentWorkingView,PG 4,300114,4
+            CurrentWorkingView,PG 5,300114,3
+            CurrentWorkingView,PG 6,300114,2
+            CurrentWorkingView,PG 6,300001,2
+
+    - Input 3: Sales Domian Master 정보	
+        - name: df_in_Sales_Domain_Dimension
+        - query
+           Select (																		
+            * [Sales Domain].[Sales Domain LV2]																		
+            * [Sales Domain].[Sales Domain LV3] 																		
+            * [Sales Domain].[Sales Domain LV4] 																		
+            * [Sales Domain].[Sales Domain LV5] 																		
+            * [Sales Domain].[Sales Domain LV6] 																		
+            * [Sales Domain].[Sales Domain LV7] 																		
+            * [Sales Domain].[Ship To] )
+
+        - data
+            Sales Domain.[Sales Domain LV2],Sales Domain.[Sales Domain LV3],Sales Domain.[Sales Domain LV4],Sales Domain.[Sales Domain LV5],Sales Domain.[Sales Domain LV6],Sales Domain.[Sales Domain LV7],Sales Domain.[Ship To]
+            203,203,203,203,203,203,203
+            203,300001,300001,300001,300001,300001,300001
+            203,300114,300114,300114,300114,300114,300114
+            203,300114,A300114,A300114,A300114,A300114,A300114
+            203,300114,A300114,400362,400362,400362,400362
+            203,300114,A300114,400362,5002453,5002453,5002453
+            203,300114,A300114,400362,5002453,A5002453,A5002453
+            203,300114,A300114,400362,5003074,5003074,5003074
+            203,300114,A300114,400362,5003074,A5003074,A5003074
+            203,300114,A300114,400362,5005569,5005569,5005569
+            203,300114,A300114,400362,5005569,A5005569,A5005569
+            203,300114,A300114,400362,5007280,5007280,5007280
+            203,300114,A300114,400362,5007280,A5007280,A5007280
+            203,300114,A300114,400362,5013134,5013134,5013134
+            203,300114,A300114,400362,5013134,A5013134,A5013134
+            203,300114,A300114,408273,408273,408273,408273
+            203,300114,A300114,408273,5006941,5006941,5006941
+            203,300114,A300114,408273,5006941,A5006941,A5006941
+            203,300114,A300114,408273,5019692,5019692,5019692
+            203,300114,A300114,408273,5019692,A5019692,A5019692
+            211,211,211,211,211,211,211
+            211,300227,300227,300227,300227,300227,300227
+            211,300227,A300227,A300227,A300227,A300227,A300227
+            211,300227,A300227,400144,400144,400144,400144
+            211,300227,A300227,400144,5002090,5002090,5002090
+            211,300227,A300227,400144,5002090,A5002090,A5002090
+
+
+
+
+* Output Tables
+    - out_Demand
+        - query
+            Select ([Version].[Version Name]																		
+                * [Sales Domain].[Ship To] 																		
+                * [Item].[Item] 																		
+                * [Time].[Week] ) on row, 																		
+            ( { Measure.[S/In FCST(GI)_AP2(Rolling ADJ)] } ) on column;			
+
+
+
+        - column
+            [Version].[Version Name]																			
+            [Sales Domain].[Ship To] 																			
+            [Item].[Item] 																			
+            [Time].[Week]																			
+            Measure.[S/In FCST(GI)_AP2(Rolling ADJ)]	Rolling 값 반영			
