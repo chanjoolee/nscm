@@ -4,7 +4,10 @@ Please follow below guides.
 
 [General Instructions]
     - This is for writing python code to handle pandas dataframe.
-    -  Python Version: 3.10.5
+    - Use numpy for vectorization.
+        - data will be more than 100 million rows.    
+    - Use duckdb for local debugging with commented block.
+    - Python Version: 3.10.5
 
 [Input Tables]
     - If the specification includes an "Input Tables" section, for example:
@@ -31,9 +34,10 @@ Please follow below guides.
    
 
 [Description for code]
-    I wish there is enough comment in code.
-    when declare step function, please add comment for Readability.
-    below is example for step function comment. belocked by """ """
+    - I wish there is enough comment in code.
+    - It would be nice if the comments reflected the content of the spec.  
+    - when declare step function, please add comment for Readability.
+    - below is example for step function comment. belocked by """ """
 
         @_decoration_
         def step03_adjust_negative_values() -> pd.DataFrame:
@@ -52,6 +56,45 @@ Please follow below guides.
             """
             .... content of function
             return df_step03_adjust_negative_values
+
+    - inside of function, It would be nice if you add comment for detailed step like below:   
+        # ── 1) 로드 ───────────────────────────────────────────────────────────────────────────────────────────────────
+        df_src = input_dataframes[STR_DF_IN_SIN_GI_AP1]
+        
+        # ── 2) 그룹별 보정 함수 ────────────────────────────────────────────────────────────────────────────────────────
+        def _fix_negative(group: pd.DataFrame) -> pd.DataFrame:
+            g = group.sort_values('_WK_INT').copy()
+            fcst = g[COL_SIN_FCST_AP2].to_numpy(dtype=int)
+
+            # 역방향 누적-보정 ── O(주차)
+            deficit = 0
+            for i in range(len(fcst) - 1, -1, -1):          # 뒤→앞
+                val = fcst[i] + deficit
+                if val < 0:
+                    deficit = val          # 부족분 carry over
+                    fcst[i] = 0
+                else:
+                    fcst[i] = val
+                    deficit = 0
+
+            g[COL_SIN_FCST_AP2] = fcst
+            return g
+
+        # ── 3) 그룹별 적용 (vectorised apply) ──────────────────────────────────────────────────────────────────────────
+        key_cols = [COL_SHIP_TO, COL_ITEM, COL_LOC]
+        df_fixed = (
+            df_src
+            .groupby(key_cols, sort=False, group_keys=False)
+            .apply(_fix_negative)
+            .drop(columns=['_WK_INT'])
+        )
+
+        # 정수형 유지
+        df_fixed[COL_SIN_FCST_AP2] = df_fixed[COL_SIN_FCST_AP2].astype(int)
+
+        return df_fixed
+
+    
 
 [Function Naming by Steps]
     - If the spec uses Step1, Step1-1, Step1-2, generate separate functions per sub-step.
@@ -212,8 +255,6 @@ Please follow below guides.
     - Even though loop by using numpy is faster than loop by using python, Vectorization is more recommended than loop by using numpy.        
 
         
-    
-    
 
 [Date/Week Handling]
     - Do NOT compute weeks by simple integer addition:
