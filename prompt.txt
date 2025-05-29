@@ -32,6 +32,26 @@ Please follow below guides.
 
 [Description for code]
     I wish there is enough comment in code.
+    when declare step function, please add comment for Readability.
+    below is example for step function comment. belocked by """ """
+
+        @_decoration_
+        def step03_adjust_negative_values() -> pd.DataFrame:
+            """
+            Step 3 (벡터라이즈 버전)
+            1)  Step 2 결과(df_step02_allocate) 로드
+            2)  (Ship-To, Item, Location) 단위로 주차 오름차순 정렬
+            3)  각 그룹을 NumPy 배열로 변환해 **역방향 누적-보정** 알고리즘 수행
+                    · 뒤쪽 주차에서 생긴 음수(부족분)를 앞쪽 주차에서 차감
+                    · 모든 주차의 S/In FCST(GI)_AP2 ≥ 0 보장
+            4)  보정된 값을 DataFrame 에 반영하여 반환
+            --------------------------------------------------------------------------
+            벡터라이즈 포인트
+            • iterrows / loc 루프 제거 –> 그룹 별 NumPy 배열에서만 O(n) 연산
+            • 월 5~6 주차 × 수만 그룹까지도 Python 루프 병목 없이 처리
+            """
+            .... content of function
+            return df_step03_adjust_negative_values
 
 [Function Naming by Steps]
     - If the spec uses Step1, Step1-1, Step1-2, generate separate functions per sub-step.
@@ -128,7 +148,7 @@ Please follow below guides.
             
                 return tgt
 
-        - Merge-based approach (less efficient)
+        - Merge-based approach (less efficient from memory usage)
             @_decoration_
             def fn_step01_5_apply_rts_rules():
                 """
@@ -184,6 +204,16 @@ Please follow below guides.
                                         COL_RTS_WEEK_PLUS_3, COL_MAX_RTS_CURRENTWEEK])
             
                 return df_result
+
+[Vectorization vs. loop]
+    - Vectorization is faster than loop.
+    - There is issue of memory usage and speed.
+    - If there is several way to do the same thing, use vectorization instead of loop.  
+    - Even though loop by using numpy is faster than loop by using python, Vectorization is more recommended than loop by using numpy.        
+
+        
+    
+    
 
 [Date/Week Handling]
     - Do NOT compute weeks by simple integer addition:
