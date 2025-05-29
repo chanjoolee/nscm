@@ -1,2 +1,6 @@
 # Ignore the output folder
 output/
+venv/
+venv310/
+__pycache__
+.DS_Store
