@@ -1,5 +1,4 @@
 ✅ Prompt for Project Code Generation
-
 Please follow below guides.
 
 [General Instructions]
@@ -8,7 +7,6 @@ Please follow below guides.
         - data will be more than 100 million rows.    
     - Use duckdb for local debugging with commented block.
     - Python Version: 3.10.5
-
 [Input Tables]
     - If the specification includes an "Input Tables" section, for example:
         Input Tables (*):
@@ -21,7 +19,6 @@ Please follow below guides.
         df_sin = input_dataframes[STR_DF_IN_SIN_GI_AP1]
     - Do NOT use the global keyword inside functions. 
         my python code will be plugined to o9 Server. in o9, when I use global keyword , o9 will raise error.
-
 [Output Tables]
     - If the specification includes an "Output Tables" section, for example:
     - Output Tables (*):
@@ -32,89 +29,85 @@ Please follow below guides.
         fn_log_dataframe(df_output_Dummy_EstimatedPrice_USD, STR_DF_OUTPUT_DUMMY_ESTIMATEDPRICE_USD)
         output_dataframes[STR_DF_OUTPUT_DUMMY_ESTIMATEDPRICE_USD] = df_output_Dummy_EstimatedPrice_USD
    
-
 [Description for code]
-    - I wish there is enough comment in code.
-    - It would be nice if the comments reflected the content of the spec.  
-    - when declare step function, please add comment for Readability.
-    - below is example for step function comment. belocked by """ """
+    - Function to process steps
+        - I wish there is enough comment in code.    
+        - It would be nice if the comments reflected specification.  
+        - below is example for step function comment. belocked by """ """
+            @_decoration_
+            def step03_adjust_negative_values() -> pd.DataFrame:
+                """
+                Step 3 (벡터라이즈 버전)
+                1)  Step 2 결과(df_step02_allocate) 로드
+                2)  (Ship-To, Item, Location) 단위로 주차 오름차순 정렬
+                3)  각 그룹을 NumPy 배열로 변환해 **역방향 누적-보정** 알고리즘 수행
+                        · 뒤쪽 주차에서 생긴 음수(부족분)를 앞쪽 주차에서 차감
+                        · 모든 주차의 S/In FCST(GI)_AP2 ≥ 0 보장
+                4)  보정된 값을 DataFrame 에 반영하여 반환
+                --------------------------------------------------------------------------
+                벡터라이즈 포인트
+                • iterrows / loc 루프 제거 –> 그룹 별 NumPy 배열에서만 O(n) 연산
+                • 월 5~6 주차 × 수만 그룹까지도 Python 루프 병목 없이 처리
+                """
+                .... content of function
+                return df_step03_adjust_negative_values
+        
 
-        @_decoration_
-        def step03_adjust_negative_values() -> pd.DataFrame:
-            """
-            Step 3 (벡터라이즈 버전)
-            1)  Step 2 결과(df_step02_allocate) 로드
-            2)  (Ship-To, Item, Location) 단위로 주차 오름차순 정렬
-            3)  각 그룹을 NumPy 배열로 변환해 **역방향 누적-보정** 알고리즘 수행
-                    · 뒤쪽 주차에서 생긴 음수(부족분)를 앞쪽 주차에서 차감
-                    · 모든 주차의 S/In FCST(GI)_AP2 ≥ 0 보장
-            4)  보정된 값을 DataFrame 에 반영하여 반환
-            --------------------------------------------------------------------------
-            벡터라이즈 포인트
-            • iterrows / loc 루프 제거 –> 그룹 별 NumPy 배열에서만 O(n) 연산
-            • 월 5~6 주차 × 수만 그룹까지도 Python 루프 병목 없이 처리
-            """
-            .... content of function
-            return df_step03_adjust_negative_values
 
     - inside of function, It would be nice if you add comment for detailed step like below:   
-        # ── 1) 로드 ───────────────────────────────────────────────────────────────────────────────────────────────────
-        df_src = input_dataframes[STR_DF_IN_SIN_GI_AP1]
-        
-        # ── 2) 그룹별 보정 함수 ────────────────────────────────────────────────────────────────────────────────────────
-        def _fix_negative(group: pd.DataFrame) -> pd.DataFrame:
-            g = group.sort_values('_WK_INT').copy()
-            fcst = g[COL_SIN_FCST_AP2].to_numpy(dtype=int)
-
-            # 역방향 누적-보정 ── O(주차)
-            deficit = 0
-            for i in range(len(fcst) - 1, -1, -1):          # 뒤→앞
-                val = fcst[i] + deficit
-                if val < 0:
-                    deficit = val          # 부족분 carry over
-                    fcst[i] = 0
-                else:
-                    fcst[i] = val
-                    deficit = 0
-
-            g[COL_SIN_FCST_AP2] = fcst
-            return g
-
-        # ── 3) 그룹별 적용 (vectorised apply) ──────────────────────────────────────────────────────────────────────────
-        key_cols = [COL_SHIP_TO, COL_ITEM, COL_LOC]
-        df_fixed = (
-            df_src
-            .groupby(key_cols, sort=False, group_keys=False)
-            .apply(_fix_negative)
-            .drop(columns=['_WK_INT'])
-        )
-
-        # 정수형 유지
-        df_fixed[COL_SIN_FCST_AP2] = df_fixed[COL_SIN_FCST_AP2].astype(int)
-
-        return df_fixed
-
+        - example
+            # ── 1) 로드 ───────────────────────────────────────────────────────────────────────────────────────────────────
+            df_src = input_dataframes[STR_DF_IN_SIN_GI_AP1]
+            
+            # ── 2) 그룹별 보정 함수 ────────────────────────────────────────────────────────────────────────────────────────
+            def _fix_negative(group: pd.DataFrame) -> pd.DataFrame:
+                g = group.sort_values('_WK_INT').copy()
+                fcst = g[COL_SIN_FCST_AP2].to_numpy(dtype=int)
+                # 역방향 누적-보정 ── O(주차)
+                deficit = 0
+                for i in range(len(fcst) - 1, -1, -1):          # 뒤→앞
+                    val = fcst[i] + deficit
+                    if val < 0:
+                        deficit = val          # 부족분 carry over
+                        fcst[i] = 0
+                    else:
+                        fcst[i] = val
+                        deficit = 0
+                g[COL_SIN_FCST_AP2] = fcst
+                return g
+            # ── 3) 그룹별 적용 (vectorised apply) ──────────────────────────────────────────────────────────────────────────
+            key_cols = [COL_SHIP_TO, COL_ITEM, COL_LOC]
+            df_fixed = (
+                df_src
+                .groupby(key_cols, sort=False, group_keys=False)
+                .apply(_fix_negative)
+                .drop(columns=['_WK_INT'])
+            )
+            # 정수형 유지
+            df_fixed[COL_SIN_FCST_AP2] = df_fixed[COL_SIN_FCST_AP2].astype(int)
+            return df_fixed
 [Function Naming by Steps]
     - If the spec uses Step1, Step1-1, Step1-2, generate separate functions per sub-step.
     - If a summary names a dataframe like convert_date_to_partial_week, define:
         fn_step01_2_convert_date_to_partial_week(...)
     returning dataframe:
         df_step01_2_convert_date_to_partial_week
-
 [Global Variable Rules]
     - Do NOT use the global keyword in function.
         def function_some():
             # do not use global variable in step function
             # global var_a = ‘some’
-
     - Declare all results in the main block from function returns.
     - You may assume input_dataframes is globally available.
-
 [input_dataframes , output_dataframes, is_local]
     - this program wiil be plugined to o9 Server. 
-    - in o9, if there is parameter of df_in_*, it will be global variable.
-        - but, in local debugging, I will read from csv file.
-    - I will set input tables like df_in_* to input_dataframes.
+    - but in o9, I can not set break point in debug mode .
+    - in o9,  there is parameter start with df_in_*, it will be global variable.
+        - this global variable is decalred by o9
+        - and , in python code, this global variable should not be declared like below.
+            df_in_BO_FCST = pd.DataFrame()
+            this code initialize df_in_BO_FCST declared by o9  in o9 server.
+    - Finally , I will set input tables like df_in_* to input_dataframes.
         - And later, I will read it from input_dataframes.
         - It proceeds regardless of whether it is local or server.
         - and below code is needed.
@@ -122,17 +115,13 @@ Please follow below guides.
                 # 로컬인 경우 Output 폴더를 정리한다.
                 for file in os.scandir(str_output_dir):
                     os.remove(file.path)
-
                 # 로컬인 경우 파일을 읽어 입력 변수를 정의한다.
                 file_pattern = f"{os.getcwd()}/{str_input_dir}/*.csv" 
                 csv_files = glob.glob(file_pattern)
-
                 file_to_df_mapping = {
                     "df_In_FCST(GI)_AP2.csv" :      STR_DF_IN_FCST       ,
                     "df_in_Total_BOD_LT.csv"   :    STR_DF_IN_TOTAL_BOD_LT    
                 }
-
-
                 # Read all CSV files into a dictionary of DataFrames
                 for file in csv_files:
                     df = pd.read_csv(file)
@@ -145,164 +134,72 @@ Please follow below guides.
                             input_dataframes[frame_name] = df
                             mapped = True
                             break
-                    # if not mapped:
-                    #     input_dataframes[file_name] = df
 
-                fn_convert_type(input_dataframes[STR_DF_IN_FCST], COL_TIME_WK, str)
-                fn_convert_type(input_dataframes[STR_DF_IN_TOTAL_BOD_LT], COL_TIME_WK, str)
-                input_dataframes[STR_DF_IN_FCST][COL_SIN_FCST_AP2].fillna(0, inplace=True)
-                fn_convert_type(input_dataframes[STR_DF_IN_FCST], COL_SIN_FCST_AP2, 'int32')
-                input_dataframes[STR_DF_IN_TOTAL_BOD_LT][COL_TOTAL_BOD_LT].fillna(0, inplace=True)
-                fn_convert_type(input_dataframes[STR_DF_IN_TOTAL_BOD_LT], COL_TOTAL_BOD_LT, 'int32')
-                logger.info("loaded dataframes")
             else:
-                # o9 에서 
+                # o9 에서 선언된 변수를 할당한다.
+                # 나중에 df_in_SIn_FCST_GI_AP2 를 직접 호출하지 않는다. 
+                # df = input_dataframes[STR_DF_IN_FCST]
                 input_dataframes[STR_DF_IN_FCST]            = df_in_SIn_FCST_GI_AP2
                 input_dataframes[STR_DF_IN_TOTAL_BOD_LT]    = df_in_Forecast_Rule
     
-[Variable Naming Conventions]
+[Variable Naming Conventions]    
+    - don't use string directly like 'Version.[Version Name]'. 
+        - use constant variable.
+        - declare constant in initial area in python program
     - Constants for dataframe names:
-        STR_DF_IN_MST_RTS = 'df_in_MST_RTS'
-        STR_DF_STEP01_1_RTS_CLEAN = 'df_step01_1_RTS_clean'
+        - constants : use capital letters
+        - example
+            STR_DF_IN_MST_RTS = 'df_in_MST_RTS'
+            STR_DF_STEP01_1_RTS_CLEAN = 'df_step01_1_RTS_clean'
     - Constants for column names:
-        COL_VERSION    = 'Version.[Version Name]'
-        COL_ITEM       = 'Item.[Item]'
-        COL_SHIP_TO    = 'Sales Domain.[Ship To]'
+        - constants : use capital letters
+        - example
+            COL_VERSION    = 'Version.[Version Name]'
+            COL_ITEM       = 'Item.[Item]'
+            COL_SHIP_TO    = 'Sales Domain.[Ship To]'
     - Constants for colors:
-      COLOR_LIGHTBLUE = '10_LIGHTBLUE'
-      COLOR_WHITE     = '14_WHITE'
+       - constants : use capital letters
+       - example
+        COLOR_LIGHTBLUE = '10_LIGHTBLUE'
+        COLOR_WHITE     = '14_WHITE'
+    - If you are requested to modify code, please replace variable name by refering to above naming rule.
 
-[Vectorization vs. Merge Examples]
-    - Ensure code can handle >100 million rows efficiently.
-        don't use just simple loop.
-        when there is needed to data from out of dataframe, use Vectorized lookup
-        - Vectorized lookup (preferred for large data):
-            below is example for use Vectorized lookup
-            @_decoration_
-            def fn_step08_match_rts(df_asn_week: pd.DataFrame,
-                                    df_rts_week: pd.DataFrame,
-                                    df_dim: pd.DataFrame) -> pd.DataFrame:
-                """
-                ASN만 있는 경우 조건 추가
-                Sales Product ASN에 Partial Week 에 따른 Lock 값과, Color 값 적용 ( Step 7에 Step 6를 적용 )
-            
-                • df_asn_week  : step07_prepare_asn 결과 (Lv6/Lv7 + 주차 Fan-out, 기본 Lock=False·14_WHITE)
-                • df_rts_week  : step05/06 결과 (Lv2/Lv3 주차별 Lock·Color 완료본)
-                ------------------------------------------------------------------------------
-                    Lv7 또는 Lv6 → 부모 Lv3/2 를 계산해서 df_rts_week 의 Lock,Color 를 *벡터*로
-                    가져온 뒤 override.
-                    - 매칭 실패 → Lock/Color 그대로(Default)
-                    - 매칭 성공 → df_rts_week 의 값으로 덮어쓰고 RTS_EOS_ShipTo 컬럼에 부모코드 기록
-                """
-                tgt           = df_asn_week.copy()
-                dim_idx       = df_dim.set_index(Sales_Domain_ShipTo)
-                lv2_arr, lv3_arr = (dim_idx[Sales_Domain_LV2].to_numpy(),
-                                    dim_idx[Sales_Domain_LV3].to_numpy())
-                pos_dim       = dim_idx.index.get_indexer(tgt[Sales_Domain_ShipTo])
-                has_dim       = pos_dim >= 0    # ── RTS/EOS side  MultiIndex  ────────────────────────────────────────
-                rts_idx = df_rts_week.set_index(
-                    [Item_Item, Sales_Domain_ShipTo, Partial_Week],
-                    verify_integrity=False)
-            
-                rts_lock  = rts_idx[Lock_Condition].to_numpy()
-                rts_color = rts_idx[Color_Condition].to_numpy()
-            
-                # ── 준비 : 부모코드 두 개 벡터 ─────────────────────────────────────────
-                parent_lv2 = np.where(has_dim, lv2_arr[pos_dim], None)
-                parent_lv3 = np.where(has_dim, lv3_arr[pos_dim], None)
-            
-                # ── look-up Lv3 → Lv2 우선순위로 get_indexer ─────────────────────────
-                def fetch(col_arr):
-                    """returns ndarray[object|None] with rts value aligned to tgt rows"""
-                    pos = rts_idx.index.get_indexer(
-                        np.stack([tgt[Item_Item], col_arr, tgt[Partial_Week]], axis=1))
-                    hit = pos >= 0
-                    out = np.full(len(tgt), None, dtype=object)
-                    out[hit] = col_arr[hit]          # store parent ship-to for later
-                    return hit, pos, out
-            
-                hit3, pos3, ship3 = fetch(parent_lv3)
-                # Lv3 가 못찾은 row 중 Lv2 재시도
-                mask2 = ~hit3
-                hit2, pos2, ship2 = fetch(parent_lv2)
-            
-                # ── 덮어쓰기 (Logical OR hit) ────────────────────────────────────────
-                hit_all     = hit3 | hit2
-                rts_pos     = np.where(hit3, pos3, pos2)       # pick the matched index
-                src_lock    = np.where(hit_all, rts_lock[rts_pos], tgt[Lock_Condition])
-                src_color   = np.where(hit_all, rts_color[rts_pos], tgt[Color_Condition])
-                parent_ship = np.where(hit3, ship3, ship2)
-            
-                tgt.loc[hit_all, Lock_Condition]   = src_lock[hit_all]
-                tgt.loc[hit_all, Color_Condition]  = src_color[hit_all]
-                tgt[RTS_EOS_ShipTo] = parent_ship   # NaN for unmatched
-            
-                return tgt
+[Use Vectorization]
+    - Ensure code can handle more than 100 million rows efficiently.
+    - don't use iterrows : very slow
+        for index, row in df_03_joined_rts_eos.iterrows():
+    - don't use "for loop" by using numpy if possible
+        - numpy loop is faster than iterrows. but vectorization is more faster. and use vectorization if possible. 
+        - example to use numpy loop
+            df_src = df_asn_item_week
+            n = len(df_src)
+            for i in range(n):
+                if not valid_ship[i]:
+                    continue
+                pos   = pos_ship[i]
+                pg    = pg_arr[i]
 
-        - Merge-based approach (less efficient from memory usage)
-            @_decoration_
-            def fn_step01_5_apply_rts_rules():
-                """
-                Step 1-5 – overwrite default Lock/Color according to RTS timelines.
-                """
-                # --- 1) merge calendar grid with RTS helper columns --------------------------------
-                df_grid = output_dataframes[STR_DF_STEP01_4_RTS_PW_LOCKCOLOR].copy(deep=True)
-                df_rts  = output_dataframes[STR_DF_STEP01_2_RTS_PW]           .copy(deep=True)
-            
-                df_mix = df_grid.merge(
-                    df_rts[
-                        [COL_ITEM, COL_SHIP_TO,
-                        COL_RTS_INITIAL_WEEK, COL_RTS_WEEK, COL_RTS_WEEK_MINUS_1,
-                        COL_RTS_WEEK_PLUS_3, COL_MAX_RTS_CURRENTWEEK]
-                    ],
-                    on=[COL_ITEM, COL_SHIP_TO],
-                    how='left'
-                )
-            
-                # week (numeric) for the calendar row
-                df_mix['WEEK_NUM'] = df_mix[COL_TIME_PW].str.replace(r'\D', '', regex=True)
-            
-                # --- 2) DARK-BLUE zone -------------------------------------------------------------
-                mask_darkblue = (
-                    (df_mix['WEEK_NUM'] >= df_mix[COL_RTS_INITIAL_WEEK]) &
-                    (df_mix['WEEK_NUM'] <= df_mix[COL_RTS_WEEK_MINUS_1])
-                )
-                df_mix.loc[mask_darkblue, COL_COLOR]     = COLOR_DARKBLUE
-                df_mix.loc[mask_darkblue, COL_LOCK_COND] = True
-            
-                # --- 3) LIGHT-BLUE zone (COM … COM+3) ---------------------------------------------
-                mask_lightblue = (
-                    (df_mix['WEEK_NUM'] >= df_mix[COL_RTS_WEEK]) &
-                    (df_mix['WEEK_NUM'] <= df_mix[COL_RTS_WEEK_PLUS_3])
-                )
-            
-                # Lock flag depends on whether the week is past
-                mask_lightblue_future = mask_lightblue & (df_mix['WEEK_NUM'] >= current_week_normalized)
-                mask_lightblue_past   = mask_lightblue & (df_mix['WEEK_NUM'] <  current_week_normalized)
-            
-                df_mix.loc[mask_lightblue,        COL_COLOR]     = COLOR_LIGHTBLUE
-                df_mix.loc[mask_lightblue_future, COL_LOCK_COND] = False
-                df_mix.loc[mask_lightblue_past,   COL_LOCK_COND] = True
-            
-                # --- 4) WHITE zone (after COM+3 or current-week, whichever is later) ---------------
-                mask_white = (df_mix['WEEK_NUM'] >= df_mix[COL_MAX_RTS_CURRENTWEEK])
-                df_mix.loc[mask_white, COL_COLOR]     = COLOR_WHITE
-                df_mix.loc[mask_white, COL_LOCK_COND] = False
-            
-                # --- 5) clean-up helper columns ----------------------------------------------------
-                df_result = df_mix.drop(columns=['WEEK_NUM'] +
-                                        [COL_RTS_INITIAL_WEEK, COL_RTS_WEEK, COL_RTS_WEEK_MINUS_1,
-                                        COL_RTS_WEEK_PLUS_3, COL_MAX_RTS_CURRENTWEEK])
-            
-                return df_result
+    - don't use merge if possible 
+        - even if there is need to see column out of other dataframe , don't use merge
+        - use below example ( use df.assign)
+            pos  = shipto_idx.get_indexer(df_rts_eos[Sales_Domain_ShipTo].to_numpy())
+            lv   = np.where(pos >= 0, level_arr[pos], np.nan)
+            df   = df_rts_eos.assign(Item_Lv=lv.astype('int8'))
 
-[Vectorization vs. loop]
-    - Vectorization is faster than loop.
-    - There is issue of memory usage and speed.
-    - If there is several way to do the same thing, use vectorization instead of loop.  
-    - Even though loop by using numpy is faster than loop by using python, Vectorization is more recommended than loop by using numpy.        
-
-        
+[Delete Not using object For memory]
+    - I have a memory pressure 
+    - And If object will be not use any more in later , delete object like below.
+        - example 1
+            df_asn = df_asn.drop(columns=[Version_Name, Salse_Product_ASN], errors='ignore')
+            df_asn['key'] = 1
+            df_time['key'] = 1
+            df_asn_week = pd.merge(df_asn, df_time, on='key', how='outer').drop('key', axis=1)
+            del df_asn, df_time; gc.collect()
+        - example 2
+            dict_log = {'p_step_no': 70, 'p_step_desc': 'Step 7: Prepare ASN Week Grid'}
+            df_asn_week = step07_prepare_asn(input_dataframes[STR_DF_ASN], input_dataframes[STR_DF_TIME], **dict_log)
+            fn_log_dataframe(df_asn_week, f'df_07_{STR_DF_ASN_WEEK}')
+            del input_dataframes[STR_DF_ASN], input_dataframes[STR_DF_TIME]; gc.collect()
 
 [Date/Week Handling]
     - Do NOT compute weeks by simple integer addition:
@@ -311,67 +208,65 @@ Please follow below guides.
         cur_week_plus_7_str = common.gfn_add_week(current_week_normalized, 7)
         cur_week_plus_7 = int(cur_week_plus_7_str)
 
+
+
 [DuckDB Validation (Local Debugging)]
-    When I hanlding I need to check if my code does work well. 
+    When I hanlding dataframe , I need to check if my code is working well. 
     But sometime data is so big, I have a difficultis to check.
-    For checing , I need sometime join. But dataframe does not provide join functions. 
+    For checking , I need sometime join. But dataframe does not provide join functions. 
     in duckdb , I can use join. 
-    At the end of each function, include a commented block for local debug.
-    o9 server do not allow duckdb. and I will only use duckdb in local environment for debug.
+    At the end of each function before return , please add code commented block for local debug.
+    Because o9 server do not allow duckdb, and I will only use duckdb in local environment for debug.
     
-    below is example.
-    """
-        # ═══════════════════════════════════════════════════════
-        # EXAMPLE DUCKDB VALIDATION (Step X)
-        # ═══════════════════════════════════════════════════════
-        import duckdb
-        # Handy aliases ↓ – adjust if you renamed anything
-        STR_DF_PRE   = STR_DF_STEP02_BAS_13_GREEN      # after Step 2
-        STR_DF_POST  = STR_DF_STEP03_2_VD_LEAD         # after Step 3-2
-        STR_DF_TAT   = STR_DF_STEP03_1_TAT_MAX         # (GBM,Item) → TATTERM
-        STR_DF_ITEM  = STR_DF_IN_ITEM_MASTER           # to display Item GBM
-
-        duckdb.register(STR_DF_PRE,  output_dataframes[STR_DF_PRE])
-        duckdb.register(STR_DF_TAT,  output_dataframes[STR_DF_TAT])
-        duckdb.register(STR_DF_POST, output_dataframes[STR_DF_POST])
-        duckdb.register(STR_DF_ITEM, input_dataframes[STR_DF_ITEM])
-
-        # target for the quick check
-        v_item   = 'RF65DG90BDSGTL'
-        v_shipto = '300114'
-
-        analysis_query_step03_2 = f'''
-        SELECT
-            pre['{COL_ITEM}']                     AS item,
-            itm['{COL_ITEM_GBM}']                 AS item_gbm,
-            pre['{COL_SHIP_TO}']                  AS shipto,
-            pre['{COL_TIME_PW}']                  AS week_pw,
-            pre['{COL_COLOR}']                    AS colour_before,
-            post['{COL_COLOR}']                   AS colour_after,
-            pre['{COL_LOCK_COND}']                AS lock_before,
-            post['{COL_LOCK_COND}']               AS lock_after,
-            tat['{COL_TATTERM}']                  AS tatterm,
-            tat['{COL_CW_PLUS_TATTERM}']          AS cw_plus_tatterm,
-            {current_week_normalized}             AS curr_week
-        FROM   {STR_DF_PRE}  AS pre
-        JOIN   {STR_DF_POST} AS post
-            ON  pre['{COL_ITEM}']      = post['{COL_ITEM}']
-            AND pre['{COL_SHIP_TO}']   = post['{COL_SHIP_TO}']
-            AND pre['{COL_TIME_PW}']   = post['{COL_TIME_PW}']
-        LEFT  JOIN {STR_DF_TAT}  AS tat
-            ON  tat['{COL_ITEM}']      = pre['{COL_ITEM}']
-        LEFT  JOIN {STR_DF_ITEM} AS itm
-            ON  itm['{COL_ITEM}']      = pre['{COL_ITEM}']
-        WHERE  pre['{COL_ITEM}']    = '{v_item}'
-        -- AND  pre['{COL_SHIP_TO}'] = '{v_shipto}'
-        ORDER  BY week_pw;
-        '''
-
-        df_validation_step03_2 = duckdb.query(analysis_query_step03_2).to_df()
-        fn_log_dataframe(df_validation_step03_2, 'analysis_result_step03_2')  
-    """
+    - example.
+        """
+            # ═══════════════════════════════════════════════════════
+            # EXAMPLE DUCKDB VALIDATION (Step X)
+            # ═══════════════════════════════════════════════════════
+            import duckdb
+            # Handy aliases ↓ – adjust if you renamed anything
+            STR_DF_PRE   = STR_DF_STEP02_BAS_13_GREEN      # after Step 2
+            STR_DF_POST  = STR_DF_STEP03_2_VD_LEAD         # after Step 3-2
+            STR_DF_TAT   = STR_DF_STEP03_1_TAT_MAX         # (GBM,Item) → TATTERM
+            STR_DF_ITEM  = STR_DF_IN_ITEM_MASTER           # to display Item GBM
+            duckdb.register(STR_DF_PRE,  output_dataframes[STR_DF_PRE])
+            duckdb.register(STR_DF_TAT,  output_dataframes[STR_DF_TAT])
+            duckdb.register(STR_DF_POST, output_dataframes[STR_DF_POST])
+            duckdb.register(STR_DF_ITEM, input_dataframes[STR_DF_ITEM])
+            # target for the quick check
+            v_item   = 'RF65DG90BDSGTL'
+            v_shipto = '300114'
+            analysis_query_step03_2 = f'''
+            SELECT
+                pre['{COL_ITEM}']                     AS item,
+                itm['{COL_ITEM_GBM}']                 AS item_gbm,
+                pre['{COL_SHIP_TO}']                  AS shipto,
+                pre['{COL_TIME_PW}']                  AS week_pw,
+                pre['{COL_COLOR}']                    AS colour_before,
+                post['{COL_COLOR}']                   AS colour_after,
+                pre['{COL_LOCK_COND}']                AS lock_before,
+                post['{COL_LOCK_COND}']               AS lock_after,
+                tat['{COL_TATTERM}']                  AS tatterm,
+                tat['{COL_CW_PLUS_TATTERM}']          AS cw_plus_tatterm,
+                {current_week_normalized}             AS curr_week
+            FROM   {STR_DF_PRE}  AS pre
+            JOIN   {STR_DF_POST} AS post
+                ON  pre['{COL_ITEM}']      = post['{COL_ITEM}']
+                AND pre['{COL_SHIP_TO}']   = post['{COL_SHIP_TO}']
+                AND pre['{COL_TIME_PW}']   = post['{COL_TIME_PW}']
+            LEFT  JOIN {STR_DF_TAT}  AS tat
+                ON  tat['{COL_ITEM}']      = pre['{COL_ITEM}']
+            LEFT  JOIN {STR_DF_ITEM} AS itm
+                ON  itm['{COL_ITEM}']      = pre['{COL_ITEM}']
+            WHERE  pre['{COL_ITEM}']    = '{v_item}'
+            -- AND  pre['{COL_SHIP_TO}'] = '{v_shipto}'
+            ORDER  BY week_pw;
+            '''
+            df_validation_step03_2 = duckdb.query(analysis_query_step03_2).to_df()
+            fn_log_dataframe(df_validation_step03_2, 'analysis_result_step03_2')  
+        """
+        retur df
     
-
 [Main Call Code Format]
     - When calling step function in main code.
         - when you calling , please pass  dict_log like **dict_log.
@@ -391,14 +286,12 @@ Please follow below guides.
                     df_step01_1_RTS_clean = fn_step01_1_preprocess_rts(**dict_log)
                     fn_log_dataframe(df_step01_1_RTS_clean, STR_DF_STEP01_1_RTS_CLEAN)
                     output_dataframes[STR_DF_STEP01_1_RTS_CLEAN] = df_step01_1_RTS_clean
-
         - Do NOT add p_df_name to dict_log.
             - Use constant-named variables.
             - Follow consistent naming and structure.
     
-
 [Code Template]	
-    - When it comes to code format please refer to PYForecastVDPanelMonthInput.py
+    - When you make full code, please refer to PYForecastVDPanelMonthInput.py. overal flow is below.
         - package import
         - declare variable
         - utility function
@@ -416,7 +309,6 @@ Please follow below guides.
                             # parse_args 대체
                             # input , output 폴더설정. 작업시마다 History를 남기고 싶으면
                             # ----------------------------------------------------
-
                             input_folder_name  = str_instance
                             output_folder_name = str_instance
                             
@@ -436,4 +328,3 @@ Please follow below guides.
                         - call main function with **dict_log
             - exception handling
             - finally block
-
