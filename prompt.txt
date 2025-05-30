@@ -396,6 +396,7 @@ Please follow below guides.
             - Use constant-named variables.
             - Follow consistent naming and structure.
     
+
 [Code Template]	
     - When it comes to code format please refer to PYForecastVDPanelMonthInput.py
         - package import
