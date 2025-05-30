@@ -102,15 +102,16 @@ Please follow below guides.
 [input_dataframes , output_dataframes, is_local]
     - this program wiil be plugined to o9 Server. 
     - but in o9, I can not set break point in debug mode .
+        - and I need develop in local environment
     - in o9,  there is parameter start with df_in_*, it will be global variable.
         - this global variable is decalred by o9
         - and , in python code, this global variable should not be declared like below.
             df_in_BO_FCST = pd.DataFrame()
             this code initialize df_in_BO_FCST declared by o9  in o9 server.
-    - Finally , I will set input tables like df_in_* to input_dataframes.
-        - And later, I will read it from input_dataframes.
+    - Finally , I will set input tables like df_in_SIn_FCST_GI_AP2... to input_dataframes.
+        - And later, I will read it from input_dataframes in other functions.
         - It proceeds regardless of whether it is local or server.
-        - and below code is needed.
+        - please follow below code.
             if is_local: 
                 # 로컬인 경우 Output 폴더를 정리한다.
                 for file in os.scandir(str_output_dir):
@@ -148,17 +149,20 @@ Please follow below guides.
         - declare constant in initial area in python program
     - Constants for dataframe names:
         - constants : use capital letters
+        - add prefix with STR_        
         - example
             STR_DF_IN_MST_RTS = 'df_in_MST_RTS'
             STR_DF_STEP01_1_RTS_CLEAN = 'df_step01_1_RTS_clean'
     - Constants for column names:
         - constants : use capital letters
+        - add prefix with COL_
         - example
             COL_VERSION    = 'Version.[Version Name]'
             COL_ITEM       = 'Item.[Item]'
             COL_SHIP_TO    = 'Sales Domain.[Ship To]'
     - Constants for colors:
        - constants : use capital letters
+       - add prefix with COLOR_
        - example
         COLOR_LIGHTBLUE = '10_LIGHTBLUE'
         COLOR_WHITE     = '14_WHITE'
