@@ -803,29 +803,7 @@ def is_valid_add_week(x):
         return True
     except:
         return False
-########################################################################################################################
-# End Function Of Utils
-########################################################################################################################
-
-########################################################################################################################
-# Start Function Of Steps
-########################################################################################################################
-# ───── STEP 01 – RTS/EOS 전처리 ───────────────────
-@_decoration_
-def fn_step01_load_rts_eos(df_rts_eos: pd.DataFrame,
-                        shipto_idx: pd.Index,
-                        level_arr:  np.ndarray) -> pd.DataFrame:
-    """
-    * merge 필요 없음 – 입력 그대로 사용
-    * Ship-To → Item_lv(2/3) 계산
-    """
-    # vectorized level
-    pos  = shipto_idx.get_indexer(df_rts_eos[Sales_Domain_ShipTo].to_numpy())
-    lv   = np.where(pos >= 0, level_arr[pos], np.nan)
-    df   = df_rts_eos.assign(Item_Lv=lv.astype('int8'))
-    # ▲TODO: 날짜 → PartialWeek 변환 등 spec Step 02 로직 이곳에 포함
-    return df
-
+        
 
 # common.gfn_get_partial_week(dt: datetime, use_AB=True) 는 그대로 사용# ── 백업용 개별 파서 ──────────────────────────────────────────────────
 _FMT_TRIES = ('%Y/%m/%d', '%Y-%m-%d', '%m-%d-%Y', '%m/%d/%Y')
@@ -890,6 +868,30 @@ def vec_to_partial_week(col: pd.Series) -> pd.Series:
         out[ok] = np.vectorize(common.gfn_get_partial_week, otypes=[object])(py_dt, True)
 
     return pd.Series(out, index=col.index, dtype=object)
+
+########################################################################################################################
+# End Function Of Utils
+########################################################################################################################
+
+########################################################################################################################
+# Start Function Of Steps
+########################################################################################################################
+# ───── STEP 01 – RTS/EOS 전처리 ───────────────────
+@_decoration_
+def fn_step01_load_rts_eos(df_rts_eos: pd.DataFrame,
+                        shipto_idx: pd.Index,
+                        level_arr:  np.ndarray) -> pd.DataFrame:
+    """
+    * merge 필요 없음 – 입력 그대로 사용
+    * Ship-To → Item_lv(2/3) 계산
+    """
+    # vectorized level
+    pos  = shipto_idx.get_indexer(df_rts_eos[Sales_Domain_ShipTo].to_numpy())
+    lv   = np.where(pos >= 0, level_arr[pos], np.nan)
+    df   = df_rts_eos.assign(Item_Lv=lv.astype('int8'))
+    # ▲TODO: 날짜 → PartialWeek 변환 등 spec Step 02 로직 이곳에 포함
+    return df
+
 
 @_decoration_
 def fn_step02_convert_date_to_partial_week() -> pd.DataFrame:
