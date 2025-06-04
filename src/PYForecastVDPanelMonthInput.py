@@ -58,7 +58,7 @@ STR_DF_STEP03_ADJUST        = 'df_step03_adjust'
 # out
 STR_OUT_DEMAND              = 'out_Demand'
 
-################  Start of Functions  ################
+################  Start of Util Functions  ################
 def fn_log_dataframe(df_p_source: pd.DataFrame, str_p_source_name: str) -> None:
     """
     Dataframe 로그 출력 조건 지정 함수
@@ -205,11 +205,11 @@ def normalize_week(week_str):
 
 
 
-################  End of Functions  ################
+################  End of Util Functions  ################
 
 
 
-
+################  Start of Step Functions  ################
 @_decoration_
 def fn_output_formatter(df_p_source: pd.DataFrame, str_p_out_version: str) -> pd.DataFrame:
     """
@@ -444,7 +444,10 @@ def step03_adjust_negative_values() -> pd.DataFrame:
     df_fixed[COL_SIN_FCST_AP2] = df_fixed[COL_SIN_FCST_AP2].astype(int)
 
     return df_fixed
+################  End of Step Functions  ################
 
+
+################  Start of Main  ################
 if __name__ == '__main__':
     logger.debug(f'[START] {str_instance} {time.strftime("%Y-%m-%d - %H:%M:%S")}')
     logger.Start()
@@ -586,4 +589,4 @@ if __name__ == '__main__':
         logger.Finish()
         logger.warning(f'{str_instance} {time.strftime("%Y-%m-%d - %H:%M:%S")}::: Finish :::') # 25.05.12 need warning Log by Logger Issue
         
-
+################  End of Main  ################
