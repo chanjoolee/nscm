@@ -1,0 +1,210 @@
+	개요 (*)		
+			
+		* 프로그램명	
+			PYForecastB2BLockAndRolling
+			
+			
+		* 목적	
+			- B2B FCST 가상 BO 생성 및 Lock 주차 반영
+			
+			
+			
+		* 변경이력	
+			2025.02.27 전창민 작성
+			2025.03.06 Input 추가 MaxPartialWeek을 통해 최대 주차 Data 생성
+			
+			
+	Script Parameter		
+			
+			
+		(Input 1) CurrentPartialWeek	
+			&CurrentPartialWeek - NameSet 활용
+			202506A
+			* Week 주차 마감이니 B주차가 들어올 경우 없음
+			* Batch 에서 못받아오는 경우 System.now()로 대체
+			
+			
+			
+	Input Tables (*)		
+		(Input 1) BO FCST 정보		
+			df_in_BO_FCST	
+				Select ([Version].[Version Name]
+				 * [Item].[Item]
+				 * [Sales Domain].[Ship To]
+				 * [Location].[Location] 
+				 * [DP Virtual BO ID].[Virtual BO ID]
+				 * [DP BO ID].[BO ID]
+				 * [Time].[Partial Week].filter(#.Key >= &CurrentPartialWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )  )  on row, 
+				( { Measure.[BO FCST], Measure.[BO FCST.Lock] } ) on column;
+
+			Version.[Version Name]	[Item].[Item]	Sales Domain.[Ship To]	Location.[Location]	DP Virtual BO ID.[Virtual BO ID]	DP BO ID.[BO ID]	Time.[Partial Week]	BO FCST	BO FCST.Lock
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202506A	60	TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202507A	70	TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531A	155	TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531B	155	TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202532A	320	FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202605B	25	FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202606A	60	FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202506A		TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202507A		TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	…	…	…
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202531A	155	FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202531B	155	FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202532A		FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	…	…	…
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202605B		FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202606A		FALSE
+
+
+		(Input 2) Total BOD L/T 정보					
+			df_in_Total BOD_LT				
+				Select ([Version].[Version Name]			
+				 * [Item].[Item]			
+				 * [Location].[Location]  ) on row, 			
+				( { Measure.[BO Total BOD LT] } ) on column;			
+							
+			df_In_Total_BOD_LT				
+			Version.[Version Name]	Item.[Item]	Location.[Location]	BO Total BOD LT	
+			CurrentWorkingView	LH015IEACFS/GO	S001	182	 (7 * 26)
+			CurrentWorkingView	LH015IEACFS/GO	S002	175	 (7 * 25)
+
+
+		(Input 3) MAX_Partial_Week 정보			
+			df_In_MAX_PartialWeek		
+				select ( 	
+				Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).leadoffset(52).Key && #.Key < &CurrentWeek.element(0).leadoffset(53).Key )	
+				 ) ;	
+					
+			df_In_MAX_PartialWeek		
+			Time.[Partial Week]		
+			202606A		
+
+	Output Tables (*)			
+				
+		(Output 1)		
+			Output	
+				Select ([Version].[Version Name]
+				 * [Item].[Item]
+				 * [Sales Domain].[Ship To]
+				 * [Location].[Location] 
+				 * [Virtual BO ID].[Virtual BO ID]
+				 * [BO ID].[BO ID]
+				 * [Time].[Partial Week]  )  on row, 
+				( { Measure.[BO FCST] , Measure.[BO FCST.Lock]  } ) on column;
+
+
+	주요 로직 (*)				
+					
+			Step 1) (Input 2) df_in_Total BOD LT 의 Week 단위로 정보 가공		
+                Item.[Item]	Location.[Location]	BO Total BOD LT
+                LH015IEACFS/GO	S001	202532A
+                LH015IEACFS/GO	S002	202531A
+                * (Input 2) df_in_Total BOD LT 에서 Item * Location 별로 BO Total BOD LT 의 값을 7로 나누어 Week Data로 변경한다. Ex )  182 / 7 = 26		
+                * 당주 주차에 LT을 더한다. Ex) 202506A + 26 = 202632A		
+					
+					
+					
+					
+					
+			Step 2) (Input 1) df_in_BO_FCST 에서 Virtual BO ID 의 최대 값을 찾는다. 		
+                Virtual_BO_ID_MAX = VBO_100000001		
+                * 해당 Value 는 Sequence 로 사용할 때 1씩 증가하고 사용한다.		
+					
+					
+            Step 3) (Input 1) df_in_BO_FCST 에서 Lock 조건 적용								
+                Version.[Version Name]	[Item].[Item]	Sales Domain.[Ship To]	Location.[Location]	DP Virtual BO ID.[Virtual BO ID]	DP BO ID.[BO ID]	Time.[Partial Week]	BO FCST	BO FCST.Lock
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202506A	60	TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202507A	70	TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531A	155	TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531B	155	TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202532A	320	TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202605B	25	FALSE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202606A	60	FALSE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202506A		TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202507A		TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	…	…	…
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202531A	150	FALSE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202531B	150	FALSE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202532A		TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	…	…	…
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202605B		TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202606A		TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202506A		TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202507A		TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	…	…	…
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202531A	10	FALSE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202531B	0	FALSE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202532A		FALSE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202533A		TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202534A		TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	…	…	…
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202605B		TRUE
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202606A		TRUE
+                
+                ( 매 주차 Rolling 조건)								
+                * Item * Location 단위로 진행한다.								
+                * Step 1의 Item * Location 단위의 BO Total BOD LT의 값에 해당하는 주차에 대해 다음 로직을 적용한다.								
+                    * A/B 주차가 있는 경우 A/B 주차에 모두 반영해준다.							
+                    1) Item * Location  단위의 Virtual BO ID.[Virtual BO ID] = '-'  이고, DP BO ID.[BO ID] = '-' 인 경우							
+                        - 당주 주차 (202506A) ~  BO Total BOD LT 주차 (202632A) 주차에 대해서 BO FCST.Lock = True 처리						
+                        - 최대주차 (202606A) 의 BO FCST.Lock = False 적용한다. 없으면 생성한다. A/B주차가 있으면 모두 생성한다.						
+                    2) Item * Location  단위의 Virtual BO ID.[Virtual BO ID] != '-'  이고, DP BO ID.[BO ID] = '-' 인 경우							
+                        - 최대주차 (202606A) 의 BO FCST.Lock = False 적용한다. 없으면 생성한다. A/B주차가 있으면 모두 생성한다.						
+                    3) Item * Location  단위의 Virtual BO ID.[Virtual BO ID] != '-'  이고, DP BO ID.[BO ID] != '-' 인 경우							
+                        - BO Total BOD LT 의 값에 해당하는 주차 (202532A) 에 BO FCST.Lock = False 적용						
+                        - 최대주차 (202606A) 의 BO FCST.Lock = False 적용한다. 없으면 생성한다. A/B주차가 있으면 모두 생성한다.						
+                        * A/B 주차 인 경우 A/B 모두 Lock = True						
+								
+			Step 4)  가상 BO 생성									
+                Version.[Version Name]	[Item].[Item]	Sales Domain.[Ship To]	Location.[Location]	DP Virtual BO ID.[Virtual BO ID]	DP BO ID.[BO ID]	Time.[Partial Week]	BO FCST	BO FCST.Lock	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202506A	60	TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202507A	70	TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531A	155	TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531B	155	TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202532A	320	TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202605B	25	FALSE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202606A	60	FALSE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202506A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202507A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	…	…	…	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202531A	150	FALSE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202531B	150	FALSE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202532A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	…	…	…	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202605B		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202606A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202506A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202507A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	…	…	…	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202531A	10	FALSE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202531B	0	FALSE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202532A		FALSE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202533A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202534A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	…	…	…	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202605B		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202606A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202506A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202507A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	…	…	…	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202531A		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202531B		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202532A	320	FALSE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	…	…	…	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202605B		TRUE	
+                CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202606A		TRUE	
+
+                
+                * Item * Ship To * Location 단위로 진행한다.									
+                * Item * Ship To * Location 의 DP Virtual BO ID.[Virtual BO ID] = '-'  & DP BO ID.[BO ID] = '-' 인 값을 기준으로 한다.									
+                * Item * Ship To * Location 은 동일하고,  DP Virtual BO ID.[Virtual BO ID] = Virtual_BO_ID_MAX + 1 , DP BO ID.[BO ID] = '-' 인  Data를 생성한다. 이때, Time.[Partial Week] 의 주차 Data ( 202506A ~ 202606A ) 에 대해, BO FCST.Lock 값은 모두 TRUE를 적용한다.									
+                * 당주 주차 (202506A) 를 기준으로 Step1) 의 Total BOD L/T 값 (26) 을 더한 주차 (202632A)의  BO FCST 값 (320) 을 입력한다.									
+                * 당주 주차 (202506A) 를 기준으로 Step1) 의 Total BOD L/T 값 (26) 을 더한 주차 (202632A)의  BO FCST.Lock = FALSE 를 입력한다.									
+                    * Total BOD L/T 값은 Item * Location 에 해당하는 값을 가져온다.								
+                * 만약 최종 주차가 A/B 주차인 경우, A/B 주차에 모두 반영한다. Ex) VBO_100000001 처럼 202531A,202531B 모두 생성									
