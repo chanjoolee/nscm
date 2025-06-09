@@ -1,0 +1,723 @@
+(25.04.16) 변경점
+    1. Step 10-1) 의 VD Lead Time 반영 로직 변경 
+        - Lock = False 처리로 변경
+        - RTS 혹은 EOS가 있는 경우에는 색구간 덮어 씌우지 않음.
+        - TATTERM -> ITEMTAT TATTERM 으로 참고 Measure 명칭 변경
+        ex) BLUE, BLUE, BLUE, DGRAY_RED, DGRAY_RED 형태로 존재해야함.
+
+    2. Step 10-2) 의 VD SET Lead Time 반영 로직 변경
+        - Lock = False 처리로 변경
+        - RTS 혹은 EOS가 있는 경우에는 색구간 덮어 씌우지 않음.
+        - TATTERM_SET -> ITEMTAT TATTERM_SET 으로 참고 Measure 명칭 변경
+        ex) BLUE, BLUE, BLUE, DGRAY_REDB, DGRAY_REDB 형태로 존재해야함.
+
+    3. Time 입력 구간 변경
+        - 당월에 해당하는 주차부터 ~ 당주주차+52
+        - 로직상 변경점 없음 (실적구간 Lock)
+        - 당주주차 정보 Input으로 넣어주는 것으로 변경
+
+    4. Step 8) ASN 조건 변경
+        - Sales Product ASN Data가 6Lv 과 7Lv 이 모두 존재함.
+        - Lock 과 Color 반영 시, 6Lv 과 7Lv 모두 고려될 수 있도록 한다.
+        - ASN 에만 존재하는 값들에 대해서 Lock = False. Color = 14_WHITE 반영
+        - Step 7) 에서 위의 Data 붙여오도록 변경
+
+    5. MST_RTS 와 MST_EOS Table 변경
+        -  Input 4 삭제 및 Input 3로 이동
+        -  Step 1) 전처리로 명칭 및 로직 변경 ( Data Merge 되어서 들어옴)
+        -  Step3) Join 없이 Item 과 Ship To 값 가져옴.
+
+    6. Step 9) ASN 조건 변경에 따른 6Lv 처리 로직 추가
+        - 하위 7Lv 뿐만 아니라, 6Lv에 대해서도 처리
+
+    7. Step 11) ASN 조건 변경에 따른 6Lv 처리 로직 추가
+        - 하위 7Lv 뿐만 아니라, 6Lv에 대해서도 처리
+
+    8. 의미에 따른 명칭 변경 Step 12) 이전 Column 명 변경 (오류 방지)
+        - S/In FCST(GI)_GC.Lock -> Lock Condition
+
+    9. Step 12) 로직 변경 및 Step 13) 변경
+        - GC, AP2, AP1 각각에 대해서 진행함.
+
+
+
+
+개요 (*)			
+			
+	* 프로그램명		
+		PYForecastSellInAndEstoreSellOutLockColor	
+			
+			
+	* 목적		
+		- Forecast Rule, ProductSalesASN, RST&EOS 조건을 활용하여, Forecast Measure의 Lock 및 Color 조건 관리	
+			
+			
+			
+Script Parameter			
+			
+	(Input 1) CurrentPartialWeek		
+		&CurrentPartialWeek - NameSet 활용	하위 자료에서는 202447 사용
+			
+			
+Input Tables (*)			
+			
+			
+	(Input 1) Forecast Rule 정보		
+		df_in_Forecast_Rule	
+			Select ([Version].[Version Name]
+			 * [Item].[Product Group] 
+			 * [Sales Domain].[Ship To] )  on row, 
+			( { Measure.[FORECAST_RULE GC FCST], Measure.[FORECAST_RULE AP2 FCST], Measure.[FORECAST_RULE AP1 FCST], Measure.[FORECAST_RULE CUST FCST],Measure.[FORECAST_RULE ISVALID] } ) on column;
+    
+    (Input 2) Sales Domian Master 정보		
+        df_in_Sales_Domain_Dimension	
+            Select (
+            * [Sales Domain].[Sales Domain Lv2]
+            * [Sales Domain].[Sales Domain Lv3] 
+            * [Sales Domain].[Sales Domain Lv4] 
+            * [Sales Domain].[Sales Domain Lv5] 
+            * [Sales Domain].[Sales Domain Lv6] 
+            * [Sales Domain].[Sales Domain Lv7] 
+            * [Sales Domain].[Ship To] )
+
+	(Input 3) RTS&EOS 정보		
+		df_in_MST_RTS_EOS	
+			Select ([Version].[Version Name]
+			* [Sales Domain].[Ship To]
+			* [Item].[Item] ) on row, 
+			({
+			    Measure.[RTS_ISVALID], Measure.[RTS_STATUS], Measure.[RTS_COM_DATE], Measure.[RTS_DEV_DATE], Measure.[RTS_INIT_DATE], 
+			    Measure.[EOS_STATUS], Measure.[EOS_CHG_DATE], Measure.[EOS_COM_DATE], Measure.[EOS_INIT_DATE]
+			    }) on column 
+			where { Measure.[RTS_ISVALID] == "Y"} ;
+
+        Version.[Version Name]	Item.[Item]	Sales Domain.[Ship To]	RTS_ISVALID	RTS_STATUS	RTS_INIT_DATE	RTS_DEV_DATE	RTS_COM_DATE	EOS_STATUS	EOS_INIT_DATE	EOS_CHG_DATE	EOS_COM_DATE
+        CWV_DP	RF29BB8600QLAA	300114	Y	COM	2022-02-28	2022-02-28	2022-03-04	INI	2023-02-28	2027-03-01	
+        CWV_DP	SM-S911ULIAATT	300114	Y	COM	2022-12-20	2022-12-13	2023-01-20	INI	2024-02-07	2025-01-05	
+        CWV_DP	SM-S911UZKEATT	300114	Y	COM	2022-12-20	2022-12-13	2023-01-20	INI	2024-02-07	2025-01-05	
+        CWV_DP	SM-S921UZKAAIO	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2025-01-21	2026-01-07	
+        CWV_DP	SM-S921UZKAATT	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
+        CWV_DP	SM-S921UZKEATT	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
+        CWV_DP	SM-S921UZVAATT	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
+        CWV_DP	SM-S911NLIEKOC	211	Y	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
+        CWV_DP	SM-S911NLIEKOD	211	Y	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
+        CWV_DP	SM-S911NZGEKOC	211	Y	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
+        CWV_DP	SM-S921NZAEKOC	211	Y	COM	2023-12-15	2024-01-13	2024-01-13	INI	2024-12-15	2025-01-31	
+        CWV_DP	LH65WAFWLGCXZA	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+        CWV_DP	BAS-GREEN1	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+        CWV_DP	HA-EOP-YELLOW1	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+        CWV_DP	QA65QN70FAJXXZ	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+
+
+
+	(Input 4) Sales Product ASN 정보		
+		df_in_Sales_Product_ASN	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * Item.[Item]
+			 * [Location].[Location] )  on row, 
+			( { Measure.[Sales Product ASN] } ) on column;
+
+	(Input 5) Time Partial Week 정보 ( 올해 ~ 차년 )		
+		df_in_Time_Partial_Week	
+			Select (
+			Time.[Partial Week].filter(#.Key >= &CurrentMonth.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )    );
+			
+	(Input 6) MST Item Class 정보		
+		df_in_Item_CLASS	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item]
+			 * [Location].[Location] )  on row, 
+			( { Measure.[CLASS] } ) on column
+			where { [Item].[Item GBM].[SHA], [Item].[Section].filter(#.Name in {"DA","DAS"}),  Measure.[CLASS] == "X" };
+
+
+    (Input 7) MST_ITEMTAT정보		
+        df_in_Item_TAT	
+            Select ([Version].[Version Name]
+            * [Item].[Item GBM]
+            * [Item].[Item]
+            * [Location].[Location] )  on row, 
+            ( { Measure.[ITEMTAT TATTERM], Measure.[ITEMTAT ITEMTAT TATTERM_SET] } ) on column;
+
+	
+    (Input 8) MST_ITEM 정보		
+		df_in_Item_Master	
+			Select (
+			 * [Item].[ProductType]
+			 * [Item].[Item GBM]
+			 * [Item].[Product Group]
+			 * [Item].[Item]
+			);
+
+
+    (Input 9) E-Store 정보		
+        df_in_Sales_Domain_Estore	
+            Select ( 
+            [Sales Domain].[Ship To].filter(#.[eStore Account YN] == True) );
+
+
+    (Input 10) Sell-In Lock 필요한 Item 정보		
+        df_in_SELLOUTFCST_NOTEXIST	
+            Select ([Version].[Version Name]
+            * [Sales Domain].[Sales Std2]
+            * [Item].[Item]  )  on row, 
+            ( { Measure.[S/Out Fcst Not Exist Flag] } ) on column where { Measure.[S/Out Fcst Not Exist Flag] == True};
+
+            Sales Domain.[Ship To]	Item.[Item]	S/Out Fcst Not Exist Flag
+            300131	SM-G965FZAFTIM	True
+            300980	SM-T580NZWETPH	True
+            300135	SM-T813NZWEBTU	True
+            300492	SM-A217NZKNSKO	True
+            300142	SM-A520FZKAXSA	True
+Output Tables (*)			
+			
+	(Output 1)		
+		df_output_Sell_In_FCST_GI_GC_Lock	
+			Select ([Version].[Version Name]
+			* [Item].[Item] 
+			* [Sales Domain].[Ship To] 
+			* [Location].[Location]
+			* Time.[Partial Week] ) on row, 
+			( { Measure.[S/In FCST(GI)_GC.Lock]
+			 ) on column;
+			
+	(Output 2)		
+		df_output_Sell_In_FCST_GI_AP2_Lock	
+			Select ([Version].[Version Name]
+			* [Item].[Item] 
+			* [Sales Domain].[Ship To] 
+			* [Location].[Location]
+			* Time.[Partial Week] ) on row, 
+			( { Measure.[S/In FCST(GI)_AP2.Lock]
+			 } ) on column;
+			
+	(Output 3)		
+		df_output_Sell_In_FCST_GI_AP1_Lock	
+			Select ([Version].[Version Name]
+			* [Item].[Item] 
+			* [Sales Domain].[Ship To] 
+			* [Location].[Location]
+			* Time.[Partial Week] ) on row, 
+			( { Measure.[S/In FCST(GI)_AP1.Lock]
+			} ) on column;
+			
+	(Output 4)		
+		df_output_Sell_In_FCST_Color_Condition	
+			Select ([Version].[Version Name]
+			* [Item].[Item] 
+			* [Sales Domain].[Ship To] 
+			* [Location].[Location]
+			* Time.[Partial Week] ) on row, 
+			( { Measure.[S/In FCST Color Condition]
+			} ) on column;
+			
+	(Output 5)		
+		df_output_Sell_Out_FCST_GC_Lock	
+			Select ([Version].[Version Name]
+			* [Item].[Item] 
+			* [Sales Domain].[Ship To] 
+			* [Location].[Location]
+			* Time.[Partial Week] ) on row, 
+			( { Measure.[S/Out FCST_GC.Lock],
+			 ) on column;
+			
+	(Output 6)		
+		df_output_Sell_Out_FCST_AP2_Lock	
+			Select ([Version].[Version Name]
+			* [Item].[Item] 
+			* [Sales Domain].[Ship To] 
+			* [Location].[Location]
+			* Time.[Partial Week] ) on row, 
+			( { Measure.[S/Out FCST_AP2.Lock],
+			 } ) on column;
+			
+	(Output 7)		
+		df_output_Sell_Out_FCST_AP1_Lock	
+			Select ([Version].[Version Name]
+			* [Item].[Item] 
+			* [Sales Domain].[Ship To] 
+			* [Location].[Location]
+			* Time.[Partial Week] ) on row, 
+			( { Measure.[S/Out FCST_AP1.Lock],
+			} ) on column;
+			
+	(Output 8)		
+		df_output_Sell_Out_FCST_Color_Condition	
+			Select ([Version].[Version Name]
+			* [Item].[Item] 
+			* [Sales Domain].[Ship To] 
+			* [Location].[Location]
+			* Time.[Partial Week] ) on row, 
+			( { Measure.[S/Out FCST Color Condition]
+			} ) on column;
+
+
+주요 로직 (*)											
+											
+		Step 1) df_in_MST_RTS_EOS 전처리									
+											
+            Item.[Item]	Sales Domain.[Ship To]	RTS_STATUS	RTS_INIT_DATE	RTS_DEV_DATE	RTS_COM_DATE	EOS_STATUS	EOS_INIT_DATE	EOS_CHG_DATE	EOS_COM_DATE
+            RF29BB8600QLAA	300114	COM	2022-02-28	2022-02-28	2022-03-04	INI	2023-02-28	2027-03-01	
+            SM-S911ULIAATT	300114	COM	2022-12-20	2022-12-13	2023-01-20	INI	2024-02-07	2025-01-05	
+            SM-S911UZKEATT	300114	COM	2022-12-20	2022-12-13	2023-01-20	INI	2024-02-07	2025-01-05	
+            SM-S921UZKAAIO	300114	COM	2023-12-12	2024-01-14	2024-01-14	INI	2025-01-21	2026-01-07	
+            SM-S921UZKAATT	300114	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
+            SM-S921UZKEATT	300114	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
+            SM-S921UZVAATT	300114	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
+            SM-S911NLIEKOC	211	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
+            SM-S911NLIEKOD	211	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
+            SM-S911NZGEKOC	211	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
+            SM-S921NZAEKOC	211	COM	2023-12-15	2024-01-13	2024-01-13	INI	2024-12-15	2025-01-31	
+            LH65WAFWLGCXZA	300114	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+            BAS-GREEN1	300114	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+            HA-EOP-YELLOW1	300114	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+            QA65QN70FAJXXZ	300114	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+            
+            * Version.[Version Name] 삭제									
+            * RTS_ISVALID Column 삭제									
+											
+											
+		Step 2) Step1의 Result에 Time을 Partial Week 으로 변환									
+											
+            Item.[Item]	Sales Domain.[Ship To]	RTS_STATUS	RTS_INIT_DATE	RTS_DEV_DATE	RTS_COM_DATE	EOS_STATUS	EOS_INIT_DATE	EOS_CHG_DATE	EOS_COM_DATE
+            RF29BB8600QLAA	300114	COM	202209A	202209A	202209B	INI	202308A	202709A	
+            SM-S911ULIAATT	300114	COM	202251A	202250A	202302A	INI	202405A	202501A	
+            SM-S921UZKEATT	300114	COM	202349A	202402A	202402A	INI	202445A	202601A	
+            SM-S921UZKAATT	300114	COM	202349A	202402A	202402A	INI	202445A	202601A	
+            SM-S921UZKAAIO	300114	COM	202349A	202402A	202402A	INI	202503A	202601A	
+            SM-S921UZVAATT	300114	COM	202349A	202402A	202402A	INI	202445A	202601A	
+            SM-S911UZKEATT	300114	COM	202251A	202250A	202302A	INI	202405A	202501A	
+            LH65WAFWLGCXZA	300114	COM	202503A	202503A	202450A	INI	202651A	202651A	
+            BAS-GREEN1	300114	COM	202503A	202503A	202450A	INI	202651A	202651A	
+            HA-EOP-YELLOW1	300114	COM	202503A	202503A	202450A	INI	202651A	202651A	
+            SM-S921NZAEKOC	211	COM	202349A	202401A	202401A	INI	202450A	202504A	
+            SM-S911NZGEKOC	211	COM	202250A	202250A	202302A	INI	202349A	202414A	
+            SM-S911NLIEKOD	211	COM	202250A	202250A	202302A	INI	202349A	202414A	
+            SM-S911NLIEKOC	211	COM	202250A	202250A	202302A	INI	202349A	202414A	
+                                                
+            * A/B 주차 고려			
+
+		Step 3) df_in_MST_RTS_EOS 에서 ITEM * Ship To로 새로운 DF 생성	
+			
+            Item.[Item]	Sales Domain.[Ship To]
+            RF29BB8600QLAA	300114
+            SM-S911ULIAATT	300114
+            SM-S921UZKEATT	300114
+            SM-S921UZKAATT	300114
+            SM-S921UZKAAIO	300114
+            SM-S921UZVAATT	300114
+            SM-S911UZKEATT	300114
+            LH65WAFWLGCXZA	300114
+            SM-S921NZAEKOC	211
+            SM-S911NZGEKOC	211
+            SM-S911NLIEKOD	211
+            SM-S911NLIEKOC	211
+            BAS-GREEN1	300114
+            HA-EOP-YELLOW1	300114
+
+
+		Step 4) Step3의 df에 Partial Week 및 Measure Column 추가				
+						
+            Item.[Item]	Sales Domain.[Ship To]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
+            RF29BB8600QLAA	300114	202252B	True	19_GRAY
+                    202301A	True	19_GRAY
+                    202302A	True	19_GRAY
+                    …	True	19_GRAY
+                    202446A	True	19_GRAY
+                    202447A	True	19_GRAY
+                    202448A	True	19_GRAY
+                    …	True	19_GRAY
+                    202651A	True	19_GRAY
+                    202652A	True	19_GRAY
+                    202653A	True	19_GRAY
+            …	…	…	…	…
+            * df_in_Time_Partial Week를 활용하여 Time.[Partial Week] Column 추가				
+            * Lock Condition Column 추가, True로 일괄 생성				
+            * S/In FCST Color Condition Column 추가, 19_GRAY로 일괄 생성				
+						
+						
+		Step 5) Step4의 df에 당주주차부터 RTS 와 EOS 반영 및 Color 표시				
+						
+            Item.[Item]	Sales Domain.[Ship To]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
+            RF29BB8600QLAA	300114	…	True	19_GRAY
+                    202446A	True	19_GRAY
+                    202447A (당주)	False	
+                    202448A	False	
+                    …	False	
+                    202707A	False	11_LIGHTRED
+                    202708A	False	11_LIGHTRED
+                    202708B	False	11_LIGHTRED
+                    202709A ( EOS )	True	16_DARKRED
+                    202710A	True	16_DARKRED
+                    202711A	True	16_DARKRED
+                    …	True	16_DARKRED
+            LH65WAFWLGCXZA	300114	…	True	19_GRAY
+                    202446A	True	19_GRAY
+                    202447A	True	19_GRAY
+                    202448A	True	19_GRAY
+                    202449A	True	19_GRAY
+                    202450A	False	10_LIGHTBLUE
+                    202451A	False	10_LIGHTBLUE
+                    202452A	False	10_LIGHTBLUE
+                    202501A	False	10_LIGHTBLUE
+                    202501B	False	10_LIGHTBLUE
+                    202502A	False	
+                    …	False	
+                    202647A	False	11_LIGHTRED
+                    202648A	False	11_LIGHTRED
+                    202649A	False	11_LIGHTRED
+                    202650A	False	11_LIGHTRED
+                    202651A	True	16_DARKRED
+                    202652A	True	16_DARKRED
+            …	…	…	…	…
+                            
+            * CurrentPartialWeek 포함 ( ex. 202447 )				
+            * 당주주차부터 RTS & EOS 반영				
+            * STATUS가 COM 이면, COM_DATE 사용				
+            * STATUS가 INI 이면 RTS = DEV_DATE , EOS = CHG_DATE 사용 				
+            * STATUS가 INI 일때, DEV/CHG_DATE 가 없으면 INIT_DATE 사용, INIT_DATE가 NULL 인 경우 적용 X , 최대 주차까지 반영 (25.02.24)				
+            * A/B 주차에 경우 하나의 Week로 취급				
+                            
+            * COLOR 반영	* Lock 반영	* 반영 구간		* 예시 반영 구간
+            5-1	14_WHITE	False	* MAX(RTS주차, 당주주차) ~ MIN(EOS주차 - 1, 최대주차) 		202302 ~ 202452
+            5-2	15_DARKBLUE	True	* RTS_INIT_DATE ~ (RTS_DEV_DATE or RTS_COM_DATE) - 1 구간		202251 ~ 202301
+            5-3	10_LIGHTBLUE	False, 당주주차 이전이면 True	* RTS_COM_DATE 포함한 이후 4주 주차 구간		202302, 202303, 202304, 202305
+            5-4	11_LIGHTRED	False, 당주주차 이전이면 True	* (EOS_CHG_DATE or EOS_COM_DATE) 제외한 이전 4주 주차 구간		202449, 202450, 202451, 202452
+            5-5	16_DARKRED	True	* (EOS_CHG_DATE or EOS_COM_DATE) 포함 이후 주차 구간		202501 ~ END
+		
+            * Example										
+            RTS_STATUS	RTS_ISVALID	RTS_INIT_DATE	RTS_DEV_DATE	RTS_COM_DATE	EOS_STATUS	EOS_INIT_DATE	EOS_CHG_DATE	EOS_COM_DATE		
+            COM	Y	202251	202250	202302	INI	202405	202501			
+
+
+		Step 6) 무선 BAS 제품 8주 구간 13_GREEN UPDATE				
+							
+			Item.[Item]	Sales Domain.[Ship To]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
+			BAS-GREEN1	300114	…	True	19_GRAY
+					202446A	True	19_GRAY
+					202447A	False	13_GREEN
+					202448A	False	13_GREEN
+					202449A	False	13_GREEN
+					202450A	False	13_GREEN
+					202451A	False	13_GREEN
+					202452A	False	13_GREEN
+					202453A	False	13_GREEN
+					202454A	False	13_GREEN
+					…	False	
+					202647A	False	
+					202648A	False	
+					202649A	False	
+					202650A	True	
+					202651A	True	19_GRAY
+					202652A	True	19_GRAY
+					…	True	19_GRAY
+			* df_in_Item_Master를 활용하여				
+			* Item.[ProductType] = "BAS"				
+			* Item.[Item GBM] = "MOBILE"				
+			* 위 두 조건에 해당하는 모든 Item에 대해서 당주 주차부터 8주 구간에 대해, 19_GRAY 가 아니면 13_GREEN 처리 , Lock = False				
+			* 해당 Item 이 없는 경우 Skip				
+
+
+        Step 7) df_in_Sales_Product_ASN 전처리
+			Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
+			A5002453	RF29BB8600QLAA	S359WC18	…	True	19_GRAY
+						202446	True	19_GRAY
+						202447	False	14_WHITE
+						202448	False	14_WHITE
+						…	False	14_WHITE
+						202707	False	14_WHITE
+						202708	False	14_WHITE
+						202707	False	14_WHITE
+						202709	False	14_WHITE
+						202710	False	14_WHITE
+						202711	False	14_WHITE
+			A5002453	RF29BB8600QLAA	S377	…	…	…
+			A5002453	RF29BB8600QLAA	S376	…	…	…
+			A5002453	RF29BB8600QLAA	S348WDB1	…	…	…
+			A5002453	RF29BB8600QLAA	S359	…	…	…
+			A5002453	RF29BB8600QLAA	S358	…	…	…
+			A5002453	RF29BB8600QLAA	S356	…	…	…
+			A5002453	RF29BB8600QLAA	S348WDD1	…	…	…
+			A5002453	RF29BB8600QLAA	S348WDD2	…	…	…
+			A5002453	RF29BB8600QLAA	S362	…	…	…
+			A5002453	RF29BB8600QLAA	S360	…	…	…
+			A5002453	RF29BB8600QLAA	S366	…	…	…
+			A5002453	RF29BB8600QLAA	S367	…	…	…
+			A5006941	SM-S911ULIAATT	S341	…	…	…
+			A5006941	SM-S911UZKEATT	S341	…	…	…
+			A5006941	SM-S921UZKAATT	S341	…	…	…
+			A5006941	SM-S921UZKEATT	S341	…	…	…
+			A5006941	SM-S921UZVAATT	S341	…	…	…
+			A5019692	SM-S921UZKAAIO	S341	…	…	…
+			A5019692	SM-S921UZKEATT	S341	…	…	…
+			A5002090	SM-S911NLIEKOC	L999	…	…	…
+			A5002090	SM-S911NLIEKOD	L101	…	…	…
+			A5002090	SM-S911NZGEKOC	L999	…	…	…
+			A5002090	SM-S921NZAEKOC	L999	…	…	…
+			A5002453	LH65WAFWLGCXZA	S358	…	…	…
+			A5002453	LH65WAFWLGCXZA	S356	…	…	…
+			A5002453	BAS-GREEN1	S356	…	…	…
+			A5002453	HA-EOP-YELLOW1	S356	…	…	…
+			
+            - df_in_Sales_Product_ASN 에서 Version.[Version Name], Sales Product ASN 삭제					
+			* df_in_Time_Partial Week 으로 Time.[Partial Week] Data 추가					
+			* Lock Condition = False., Color = 14_WHITE 로 생성 					
+			* 당주주차 이전 주차에 대해서는 Lock Condition = True, Color = 19_GRAY 적용					
+
+        Step 8)  ASN만 있는 경우 조건 추가 						
+            Step 8) Sales Product ASN에 Partial Week 에 따른 Lock 값과, Color 값 적용 ( Step 7에 Step 6를 적용 )					
+                                
+            Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
+            A5002453	RF29BB8600QLAA	S359WC18	…	True	19_GRAY
+                        202446	True	19_GRAY
+                        202447	False	
+                        202448	False	
+                        …	False	
+                        202707	False	
+                        202708	False	
+                        202707	False	
+                        202709	True	19_GRAY
+                        202710	True	19_GRAY
+                        202711	True	19_GRAY
+            * Setp7) 에 Step6) Partial Week에 따른 Lock, Color 값을 붙인다.					
+            * Sales Product ASN 에 존재하는 값에 대해서					
+            * Step 6) 의 Item * Ship To 를 기준으로 2LV 하위의 LV7의 값, 3LV 하위의 LV7의 값에 각각 Partial Week에 따른 Lock, Color 값을 반영한다.					
+            * Step 6) 의 Item * Ship To 를 기준으로 2LV 하위의 LV6의 값, 3LV 하위의 LV6의 값에 각각 Partial Week에 따른 Lock, Color 값을 반영한다. 					
+            * Step 6) 의 Sales Domain.[Ship To] 값이 3으로 시작하는 경우					
+                * df_in_Sales_Domain_Dimension의 Sales Domain.[Sales Domain Lv3] = '300114' 를 찾고, 그에 해당하는 Sales Domain.[Sales Domain Lv7] 의 모든 'A5'로 시작하는 값들에 대해서  Step6) 의 Data 값 update				
+                * df_in_Sales_Domain_Dimension의 Sales Domain.[Sales Domain Lv3] = '300114' 를 찾고, 그에 해당하는 Sales Domain.[Sales Domain Lv6] 의 모든 '5'로 시작하는 값들에 대해서  Step6) 의 Data 값 update 				
+            * Step 6) 의 Sales Domain.[Ship To] 값이 2 로 시작하는 경우					
+                * df_in_Sales_Domain_Dimension의 Sales Domain.[Sales Domain Lv2] 에서 찾고, 그에 해당하는 Sales Domain.[Sales Domain Lv7] 의 모든 'A5'로 시작하는 값들에 대해서  Step6) 의 Data 값 update				
+                * df_in_Sales_Domain_Dimension의 Sales Domain.[Sales Domain Lv2] 에서 찾고, 그에 해당하는 Sales Domain.[Sales Domain Lv6] 의 모든 '5'로 시작하는 값들에 대해서  Step6) 의 Data 값 update				
+
+
+		Step 9) HA EOP management model 조건 반영					
+            Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
+            A5002453	HA-EOP-YELLOW1	S356	…	True	19_GRAY
+                        202446	True	19_GRAY
+                        202447	False	12_YELLOW
+                        202448	False	12_YELLOW
+                        …	False	12_YELLOW
+                        202504	False	12_YELLOW
+                        202505	False	11_LIGHTRED
+                        202506	False	11_LIGHTRED
+                        202507	False	11_LIGHTRED
+                        202508	False	11_LIGHTRED
+                        202509	True	16_DARKRED
+                        202510	True	16_DARKRED
+                        …	True	19_GRAY
+            * ITEMCLASS의 (Sales Domain 6LV, Location, Item )에 해당하는 값에 대해서 Color = 12_YELLOW, Lock = False					
+            * Sales Domain 6LV 의 하위 7LV 의 Ship To 와 6Lv이 ShipTo에 있는 경우에 대해서 로직을 적용한다. 					
+            Case 1) EOS 가 현재 주차 이후에 있는 경우	19_GRAY(~ 과거주차) - 12_YELLOW(현재주차 ~ ) - 11_LIGHTRED (EOS - 4 ) - 16_DARKRED (EOS)				
+                * 현재주차 ~ 11_LIGHTRED 까지 12_YELLOW 및 FALSE 처리				
+            Case 2) EOS 가 현재 주차 이후에 없는 경우	19_GRAY(~ 과거주차) - 12_YELLOW				
+                * 현재주차 ~ 끝까지 12_YELLOW 및 FALSE 처리			
+
+
+		Step 10-1) VD Lead Time 구간 DARKGRAY RED UPDATE 					
+							
+            Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
+            A5002453	Item A	S356	…	True	19_GRAY
+                        202446	True	19_GRAY
+                        202447	False	18_DGRAY_RED
+                        202448	False	18_DGRAY_RED
+                        202449	False	18_DGRAY_RED
+                        202450	False	
+                        202451	False	
+                        …	False	
+                        202504	False	
+                        202505	False	11_LIGHTRED
+                        202506	False	11_LIGHTRED
+                        202507	False	11_LIGHTRED
+                        202508	False	11_LIGHTRED
+                        202509	True	16_DARKRED
+                        202510	True	16_DARKRED
+                        …	True	19_GRAY
+            * GBM = 'VD' || 'SHA' 적용					
+            * MST_ITEMTAT (ITEM * SITEID) 의 ITEMTAT TATTERM 활용					
+            * 당주 주차 기준 + ITEMTAT TATTERM 까지 18_DGRAY_RED 처리					
+            * 당주 주차 기준 + ITEMTAT TATTERM 까지 Lock=False 처리					
+            * 202447 기준, ITEMTAT TATTERM = 3 이면, 202447,202448,202449 처리					
+            * (25.04.10) RTS/EOS가 있는 경우 덮어씌우지 않음. Color로 판단 -> 14_WHITE인 경우에만 적용					
+                                
+        Step 10-2) VD SET Lead Time 구간 DARKGRAY REDB  UPDATE					
+							
+            Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
+            A5002453	Item A	S356	…	True	19_GRAY
+                        202446	True	19_GRAY
+                        202447	False	17_DGRAY_REDB
+                        202448	False	17_DGRAY_REDB
+                        202449	False	18_DGRAY_RED
+                        202450	False	
+                        202451	False	
+                        …	False	
+                        202504	False	
+                        202505	False	11_LIGHTRED
+                        202506	False	11_LIGHTRED
+                        202507	False	11_LIGHTRED
+                        202508	False	11_LIGHTRED
+                        202509	True	16_DARKRED
+                        202510	True	16_DARKRED
+                        …	True	19_GRAY
+            * GBM = 'VD' || 'SHA' 적용					
+            * MST_ITEMTAT (ITEM * SITEID) 의 ITEMTAT TATTERM_SET 활용					
+            * 당주 주차 기준 + ITEMTAT TATTERM_SET 까지 18_DGRAY_RED인 값에 대해 중복 해당 되는 경우 17_DGRAY_REDB 처리					
+            * 당주 주차 기준 + ITEMTAT TATTERM_SET 까지 Lock=False 처리					
+            * 202447 기준, ITEMTAT TATTERM_SET = 2 이면, 202447,202448 처리					
+            * (25.04.10) RTS/EOS가 있는 경우 덮어씌우지 않음. Color로 판단 -> 14_WHITE인 경우에만 적용					
+        
+		Step 11)  MX Sellout FCST 없는 모델 당주 이후 미래구간 GRAY UPDATE					
+            Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
+            A5002453	Item A	S356	…	True	19_GRAY
+                        202446	True	19_GRAY
+                        202447	True	19_GRAY
+                        202448	True	19_GRAY
+                        202449	True	19_GRAY
+                        202450	True	19_GRAY
+                        202451	True	19_GRAY
+                        …	True	19_GRAY
+                        202504	True	19_GRAY
+                        202505	True	19_GRAY
+                        202506	True	19_GRAY
+                        202507	True	19_GRAY
+                        202508	True	19_GRAY
+                        202509	True	19_GRAY
+                        202510	True	19_GRAY
+                        …	True	19_GRAY
+            * df_in_SELLOUTFCST_NOTEXIST 에 해당하는 Sales Std2(3LV) * 의 Item 의 Lock = True, Color = 19_GRAY 적용					
+            * 3Lv 하위의 6LV Ship To에 대하여 적용					
+            * 3Lv 하위의 7LV Ship To에 대하여 적용					
+
+		Step 12) Forecast Rule에 따른 Data 생성							
+            - Forecast Rule의 정보를 활용하여, GC FCST, AP2 FCST, AP1 FCST를 각각 구성함.							
+            FORECAST_RULE AP2 FCST 를 예시로 진행							
+                                        
+            Step 12-1) Forecast Rule에서 FORECAST_RULE AP2 FCST 정보 추출							
+                Version.[Version Name]	Item.[Product Group]	Sales Domain.[Ship To]	FORECAST_RULE AP2 FCST				
+                CWV_DP	REF	300114	5				
+                CWV_DP	REF	300115	5				
+                CWV_DP	REF	300116	5				
+                CWV_DP	REF	300117	5				
+                CWV_DP	REF	300118	5				
+                CWV_DP	REF	400362	5				
+                * GC FCST, AP1 FCST 에 대해서도 동일하게 진행							
+                                        
+                                        
+                                        
+            Step 12-2) Lock 및 Color Data 를 Forecast Rule 입력 Lv에 맞게 변환							
+                                        
+                Step 12-2-1) Sales Domain Data 구성							
+                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition	GBRULE	FORECAST_RULE AP2 FCST
+                A5002453	Item A	S356	…	True	19_GRAY	5002453	5
+                            202446	True	19_GRAY	5002453	5
+                            202447	True	17_DGRAY_REDB	5002453	5
+                            202448	True	17_DGRAY_REDB	5002453	5
+                            202449	True	18_DGRAY_RED	5002453	5
+                            202450	False		5002453	5
+                            202451	False		5002453	5
+                            …	False		5002453	5
+                            202504	False		5002453	5
+                            202505	False	11_LIGHTRED	5002453	5
+                            202506	False	11_LIGHTRED	5002453	5
+                            202507	False	11_LIGHTRED	5002453	5
+                            202508	False	11_LIGHTRED	5002453	5
+                            202509	True	16_DARKRED	5002453	5
+                            202510	True	16_DARKRED	5002453	5
+                            …	True	19_GRAY	5002453	5
+                - Sales Domain Master Data 참고							
+                1. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 2Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 2LV 값은 GBRULE에 각각 Update							
+                2. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 3Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 3LV 값은 GBRULE에 각각 Update							
+                2. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 4Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 4LV 값은 GBRULE에 각각 Update							
+                3. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 5Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 5LV 값은 GBRULE에 각각 Update							
+                4. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 6Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 6LV 값은 GBRULE에 각각 Update							
+                5. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 7Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 7LV 값은 GBRULE에 각각 Update							
+                * 기존에 찾은 값에 대해서도 하위 순번에 값이 존재하면 Update 진행 -> Forecast Rule 예외조건 반영							
+                * 해당 로직  MultiIndex/Dataframe Merge 활용 여부는 성능 고려, MultiIndex 사용시 FORECAST_RULE_AP2 FCST 값 안가져와도 될 것으로 보임.							
+                                            
+                                            
+                Step 12-2-2) GroupBy 진행							
+                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	S/In FCST(GI)_AP2.Lock	S/In FCST Color Condition		
+                    5002453	Item A	S356	…	True	19_GRAY		
+                                202446	True	19_GRAY		
+                                202447	True	17_DGRAY_REDB		
+                                202448	True	17_DGRAY_REDB		
+                                202449	True	18_DGRAY_RED		
+                                202450	False			
+                                202451	False			
+                                …	False			
+                                202504	False			
+                                202505	False	11_LIGHTRED		
+                                202506	False	11_LIGHTRED		
+                                202507	False	11_LIGHTRED		
+                                202508	False	11_LIGHTRED		
+                                202509	True	16_DARKRED		
+                                202510	True	16_DARKRED		
+                                …	True	19_GRAY		
+                    - GBRULE, Item.[Item], Location.[Location], Time.[Partial Week], Lock Condition, S/In FCST Color Condition  으로 Filtering 진행							
+                    - GBRULE, Item.[Item], Location.[Location], Time.[Partial Week] 으로 Group by 진행 (MIN)							
+                    - Rename : GBRULE -> Sales Domain.[Ship To]							
+                    - Rename : Lock Condition -> S/In FCST(GI)_AP2.Lock							
+                    * S/In FCST(GI)_AP2.Lock 은 AP1, GC 에 맞는 값 사용							
+                    * df_output_Sell_In_FCST_GI_GC_Lock 생성 							
+                    * df_output_Sell_In_FCST_GI_AP2_Lock 생성							
+                    * df_output_Sell_In_FCST_GI_AP1_Lock 생성							
+                                            
+                                            
+                                            
+            Step 12-3) S/In FCST Color Condition Output 생성							
+                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	S/In FCST Color Condition			
+                5002453	Item A	S356	…	19_GRAY			
+                            202446	19_GRAY			
+                            202447	17_DGRAY_REDB			
+                            202448	17_DGRAY_REDB			
+                            202449	18_DGRAY_RED			
+                            202450				
+                            202451				
+                            …				
+                            202504				
+                            202505	11_LIGHTRED			
+                            202506	11_LIGHTRED			
+                            202507	11_LIGHTRED			
+                            202508	11_LIGHTRED			
+                            202509	16_DARKRED			
+                            202510	16_DARKRED			
+                            …	19_GRAY			
+                - df_output_Sell_In_FCST_GI_GC_Lock, df_output_Sell_In_FCST_GI_AP2_Lock, df_output_Sell_In_FCST_GI_AP1_Lock 에서 Sales Domain.[Ship To], Item.[Item], Location.[Location], Time.[Partial Week], S/In FCST Color Condition 로 Filtering 이후 Merge 진행							
+                - df_output_Sell_In_FCST_Color_Condition 으로 생성							
+                                        
+            Step 12-4) S/In FCST Output 생성 (4개)							
+                - df_output_Sell_In_FCST_Color_Condition							
+                * df_output_Sell_In_FCST_GI_GC_Lock - S/In FCST Color Condition Column 제거							
+                * df_output_Sell_In_FCST_GI_AP2_Lock - S/In FCST Color Condition Column 제거							
+                * df_output_Sell_In_FCST_GI_AP1_Lock - S/In FCST Color Condition Column 제거							
+                * df_output에 대하여 모두 Version.[Version Name] = CWV_DP 추가							
+									
+									
+		Step 13) E-store Sell-Out Data 생성					
+            Step 13-1) E-store Account에 대한 Data 추출					
+                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
+                A5002453	Item A	S356	…	True	19_GRAY
+                            202446	True	19_GRAY
+                            202447	True	17_DGRAY_REDB
+                            202448	True	17_DGRAY_REDB
+                            202449	True	18_DGRAY_RED
+                            202450	False	
+                            202451	False	
+                            …	False	
+                            202504	False	
+                            202505	False	11_LIGHTRED
+                            202506	False	11_LIGHTRED
+                            202507	False	11_LIGHTRED
+                            202508	False	11_LIGHTRED
+                            202509	True	16_DARKRED
+                            202510	True	16_DARKRED
+                - Step 11) 에서 df_in_Sales_Domain_Estore 를 활용하여 E-store Account에 대한 값만 추출					
+                                
+            Step 13-2) Step 12) 과정 동일 수행 및 S/Out FCST Output 생성 (4개)					
+                - 최종 output 에 대한 Column 명 변경					
+                * df_output_Sell_Out_FCST_GC_Lock	Measure.[S/Out FCST_GC.Lock]				
+                * df_output_Sell_Out_FCST_AP2_Lock	Measure.[S/Out FCST_AP2.Lock]				
+                * df_output_Sell_Out_FCST_AP1_Lock	Measure.[S/Out FCST_AP1.Lock]				
+                * df_output_Sell_Out_FCST_Color_Condition	Measure.[S/Out FCST Color Condition]				
