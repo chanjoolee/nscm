@@ -1,0 +1,1397 @@
+    Python 개발요청서 : PYSalesProductASNDeltaeStore.py
+
+        개요 (*)
+
+            * 프로그램명
+                PYSalesProductASNDeltaeStore
+
+
+            * 목적
+                - E-store Forecast 에서 사용자가 Button을 눌러서 입력 여부 최종 확정
+                - FCST 입력시 필요한 정보 생성
+
+            * 변경이력
+                2025.10.15 전창민 최초 작성
+                    PYSalesProductASNDeltaB2C 와 유사 아래의 조금 다른 부분
+                        - Step 1) 에서 E-store Acccount 선별
+                        - Step 7), Step 8) 추가
+
+                2025.11.05 Step5) Price 값 생성 시 Measure : Estimated Price Color 추가
+                2025.11.05 Script Parameter Data 변경에 따른 로직 변경
+                    - salesItemLocation
+                    - measureLv
+
+                2025.11.07 FCST 비교 로직 추가
+                    - Input 39, 40, 41 추가 (PYSalesProductASNDeltaB2C 의 Input 23,24,25)
+                    - Step 1 에서 "기존에 해당 FCST의 값이 measurelv 에 맞는 Data가 존재하는 경우 (0이상인경우) 제외" 로직 추가
+
+
+        Script Parameter
+
+            (Input 1) Sales, Item, Location 정보
+                - 참고
+                    우리는 salesItemLocation 의 값을 아래의 값으로 가정한다.
+                        "400001:RF29BB8600QLAA^400003:RF29BB8600QLAA"
+
+                - salesItemLocation
+                ex) "400001:RF29BB8600QLAA^400002:RF29BB8600QLAA"
+                ex) "400001:RF29BB8600QLAA:S001^400002:RF29BB8600QLAA:S001"
+                - Location이 없는 경우, 있는 경우 에 대해서 처리 필요
+            (Input 2) 생성할 measure Lv 정보
+                - measureLv
+                ex) ap2
+
+
+
+        Input Tables (*)
+
+
+            (Input 1) df_in_sin_fcst_dummy. S/In FCST(GI) Dummy 정보
+                - query
+                    Select ( [Sales Domain].[Ship To] * [Item].[Item] * [Location].[Location] * [Time].[Partial Week] ) on row,
+                    ({
+                        Measure.[S/In FCST(GI) Dummy_AP1], Measure.[S/In FCST(GI) Dummy_AP2], Measure.[S/In FCST(GI) Dummy_GC], Measure.[S/In FCST(GI) Dummy_Local]
+                    }) on column
+                    where {[Version].[Version Name] };
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI) Dummy_AP1,S/In FCST(GI) Dummy_AP2,S/In FCST(GI) Dummy_GC,S/In FCST(GI) Dummy_Local
+                    5000002,RF29BB8600QLAA,S001,202522A,1,,,
+                    5000002,RF29BB8600QLAA,S001,202522B,1,,,
+                    5000003,RF29BB8600QLAA,S001,202522A,1,,,
+                    5000003,RF29BB8600QLAA,S001,202522B,1,,,
+                    400002,RF29BB8600QLAA,S001,202522A,,1,,
+                    400002,RF29BB8600QLAA,S001,202522B,,1,,
+                    400003,RF29BB8600QLAA,S001,202522A,,1,,
+                    400003,RF29BB8600QLAA,S001,202522B,,1,,
+                    300001,RF29BB8600QLAA,S001,202522A,,,1,
+                    300001,RF29BB8600QLAA,S001,202522B,,,1,
+                    1,RF29BB8600QLAA,S001,202522A,1,1,,
+                    1,RF29BB8600QLAA,S001,202522B,1,1,,
+
+            (Input 2) df_in_sout_fcst_dummy. S/Out FCST Dummy 정보
+                - query
+                    Select ( [Sales Domain].[Ship To] * [Item].[Item] * [Location].[Location] * [Time].[Partial Week] ) on row,
+                    ({
+                        Measure.[S/Out FCST Dummy_AP1], Measure.[S/Out FCST Dummy_AP2], Measure.[S/Out FCST Dummy_GC], Measure.[S/Out FCST Dummy_Local]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST Dummy_AP1,S/Out FCST Dummy_AP2,S/Out FCST Dummy_GC,S/Out FCST Dummy_Local
+                    5000002,RF29BB8600QLAA,-,202522A,1,,,
+                    5000002,RF29BB8600QLAA,-,202522B,1,,,
+                    5000003,RF29BB8600QLAA,S001,202522A,1,,,
+                    5000003,RF29BB8600QLAA,S001,202522B,1,,,
+                    400002,RF29BB8600QLAA,-,202522A,,1,,
+                    400002,RF29BB8600QLAA,-,202522B,,1,,
+                    400003,RF29BB8600QLAA,S001,202522A,,1,,
+                    400003,RF29BB8600QLAA,S001,202522B,,1,,
+                    300001,RF29BB8600QLAA,-,202522A,,,1,
+                    300001,RF29BB8600QLAA,-,202522B,,,1,
+                    1,RF29BB8600QLAA,-,202522A,1,1,,
+                    1,RF29BB8600QLAA,-,202522B,1,1,,
+
+
+            (Input 4) df_in_Sales_Domain_Dimension. Sales Domian Master 정보
+                - query
+                    Select (
+                    * [Sales Domain].[Sales Std1]
+                    * [Sales Domain].[Sales Std2]
+                    * [Sales Domain].[Sales Std3]
+                    * [Sales Domain].[Sales Std4]
+                    * [Sales Domain].[Sales Std5]
+                    * [Sales Domain].[Sales Std6]
+                    * [Sales Domain].[Ship To] )
+
+                - data
+                    Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Sales Domain.[Ship To]
+                    201,201,201,201,201,201,201
+                    201,300001,300001,300001,300001,300001,300001
+                    201,300001,A300001,A300001,A300001,A300001,A300001
+                    201,300001,A300001,400001,400001,400001,400001
+                    201,300001,A300001,400002,400002,400002,400002
+                    201,300001,A300001,400001,5000001,5000001,5000001
+                    201,300001,A300001,400002,5000002,5000002,5000002
+                    201,300001,A300001,400001,5000001,A5000001,A5000001
+                    201,300001,A300001,400003,400003,400003,400003
+                    201,300001,A300001,400003,500003,500003,500003
+
+            (Input 5) df_in_Time_pw. Time 정보 pw
+                - query
+                    Select (
+                    Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )    );
+
+                - data
+                    Time.[Partial Week]
+                    202522A
+                    202522B
+                    202523A
+                    202524A
+                    202525A
+                    202526A
+                    202527A
+                    202527B
+                    202528A
+                    202529A
+                    202530A
+                    202531A
+                    202531B
+                    202532A
+                    202533A
+                    202534A
+                    202535A
+                    202536A
+                    202537A
+                    202538A
+                    202539A
+                    202540A
+                    202540B
+                    202541A
+                    202542A
+                    202543A
+                    202544A
+                    202544B
+                    202545A
+                    202546A
+                    202547A
+                    202548A
+                    202549A
+                    202550A
+                    202551A
+                    202552A
+                    202601A
+                    202601B
+                    202602A
+                    202603A
+                    202604A
+                    202605A
+                    202605B
+                    202606A
+                    202607A
+                    202608A
+                    202609A
+                    202609B
+                    202610A
+                    202611A
+                    202612A
+                    202613A
+                    202614A
+                    202614B
+                    202615A
+                    202616A
+                    202617A
+                    202618A
+                    202618B
+                    202619A
+                    202620A
+                    202621A
+                    202622A
+
+            (Input 6) df_in_Time_w. Time 정보 w
+                - query
+                    Select (
+                    Time.[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )    );
+
+                - data
+                    Time.[Week]
+                    202522
+                    202523
+                    202524
+                    202525
+                    202526
+                    202527
+                    202528
+                    202529
+                    202530
+                    202531
+                    202532
+                    202533
+                    202534
+                    202535
+                    202536
+                    202537
+                    202538
+                    202539
+                    202540
+                    202541
+                    202542
+                    202543
+                    202544
+                    202545
+                    202546
+                    202547
+                    202548
+                    202549
+                    202550
+                    202551
+                    202552
+                    202601
+                    202602
+                    202603
+                    202604
+                    202605
+                    202606
+                    202607
+                    202608
+                    202609
+                    202610
+                    202611
+                    202612
+                    202613
+                    202614
+                    202615
+                    202616
+                    202617
+                    202618
+                    202619
+                    202620
+                    202621
+                    202622
+
+
+            (Input 7) df_in_Item_Master. MST_ITEM 정보
+                - query
+                    Select (
+                    * [Item].[Item GBM]// TEST를 위해 VD 배정
+                    * [Item].[Item Std1]
+                    * [Item].[Item Std2]
+                    * [Item].[Item Std3]// B2B Item : MONITOR_SMART_SIGNAGE_LED_SIGNAGE
+                    * [Item].[Item Std4]
+                    * [Item].[Item]
+                    );
+
+                - data
+                    Item.[Item GBM],Item.[Item Std1],Item.[Item Std2],Item.[Item Std3],Item.[Item Std4],Item.[Item]
+                    VD,REF,REF_FDR,REF_FDR_FDR,REF_FDR_FDR_,RF29BB8600QLAA
+
+            (Input 8) df_in_Sales_Domain_Estore. E-Store 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To].filter(#.[eStore Account YN] == True) );
+
+                - data
+                    Sales Domain.[Ship To]
+                    400003
+                    5000003
+
+
+            (Input 9) df_in_Estimated_Price. Estimated Price 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key ) ) on row,
+                    ({
+                        Measure.[Estimated Price Modify_Local],
+                        Measure.[Estimated Price_Local]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Time.[Partial Week],Estimated Price Modify_Local,Estimated Price_Local
+                    5000001,RF29BB8600QLAA,202522A,1,100
+                    5000001,RF29BB8600QLAA,…,1,200
+                    5000001,RF29BB8600QLAA,202622A,1,300
+                    5000002,RF29BB8600QLAA,202522A,100,999
+                    5000002,RF29BB8600QLAA,…,100,999
+                    5000002,RF29BB8600QLAA,202622A,100,999
+                    5000003,RF29BB8600QLAA,202522A,,100
+                    5000003,RF29BB8600QLAA,…,,100
+                    5000003,RF29BB8600QLAA,202622A,,100
+
+
+            (Input 10) df_in_Action_Plan_Price. Action Plan Price 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Time].[Month].filter(#.Key >= &CurrentMonth.element(0).Key && #.Key <= &CurrentMonth.element(0).leadoffset(12).Key ) ) on row,
+                    ({Measure.[Action Plan Price_USD]}) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Time.[Month],Action Plan Price_USD
+                    5000001,RF29BB8600QLAA,202505,5
+                    5000001,RF29BB8600QLAA,…,5
+                    5000001,RF29BB8600QLAA,202605,5
+                    5000003,RF29BB8600QLAA,202505,7
+                    5000003,RF29BB8600QLAA,…,7
+                    5000003,RF29BB8600QLAA,202605,7
+
+            (Input 11) df_in_Exchange_Rate_Local. Exchange Rate_Local 정보
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std3]
+                    * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key ) ) on row,
+                    ({Measure.[Exchange Rate_Local]}) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Sales Std3],Time.[Partial Week],Exchange Rate_Local
+                    A3000001,202506A,1000
+                    A3000001,…,1000
+                    A3000001,202606A,1000
+
+            (Input 12) df_in_Estimated_Price_Item_Std2_Local. Estimated Price Item Std2_Local 정보
+                - query
+                    Select (
+                    [Item].[Item Std2]
+                    * [Sales Domain].[Ship To]
+                    * [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({Measure.[Estimated Price Item Std2_Local]}) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Item.[Item Std2],Sales Domain.[Ship To],Time.[Partial Week],Estimated Price Item Std2_Local
+                    REF_FDR,400002,202522A,1002
+                    REF_FDR,400002,…,1002
+                    REF_FDR,400002,202622A,1002
+            (Input 13) df_in_Estimated_Price_Item_Std3_Local. Estimated Price Item Std3_Local 정보
+                - query
+                    Select (
+                    [Item].[Item Std3]
+                    * [Sales Domain].[Ship To]
+                    * [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({Measure.[Estimated Price Item Std3_Local]}) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Item.[Item Std3],Sales Domain.[Ship To],Time.[Partial Week],Estimated Price Item Std3_Local
+                    REF_FDR_FDR,400002,202522A,100000
+                    REF_FDR_FDR,400002,…,100000
+                    REF_FDR_FDR,400002,202622A,100000
+
+
+            (Input 14) df_in_Estimated_Price_Item_Std4_Local. Estimated Price Item Std4_Local 정보
+                - query
+                    Select (
+                    [Item].[Item Std4]
+                    * [Sales Domain].[Ship To]
+                    * [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({Measure.[Estimated Price Item Std4_Local]}) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Item.[Item Std4],Sales Domain.[Ship To],Time.[Partial Week],Estimated Price Item Std4_Local
+                    REF_FDR_FDR_,400002,202522A,100000
+                    REF_FDR_FDR_,400002,…,100000
+                    REF_FDR_FDR_,400002,202622A,100000
+
+            (Input 15) df_in_Sell_In_FCST_GI_Split_Ratio_AP1. S/In FCST (GI) Split Ratio_AP1 정보
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std2]
+                    * [Item].[Item Std1]
+                    * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({Measure.[S/In FCST(GI) Split Ratio_AP1] }) on column;
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/In FCST(GI) Split Ratio_AP1
+                    300001,REF,202522A,0.1
+                    300001,REF,…,0.1
+                    300001,REF,202622A,0.1
+
+            (Input 16) df_in_Sell_In_FCST_GI_Split_Ratio_AP2. S/In FCST (GI) Split Ratio_AP2 정보
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std2]
+                    * [Item].[Item Std1]
+                    * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({Measure.[S/In FCST(GI) Split Ratio_AP2] }) on column;
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/In FCST(GI) Split Ratio_AP2
+                    300001,REF,202522A,0.1
+                    300001,REF,…,0.1
+                    300001,REF,202622A,0.1
+
+
+            (Input 17) df_in_Sell_In_FCST_GI_Split_Ratio_GC. S/In FCST (GI) Split Ratio_GC 정보
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std2]
+                    * [Item].[Item Std1]
+                    * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({Measure.[S/In FCST(GI) Split Ratio_GC] }) on column;
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/In FCST(GI) Split Ratio_GC
+                    300001,REF,202522A,0.1
+                    300001,REF,…,0.1
+                    300001,REF,202622A,0.1
+
+            (Input 18) df_in_Sell_In_FCST_GI_Split_Ratio_Local. S/In FCST (GI) Split Ratio_Local 정보
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std2]
+                    * [Item].[Item Std1]
+                    * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({Measure.[S/In FCST(GI) Split Ratio_Local] }) on column;
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/In FCST(GI) Split Ratio_Local
+                    300001,REF,202522A,0.1
+                    300001,REF,…,0.1
+                    300001,REF,202622A,0.1
+
+            (Input 19) df_in_Sell_Out_FCST_Split_Ratio_AP1. S/Out FCST Split Ratio_AP1 정보
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std2]
+                    * [Item].[Item Std1]
+                    * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({Measure.[S/Out FCST Split Ratio_AP1] }) on column;
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/Out FCST Split Ratio_AP1
+                    300001,REF,202522A,0.1
+                    300001,REF,…,0.1
+                    300001,REF,202622A,0.1
+
+            (Input 20) df_in_Sell_Out_FCST_Split_Ratio_AP2. S/Out FCST Split Ratio_AP2 정보
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std2]
+                    * [Item].[Item Std1]
+                    * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({Measure.[S/Out FCST Split Ratio_AP2] }) on column;
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/Out FCST Split Ratio_AP2
+                    300001,REF,202522A,0.1
+                    300001,REF,…,0.1
+                    300001,REF,202622A,0.1
+
+            (Input 21) df_in_Sell_Out_FCST_Split_Ratio_GC. S/Out FCST Split Ratio_GC 정보
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std2]
+                    * [Item].[Item Std1]
+                    * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({Measure.[S/Out FCST Split Ratio_GC] }) on column;
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/Out FCST Split Ratio_GC
+                    300001,REF,202522A,0.1
+                    300001,REF,…,0.1
+                    300001,REF,202622A,0.1
+
+            (Input 22) df_in_Sell_Out_FCST_Split_Ratio_Local. S/Out FCST Split Ratio_Local 정보
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std2]
+                    * [Item].[Item Std1]
+                    * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({Measure.[S/Out FCST Split Ratio_Local] }) on column;
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/Out FCST Split Ratio_Local
+                    300001,REF,202522A,0.1
+                    300001,REF,…,0.1
+                    300001,REF,202622A,0.1
+        --- E-store Input
+            (Input 23) df_in_Sell_In_User_GI_Ratio. S/In User GI Ratio 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item Std1]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In User GI Ratio(Long Tail)],
+                        Measure.[S/In User GI Ratio(W+0)],
+                        Measure.[S/In User GI Ratio(W+1)],
+                        Measure.[S/In User GI Ratio(W+2)],
+                        Measure.[S/In User GI Ratio(W+3)],
+                        Measure.[S/In User GI Ratio(W+4)],
+                        Measure.[S/In User GI Ratio(W+5)],
+                        Measure.[S/In User GI Ratio(W+6)],
+                        Measure.[S/In User GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item Std1],Location.[Location],Time.[Week],S/In User GI Ratio(Long Tail),S/In User GI Ratio(W+7),S/In User GI Ratio(W+6),S/In User GI Ratio(W+5),S/In User GI Ratio(W+4),S/In User GI Ratio(W+3),S/In User GI Ratio(W+2),S/In User GI Ratio(W+1),S/In User GI Ratio(W+0)
+                    5000003,REF,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,REF,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,REF,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,REF,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,REF,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,REF,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+
+            (Input 24) df_in_Sell_In_Issue_GI_Ratio. S/In Issue GI Ratio 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item Std1]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In Issue GI Ratio(Long Tail)],
+                        Measure.[S/In Issue GI Ratio(W+0)],
+                        Measure.[S/In Issue GI Ratio(W+1)],
+                        Measure.[S/In Issue GI Ratio(W+2)],
+                        Measure.[S/In Issue GI Ratio(W+3)],
+                        Measure.[S/In Issue GI Ratio(W+4)],
+                        Measure.[S/In Issue GI Ratio(W+5)],
+                        Measure.[S/In Issue GI Ratio(W+6)],
+                        Measure.[S/In Issue GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item Std1],Location.[Location],Time.[Week],S/In Issue GI Ratio(Long Tail),S/In Issue GI Ratio(W+7),S/In Issue GI Ratio(W+6),S/In Issue GI Ratio(W+5),S/In Issue GI Ratio(W+4),S/In Issue GI Ratio(W+3),S/In Issue GI Ratio(W+2),S/In Issue GI Ratio(W+1),S/In Issue GI Ratio(W+0)
+                    5000003,REF,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,REF,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,REF,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,REF,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,REF,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,REF,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+            (Input 25) df_in_Sell_In_Final_GI_Ratio. S/In Final GI Ratio 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item Std1]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In Final GI Ratio(Long Tail)],
+                        Measure.[S/In Final GI Ratio(W+0)],
+                        Measure.[S/In Final GI Ratio(W+1)],
+                        Measure.[S/In Final GI Ratio(W+2)],
+                        Measure.[S/In Final GI Ratio(W+3)],
+                        Measure.[S/In Final GI Ratio(W+4)],
+                        Measure.[S/In Final GI Ratio(W+5)],
+                        Measure.[S/In Final GI Ratio(W+6)],
+                        Measure.[S/In Final GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item Std1],Location.[Location],Time.[Week],S/In Final GI Ratio (Long Tail),S/In Final GI Ratio (W+7),S/In Final GI Ratio (W+6),S/In Final GI Ratio (W+5),S/In Final GI Ratio (W+4),S/In Final GI Ratio (W+3),S/In Final GI Ratio (W+2),S/In Final GI Ratio (W+1),S/In Final GI Ratio (W+0)
+                    5000003,REF,S002,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,REF,S002,…,…,…,…,…,…,…,…,…,…
+                    5000003,REF,S002,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,REF,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,REF,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,REF,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+            (Input 26) df_in_Sell_In_BestFit_GI_Ratio. S/In BestFit GI Ratio 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item Std1]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In BestFit GI Ratio(Long Tail)],
+                        Measure.[S/In BestFit GI Ratio(W+0)],
+                        Measure.[S/In BestFit GI Ratio(W+1)],
+                        Measure.[S/In BestFit GI Ratio(W+2)],
+                        Measure.[S/In BestFit GI Ratio(W+3)],
+                        Measure.[S/In BestFit GI Ratio(W+4)],
+                        Measure.[S/In BestFit GI Ratio(W+5)],
+                        Measure.[S/In BestFit GI Ratio(W+6)],
+                        Measure.[S/In BestFit GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item Std1],Location.[Location],Time.[Week],S/In BestFit GI Ratio(Long Tail),S/In BestFit GI Ratio(W+7),S/In BestFit GI Ratio(W+6),S/In BestFit GI Ratio(W+5),S/In BestFit GI Ratio(W+4),S/In BestFit GI Ratio(W+3),S/In BestFit GI Ratio(W+2),S/In BestFit GI Ratio(W+1),S/In BestFit GI Ratio(W+0)
+                    5000003,REF,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,REF,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,REF,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,REF,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,REF,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,REF,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+            (Input 27) df_in_Sell_In_User_Item_GI_Ratio. S/In User Item GI Ratio 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item Std1]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In User Item GI Ratio(Long Tail)],
+                        Measure.[S/In User Item GI Ratio(W+0)],
+                        Measure.[S/In User Item GI Ratio(W+1)],
+                        Measure.[S/In User Item GI Ratio(W+2)],
+                        Measure.[S/In User Item GI Ratio(W+3)],
+                        Measure.[S/In User Item GI Ratio(W+4)],
+                        Measure.[S/In User Item GI Ratio(W+5)],
+                        Measure.[S/In User Item GI Ratio(W+6)],
+                        Measure.[S/In User Item GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item Std1],Location.[Location],Time.[Week],S/In User Item GI Ratio(Long Tail),S/In User Item GI Ratio(W+7),S/In User Item GI Ratio(W+6),S/In User Item GI Ratio(W+5),S/In User Item GI Ratio(W+4),S/In User Item GI Ratio(W+3),S/In User Item GI Ratio(W+2),S/In User Item GI Ratio(W+1),S/In User Item GI Ratio(W+0)
+                    5000003,REF,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,REF,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,REF,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,REF,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,REF,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,REF,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+            (Input 28) df_in_Sell_In_Issue_Item_GI_Ratio. S/In Issue Item GI Ratio 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item Std1]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In Issue Item GI Ratio(Long Tail)],
+                        Measure.[S/In Issue Item GI Ratio(W+0)],
+                        Measure.[S/In Issue Item GI Ratio(W+1)],
+                        Measure.[S/In Issue Item GI Ratio(W+2)],
+                        Measure.[S/In Issue Item GI Ratio(W+3)],
+                        Measure.[S/In Issue Item GI Ratio(W+4)],
+                        Measure.[S/In Issue Item GI Ratio(W+5)],
+                        Measure.[S/In Issue Item GI Ratio(W+6)],
+                        Measure.[S/In Issue Item GI Ratio(W+7)]}
+                    ) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item Std1],Location.[Location],Time.[Week],S/In Issue Item GI Ratio(Long Tail),S/In Issue Item GI Ratio(W+7),S/In Issue Item GI Ratio(W+6),S/In Issue Item GI Ratio(W+5),S/In Issue Item GI Ratio(W+4),S/In Issue Item GI Ratio(W+3),S/In Issue Item GI Ratio(W+2),S/In Issue Item GI Ratio(W+1),S/In Issue Item GI Ratio(W+0)
+                    5000003,REF,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,REF,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,REF,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,REF,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,REF,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,REF,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+            (Input 29) df_in_Sell_In_User_Modify_GI_Ratio. S/In User Modify GI Ratio 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item Std1]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In User Modify GI Ratio(Long Tail)],
+                        Measure.[S/In User Modify GI Ratio(W+0)],
+                        Measure.[S/In User Modify GI Ratio(W+1)],
+                        Measure.[S/In User Modify GI Ratio(W+2)],
+                        Measure.[S/In User Modify GI Ratio(W+3)],
+                        Measure.[S/In User Modify GI Ratio(W+4)],
+                        Measure.[S/In User Modify GI Ratio(W+5)],
+                        Measure.[S/In User Modify GI Ratio(W+6)],
+                        Measure.[S/In User Modify GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item Std1],Location.[Location],Time.[Week],S/In User Modify GI Ratio(Long Tail),S/In User Modify GI Ratio(W+7),S/In User Modify GI Ratio(W+6),S/In User Modify GI Ratio(W+5),S/In User Modify GI Ratio(W+4),S/In User Modify GI Ratio(W+3),S/In User Modify GI Ratio(W+2),S/In User Modify GI Ratio(W+1),S/In User Modify GI Ratio(W+0)
+                    5000003,REF,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,REF,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,REF,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,REF,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,REF,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,REF,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+            (Input 30) df_in_Sell_In_Issue_Modify_GI_Ratio. S/In Issue Modify GI Ratio 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item Std1]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In Issue Modify GI Ratio(Long Tail)],
+                        Measure.[S/In Issue Modify GI Ratio(W+0)],
+                        Measure.[S/In Issue Modify GI Ratio(W+1)],
+                        Measure.[S/In Issue Modify GI Ratio(W+2)],
+                        Measure.[S/In Issue Modify GI Ratio(W+3)],
+                        Measure.[S/In Issue Modify GI Ratio(W+4)],
+                        Measure.[S/In Issue Modify GI Ratio(W+5)],
+                        Measure.[S/In Issue Modify GI Ratio(W+6)],
+                        Measure.[S/In Issue Modify GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item Std1],Location.[Location],Time.[Week],S/In Issue Modify GI Ratio(Long Tail),S/In Issue Modify GI Ratio(W+7),S/In Issue Modify GI Ratio(W+6),S/In Issue Modify GI Ratio(W+5),S/In Issue Modify GI Ratio(W+4),S/In Issue Modify GI Ratio(W+3),S/In Issue Modify GI Ratio(W+2),S/In Issue Modify GI Ratio(W+1),S/In Issue Modify GI Ratio(W+0)
+                    5000003,REF,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,REF,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,REF,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,REF,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,REF,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,REF,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+
+        --- E-store Input 신규 Item 확인용
+            (Input 31) df_in_Sell_In_User_GI_Ratio_Item. S/In User GI Ratio_Item 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In User GI Ratio(Long Tail)],
+                        Measure.[S/In User GI Ratio(W+0)],
+                        Measure.[S/In User GI Ratio(W+1)],
+                        Measure.[S/In User GI Ratio(W+2)],
+                        Measure.[S/In User GI Ratio(W+3)],
+                        Measure.[S/In User GI Ratio(W+4)],
+                        Measure.[S/In User GI Ratio(W+5)],
+                        Measure.[S/In User GI Ratio(W+6)],
+                        Measure.[S/In User GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Week],S/In User GI Ratio(Long Tail),S/In User GI Ratio(W+7),S/In User GI Ratio(W+6),S/In User GI Ratio(W+5),S/In User GI Ratio(W+4),S/In User GI Ratio(W+3),S/In User GI Ratio(W+2),S/In User GI Ratio(W+1),S/In User GI Ratio(W+0)
+
+            (Input 32) df_in_Sell_In_Issue_GI_Ratio_Item. In Issue GI Ratio_Item 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In Issue GI Ratio(Long Tail)],
+                        Measure.[S/In Issue GI Ratio(W+0)],
+                        Measure.[S/In Issue GI Ratio(W+1)],
+                        Measure.[S/In Issue GI Ratio(W+2)],
+                        Measure.[S/In Issue GI Ratio(W+3)],
+                        Measure.[S/In Issue GI Ratio(W+4)],
+                        Measure.[S/In Issue GI Ratio(W+5)],
+                        Measure.[S/In Issue GI Ratio(W+6)],
+                        Measure.[S/In Issue GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Week],S/In Issue GI Ratio(Long Tail),S/In Issue GI Ratio(W+7),S/In Issue GI Ratio(W+6),S/In Issue GI Ratio(W+5),S/In Issue GI Ratio(W+4),S/In Issue GI Ratio(W+3),S/In Issue GI Ratio(W+2),S/In Issue GI Ratio(W+1),S/In Issue GI Ratio(W+0)
+                    5000001,RF29BB8600QLAA,S002,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000001,RF29BB8600QLAA,S002,…,…,…,…,…,…,…,…,…,…
+                    5000001,RF29BB8600QLAA,S002,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+
+            (Input 33) df_in_Sell_In_Final_GI_Ratio_Item. S/In Final GI Ratio_Item 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In Final GI Ratio(Long Tail)],
+                        Measure.[S/In Final GI Ratio(W+0)],
+                        Measure.[S/In Final GI Ratio(W+1)],
+                        Measure.[S/In Final GI Ratio(W+2)],
+                        Measure.[S/In Final GI Ratio(W+3)],
+                        Measure.[S/In Final GI Ratio(W+4)],
+                        Measure.[S/In Final GI Ratio(W+5)],
+                        Measure.[S/In Final GI Ratio(W+6)],
+                        Measure.[S/In Final GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Week],S/In Final GI Ratio (Long Tail),S/In Final GI Ratio (W+7),S/In Final GI Ratio (W+6),S/In Final GI Ratio (W+5),S/In Final GI Ratio (W+4),S/In Final GI Ratio (W+3),S/In Final GI Ratio (W+2),S/In Final GI Ratio (W+1),S/In Final GI Ratio (W+0)
+                    5000003,RF29BB8600QLAA,S002,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,RF29BB8600QLAA,S002,…,…,…,…,…,…,…,…,…,…
+                    5000003,RF29BB8600QLAA,S002,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,RF29BB8600QLAA,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,RF29BB8600QLAA,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,RF29BB8600QLAA,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+            (Input 34) df_in_Sell_In_BestFit_GI_Ratio_Item. S/In BestFit GI Ratio_Item 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In BestFit GI Ratio(Long Tail)],
+                        Measure.[S/In BestFit GI Ratio(W+0)],
+                        Measure.[S/In BestFit GI Ratio(W+1)],
+                        Measure.[S/In BestFit GI Ratio(W+2)],
+                        Measure.[S/In BestFit GI Ratio(W+3)],
+                        Measure.[S/In BestFit GI Ratio(W+4)],
+                        Measure.[S/In BestFit GI Ratio(W+5)],
+                        Measure.[S/In BestFit GI Ratio(W+6)],
+                        Measure.[S/In BestFit GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Week],S/In BestFit GI Ratio(Long Tail),S/In BestFit GI Ratio(W+7),S/In BestFit GI Ratio(W+6),S/In BestFit GI Ratio(W+5),S/In BestFit GI Ratio(W+4),S/In BestFit GI Ratio(W+3),S/In BestFit GI Ratio(W+2),S/In BestFit GI Ratio(W+1),S/In BestFit GI Ratio(W+0)
+                    5000003,RF29BB8600QLAA,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,RF29BB8600QLAA,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,RF29BB8600QLAA,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,RF29BB8600QLAA,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,RF29BB8600QLAA,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,RF29BB8600QLAA,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+            (Input 35) df_in_Sell_In_User_Item_GI_Ratio_Item. S/In User Item GI Ratio_Item 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In User Item GI Ratio(Long Tail)],
+                        Measure.[S/In User Item GI Ratio(W+0)],
+                        Measure.[S/In User Item GI Ratio(W+1)],
+                        Measure.[S/In User Item GI Ratio(W+2)],
+                        Measure.[S/In User Item GI Ratio(W+3)],
+                        Measure.[S/In User Item GI Ratio(W+4)],
+                        Measure.[S/In User Item GI Ratio(W+5)],
+                        Measure.[S/In User Item GI Ratio(W+6)],
+                        Measure.[S/In User Item GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Week],S/In User Item GI Ratio(Long Tail),S/In User Item GI Ratio(W+7),S/In User Item GI Ratio(W+6),S/In User Item GI Ratio(W+5),S/In User Item GI Ratio(W+4),S/In User Item GI Ratio(W+3),S/In User Item GI Ratio(W+2),S/In User Item GI Ratio(W+1),S/In User Item GI Ratio(W+0)
+                    5000003,RF29BB8600QLAA,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,RF29BB8600QLAA,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,RF29BB8600QLAA,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,RF29BB8600QLAA,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,RF29BB8600QLAA,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,RF29BB8600QLAA,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+            (Input 36) df_in_Sell_In_Issue_Item_GI_Ratio_Item. S/In Issue Item GI Ratio_Item 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In Issue Item GI Ratio(Long Tail)],
+                        Measure.[S/In Issue Item GI Ratio(W+0)],
+                        Measure.[S/In Issue Item GI Ratio(W+1)],
+                        Measure.[S/In Issue Item GI Ratio(W+2)],
+                        Measure.[S/In Issue Item GI Ratio(W+3)],
+                        Measure.[S/In Issue Item GI Ratio(W+4)],
+                        Measure.[S/In Issue Item GI Ratio(W+5)],
+                        Measure.[S/In Issue Item GI Ratio(W+6)],
+                        Measure.[S/In Issue Item GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Week],S/In Issue Item GI Ratio(Long Tail),S/In Issue Item GI Ratio(W+7),S/In Issue Item GI Ratio(W+6),S/In Issue Item GI Ratio(W+5),S/In Issue Item GI Ratio(W+4),S/In Issue Item GI Ratio(W+3),S/In Issue Item GI Ratio(W+2),S/In Issue Item GI Ratio(W+1),S/In Issue Item GI Ratio(W+0)
+                    5000003,RF29BB8600QLAA,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,RF29BB8600QLAA,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,RF29BB8600QLAA,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,RF29BB8600QLAA,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,RF29BB8600QLAA,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,RF29BB8600QLAA,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+            (Input 37) df_in_Sell_In_User_Modify_GI_Ratio_Item. S/In User Modify GI Ratio_Item 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In User Modify GI Ratio(Long Tail)],
+                        Measure.[S/In User Modify GI Ratio(W+0)],
+                        Measure.[S/In User Modify GI Ratio(W+1)],
+                        Measure.[S/In User Modify GI Ratio(W+2)],
+                        Measure.[S/In User Modify GI Ratio(W+3)],
+                        Measure.[S/In User Modify GI Ratio(W+4)],
+                        Measure.[S/In User Modify GI Ratio(W+5)],
+                        Measure.[S/In User Modify GI Ratio(W+6)],
+                        Measure.[S/In User Modify GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Week],S/In User Modify GI Ratio(Long Tail),S/In User Modify GI Ratio(W+7),S/In User Modify GI Ratio(W+6),S/In User Modify GI Ratio(W+5),S/In User Modify GI Ratio(W+4),S/In User Modify GI Ratio(W+3),S/In User Modify GI Ratio(W+2),S/In User Modify GI Ratio(W+1),S/In User Modify GI Ratio(W+0)
+                    5000003,RF29BB8600QLAA,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,RF29BB8600QLAA,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,RF29BB8600QLAA,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,RF29BB8600QLAA,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,RF29BB8600QLAA,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,RF29BB8600QLAA,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+            (Input 38) df_in_Sell_In_Issue_Modify_GI_Ratio_Item. S/In Issue Modify GI Ratio_Item 정보
+                - query
+                    Select (
+                    [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * [Time].[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                    ) on row,
+                    ({
+                        Measure.[S/In Issue Modify GI Ratio(Long Tail)],
+                        Measure.[S/In Issue Modify GI Ratio(W+0)],
+                        Measure.[S/In Issue Modify GI Ratio(W+1)],
+                        Measure.[S/In Issue Modify GI Ratio(W+2)],
+                        Measure.[S/In Issue Modify GI Ratio(W+3)],
+                        Measure.[S/In Issue Modify GI Ratio(W+4)],
+                        Measure.[S/In Issue Modify GI Ratio(W+5)],
+                        Measure.[S/In Issue Modify GI Ratio(W+6)],
+                        Measure.[S/In Issue Modify GI Ratio(W+7)]
+                    }) on column
+                    where {[Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Week],S/In Issue Modify GI Ratio(Long Tail),S/In Issue Modify GI Ratio(W+7),S/In Issue Modify GI Ratio(W+6),S/In Issue Modify GI Ratio(W+5),S/In Issue Modify GI Ratio(W+4),S/In Issue Modify GI Ratio(W+3),S/In Issue Modify GI Ratio(W+2),S/In Issue Modify GI Ratio(W+1),S/In Issue Modify GI Ratio(W+0)
+                    5000003,RF29BB8600QLAA,S001,202506A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    5000003,RF29BB8600QLAA,S001,…,…,…,…,…,…,…,…,…,…
+                    5000003,RF29BB8600QLAA,S001,202606A,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+                    400003,RF29BB8600QLAA,S002,202506A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+                    400003,RF29BB8600QLAA,S002,…,…,…,…,…,…,…,…,…,…
+                    400003,RF29BB8600QLAA,S002,202606A,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3
+
+
+            ========  2025.11.07 FCST 비교 로직 추가 ======
+            (Input 39) df_in_sin_fcst. S/In FCST(GI) 정보
+                - query
+                    Select ( [Sales Domain].[Ship To] * [Item].[Item] * [Location].[Location]  ) on row,
+                    ({
+                        Measure.[S/In FCST(GI)_AP1], Measure.[S/In FCST(GI)_AP2], Measure.[S/In FCST(GI)_GC], Measure.[S/In FCST(GI)_Local]
+                    }) on column
+                    where {[Version].[Version Name], [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )};
+
+                - data (Test 적용시 Data 넣는 경우, 값 생성 안되어야 함)
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],S/In FCST(GI)_AP1,S/In FCST(GI)_AP2,S/In FCST(GI)_GC,S/In FCST(GI)_Local
+                    5000002,RF29BB8600QLAA,S001,1,,,
+                    5000003,RF29BB8600QLAA,S001,1,,,
+                    400002,RF29BB8600QLAA,S001,,1,,
+                    400003,RF29BB8600QLAA,S001,,1,,
+                    300001,RF29BB8600QLAA,S001,,,1,
+
+            (Input 40) df_in_sout_fcst. S/Out FCST 정보
+                - query
+                    Select ( [Sales Domain].[Ship To] * [Item].[Item] * [Location].[Location]  ) on row,
+                    ({
+                        Measure.[S/Out FCST_AP1], Measure.[S/Out FCST_AP2], Measure.[S/Out FCST_GC], Measure.[S/Out FCST_Local]
+                    }) on column
+                    where {[Version].[Version Name], [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )};
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],S/Out FCST_AP1,S/Out FCST_AP2,S/Out FCST_GC,S/Out FCST_Local
+                    5000002,RF29BB8600QLAA,-,1,,,
+                    5000003,RF29BB8600QLAA,-,1,,,
+                    400002,RF29BB8600QLAA,S001,,1,,
+                    400003,RF29BB8600QLAA,S001,,1,,
+                    300001,RF29BB8600QLAA,-,,,1,
+
+
+            (Input 40) df_in_floor_fcst. Flooring FCST 정보
+                - query
+                    Select ( [Sales Domain].[Ship To] * [Item].[Item] * [Location].[Location]  ) on row,
+                    ({
+                        Measure.[Flooring FCST]
+                    }) on column
+                    where {[Version].[Version Name], [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )};
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Flooring FCST
+                    5000002,RF29BB8600QLAA,S001,1
+                    5000003,RF29BB8600QLAA,S001,1
+                    400002,RF29BB8600QLAA,S001,
+                    400003,RF29BB8600QLAA,S001,
+                    300001,RF29BB8600QLAA,S001,
+
+
+        Output Tables (*)
+            (Output 1-2) Output_SIn_Dummy
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * [Time].[Partial Week]
+                    ) on row,
+                    ( { Measure.[S/In FCST(GI) Dummy_AP1], Measure.[S/In FCST(GI) Dummy_AP2], Measure.[S/In FCST(GI) Dummy_GC], Measure.[S/In FCST(GI) Dummy_Local] } ) on column;
+
+            (Output 1-4) Output_SOut_Dummy
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * [Time].[Partial Week]
+                    ) on row,
+                    ( { Measure.[S/Out FCST Dummy_AP1], Measure.[S/Out FCST Dummy_AP2], Measure.[S/Out FCST Dummy_GC], Measure.[S/Out FCST Dummy_Local] } ) on column ;
+
+
+            (Output 2-1) Output_SIn_Assortment
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]  ) on row,
+                    ( { Measure.[S/In FCST(GI) Assortment_AP1], Measure.[S/In FCST(GI) Assortment_AP2], Measure.[S/In FCST(GI) Assortment_GC], Measure.[S/In FCST(GI) Assortment_Local] } ) on column;
+
+            (Output 2-2) Output_SOut_Assortment
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]) on row,
+                    ( { Measure.[S/Out FCST Assortment_AP1], Measure.[S/Out FCST Assortment_AP2], Measure.[S/Out FCST Assortment_GC], Measure.[S/Out FCST Assortment_Local] } ) on column ;
+
+
+
+            (Output 3-1) df_output_Sell_In_FCST_GI_AP1
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/In FCST(GI)_AP1], Measure.[S/In FCST(BL)_AP1], Measure.[S/In FCST(GI)_New Model]
+                    } ) on column;
+
+            (Output 3-1) df_output_Sell_In_FCST_GI_AP2
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/In FCST(GI)_AP2], Measure.[S/In FCST(BL)_AP2]
+                    } ) on column;
+
+            (Output 3-1) df_output_Sell_In_FCST_GI_GC
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/In FCST(GI)_GC], Measure.[S/In FCST(BL)_GC]
+                    ) on column;
+
+            (Output 3-1) df_output_Sell_In_FCST_GI_Local
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/In FCST(GI)_Local], Measure.[S/In FCST(BL)_Local]
+                    ) on column;
+
+            (Output 3-2) df_output_Sell_Out_FCST_AP1
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/Out FCST_AP1]
+                    } ) on column;
+
+            (Output 3-2) df_output_Sell_Out_FCST_AP2
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/Out FCST_AP2]
+                    } ) on column;
+
+            (Output 3-2) df_output_Sell_Out_FCST_GC
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/Out FCST_GC]
+                    ) on column;
+
+            (Output 3-2) df_output_Sell_Out_FCST_Local
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/Out FCST_Local]
+                    ) on column;
+
+
+            (Output 3-4) df_output_BO_FCST. 사용안함(추후 결정될 스펙임)
+
+
+
+            (Output 4) df_output_Estimated_Price_Local
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Time].[Partial Week]  )  on row,
+                    ( { Measure.[Estimated Price_Local] } ) on column;
+
+            (Output 5-1) df_output_Sell_In_FCST_GI_Split_Ratio_AP1
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/In FCST(GI) Split Ratio_AP1]
+                    } ) on column;
+
+            (Output 5-2) df_output_Sell_In_FCST_GI_Split_Ratio_AP2
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/In FCST(GI) Split Ratio_AP2]
+                    } ) on column;
+
+            (Output 5-3) df_output_Sell_In_FCST_GI_Split_Ratio_GC
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/In FCST(GI) Split Ratio_GC]
+                    ) on column;
+
+            (Output 5-4) df_output_Sell_In_FCST_GI_Split_Ratio_Local
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/In FCST(GI) Split Ratio_Local]
+                    ) on column;
+
+            (Output 5-5) df_output_Sell_Out_FCST_Split_Ratio_AP1
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/Out FCST Split Ratio_AP1]
+                    } ) on column;
+
+            (Output 5-6) df_output_Sell_Out_FCST_Split_Ratio_AP2
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/Out FCST Split Ratio_AP2]
+                    } ) on column;
+
+            (Output 5-7) df_output_Sell_Out_FCST_Split_Ratio_GC
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/Out FCST Split Ratio_GC]
+                    ) on column;
+
+            (Output 5-8) df_output_Sell_Out_FCST_Split_Ratio_Local
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Partial Week] ) on row,
+                    ( { Measure.[S/Out FCST Split Ratio_Local]
+                    ) on column;
+
+        * 여기서부터 PYSalesProductASNDeltaB2C 와 비교하여 추가된 부분
+            (Output 7-1) df_output_Sell_In_User_GI_Ratio
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Week] ) on row,
+                    ({Measure.[S/In User GI Ratio(Long Tail)],
+                        Measure.[S/In User GI Ratio(W+0)],
+                        Measure.[S/In User GI Ratio(W+1)],
+                        Measure.[S/In User GI Ratio(W+2)],
+                        Measure.[S/In User GI Ratio(W+3)],
+                        Measure.[S/In User GI Ratio(W+4)],
+                        Measure.[S/In User GI Ratio(W+5)],
+                        Measure.[S/In User GI Ratio(W+6)],
+                        Measure.[S/In User GI Ratio(W+7)]
+                    }) on column;
+
+
+            (Output 7-2) df_output_Sell_In_Issue_GI_Ratio
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Week] ) on row,
+                    ({Measure.[S/In Issue GI Ratio(Long Tail)],
+                         Measure.[S/In Issue GI Ratio(W+0)],
+                         Measure.[S/In Issue GI Ratio(W+1)],
+                         Measure.[S/In Issue GI Ratio(W+2)],
+                         Measure.[S/In Issue GI Ratio(W+3)],
+                         Measure.[S/In Issue GI Ratio(W+4)],
+                         Measure.[S/In Issue GI Ratio(W+5)],
+                         Measure.[S/In Issue GI Ratio(W+6)],
+                         Measure.[S/In Issue GI Ratio(W+7)]}) on column;
+
+
+            (Output 7-3) df_output_Sell_In_Final_GI_Ratio
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Week] ) on row,
+                    ({Measure.[S/In Final GI Ratio(Long Tail)],
+                     Measure.[S/In Final GI Ratio(W+0)],
+                     Measure.[S/In Final GI Ratio(W+1)],
+                     Measure.[S/In Final GI Ratio(W+2)],
+                     Measure.[S/In Final GI Ratio(W+3)],
+                     Measure.[S/In Final GI Ratio(W+4)],
+                     Measure.[S/In Final GI Ratio(W+5)],
+                     Measure.[S/In Final GI Ratio(W+6)],
+                     Measure.[S/In Final GI Ratio(W+7)]}) on column;
+
+
+            (Output 7-4) df_output_Sell_In_BestFit_GI_Ratio
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Week] ) on row,
+                    ({Measure.[S/In BestFit GI Ratio(Long Tail)],
+                         Measure.[S/In BestFit GI Ratio(W+0)],
+                         Measure.[S/In BestFit GI Ratio(W+1)],
+                         Measure.[S/In BestFit GI Ratio(W+2)],
+                         Measure.[S/In BestFit GI Ratio(W+3)],
+                         Measure.[S/In BestFit GI Ratio(W+4)],
+                         Measure.[S/In BestFit GI Ratio(W+5)],
+                         Measure.[S/In BestFit GI Ratio(W+6)],
+                         Measure.[S/In BestFit GI Ratio(W+7)]}) on column;
+
+
+            (Output 7-5) df_output_Sell_In_User_Item_GI_Ratio
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Week] ) on row,
+                    ({Measure.[S/In User Item GI Ratio(Long Tail)],
+                         Measure.[S/In User Item GI Ratio(W+0)],
+                         Measure.[S/In User Item GI Ratio(W+1)],
+                         Measure.[S/In User Item GI Ratio(W+2)],
+                         Measure.[S/In User Item GI Ratio(W+3)],
+                         Measure.[S/In User Item GI Ratio(W+4)],
+                         Measure.[S/In User Item GI Ratio(W+5)],
+                         Measure.[S/In User Item GI Ratio(W+6)],
+                         Measure.[S/In User Item GI Ratio(W+7)]}) on column;
+
+
+            (Output 7-6) df_output_Sell_In_Issue_Item_GI_Ratio
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Week] ) on row,
+                    ({Measure.[S/In Issue Item GI Ratio(Long Tail)],
+                         Measure.[S/In Issue Item GI Ratio(W+0)],
+                         Measure.[S/In Issue Item GI Ratio(W+1)],
+                         Measure.[S/In Issue Item GI Ratio(W+2)],
+                         Measure.[S/In Issue Item GI Ratio(W+3)],
+                         Measure.[S/In Issue Item GI Ratio(W+4)],
+                         Measure.[S/In Issue Item GI Ratio(W+5)],
+                         Measure.[S/In Issue Item GI Ratio(W+6)],
+                         Measure.[S/In Issue Item GI Ratio(W+7)]}) on column;
+
+
+
+            (Output 7-7) df_output_Sell_In_User_Modify_GI_Ratio
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Week] ) on row,
+                    ({Measure.[S/In User Modify GI Ratio(Long Tail)],
+                         Measure.[S/In User Modify GI Ratio(W+0)],
+                         Measure.[S/In User Modify GI Ratio(W+1)],
+                         Measure.[S/In User Modify GI Ratio(W+2)],
+                         Measure.[S/In User Modify GI Ratio(W+3)],
+                         Measure.[S/In User Modify GI Ratio(W+4)],
+                         Measure.[S/In User Modify GI Ratio(W+5)],
+                         Measure.[S/In User Modify GI Ratio(W+6)],
+                         Measure.[S/In User Modify GI Ratio(W+7)]}) on column;
+
+
+            (Output 7-8) df_output_Sell_In_Issue_Modify_GI_Ratio
+
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * Time.[Week] ) on row,
+                    ({Measure.[S/In Issue Modify GI Ratio(Long Tail)],
+                         Measure.[S/In Issue Modify GI Ratio(W+0)],
+                         Measure.[S/In Issue Modify GI Ratio(W+1)],
+                         Measure.[S/In Issue Modify GI Ratio(W+2)],
+                         Measure.[S/In Issue Modify GI Ratio(W+3)],
+                         Measure.[S/In Issue Modify GI Ratio(W+4)],
+                         Measure.[S/In Issue Modify GI Ratio(W+5)],
+                         Measure.[S/In Issue Modify GI Ratio(W+6)],
+                         Measure.[S/In Issue Modify GI Ratio(W+7)]}) on column;
+
+
