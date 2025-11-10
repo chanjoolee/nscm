@@ -2503,6 +2503,38 @@ def fn_step05_08_build_sout_sr_local(
         out_version   = out_version
     )
 
+########################################################################################################################
+# Spec2: Parameter utilities (no argparse, o9 plugin style)
+########################################################################################################################
+def parse_sales_item_location_str(s: str) -> pd.DataFrame:
+    cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION]
+    if not s:
+        return pd.DataFrame(columns=cols)
+    rows = []
+    for token in str(s).split('^'):
+        token = token.strip()
+        if not token:
+            continue
+        parts = [p.strip() for p in token.split(':')]
+        if len(parts) >= 2:
+            ship_to, item = parts[0], parts[1]
+            loc = parts[2] if len(parts) >= 3 and parts[2] else '-'
+            rows.append({COL_SHIP_TO: ship_to, COL_ITEM: item, COL_LOCATION: loc})
+    df = pd.DataFrame(rows, columns=cols)
+    for c in cols:
+        if c in df.columns:
+            df[c] = df[c].astype('category')
+    return df
+
+def fn_step01_00_parse_sales_item_location(sales_item_location: str, df_estore: pd.DataFrame) -> pd.DataFrame:
+    df = parse_sales_item_location_str(sales_item_location)
+    if df.empty:
+        return df
+    if df_estore is not None and not df_estore.empty and COL_SHIP_TO in df_estore.columns:
+        estore_set = set(df_estore[COL_SHIP_TO].astype(str).unique().tolist())
+        df = df[~df[COL_SHIP_TO].astype(str).isin(estore_set)].copy(deep=False)
+    return df
+
 ####################################
 ############ Start Main  ###########
 ####################################
@@ -2518,6 +2550,8 @@ if __name__ == '__main__':
         
         if is_local:
             Version = 'CWV_DP'
+            salesItemLocation = '400001:RF29BB8600QLAA^400002:RF29BB8600QLAA'
+            measureLv = 'ap2'
             # ----------------------------------------------------
             # parse_args 대체
             # input , output 폴더설정. 작업시마다 History를 남기고 싶으면
@@ -2596,11 +2630,17 @@ if __name__ == '__main__':
             'p_step_desc': 'Step 1-0) Sales 선정',
             'p_df_name'  : None
         }
-        df_step01_00_sales_sdd = fn_step01_00_select_sales(
-            input_dataframes[DF_IN_SDD],
-            input_dataframes.get(DF_IN_ESTORE, pd.DataFrame()),
-            **dict_log
-        )
+        if 'salesItemLocation' in locals() and salesItemLocation:
+            df_step01_00_sales_sdd = fn_step01_00_parse_sales_item_location(
+                salesItemLocation,
+                input_dataframes.get(DF_IN_ESTORE, pd.DataFrame())
+            )
+        else:
+            df_step01_00_sales_sdd = fn_step01_00_select_sales(
+                input_dataframes[DF_IN_SDD],
+                input_dataframes.get(DF_IN_ESTORE, pd.DataFrame()),
+                **dict_log
+            )
         fn_log_dataframe(df_step01_00_sales_sdd, 'df_step01_00_sales_sdd')
         
         # 이후 단계에서 사용할 ShipTo 집합
