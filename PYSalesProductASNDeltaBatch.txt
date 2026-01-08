@@ -1,0 +1,858 @@
+PYSalesProductASNDeltaBatch
+                    
+        개요 (*)			
+                    
+            * 프로그램명		
+                PYSalesProductASNDeltaBatch
+                    
+                    
+            * 목적		
+                - Update Data Sales Product ASN Delta
+                - ASN Y 값이 추가되었을 때, 기준값 생성	
+                - ASN N 값이 추가되었을 때, 기준값 생성	
+                    
+            * 변경이력		
+                - 2025.09.24 전창민 최초 작성
+                    - PYSalesProductASNDelta 에서 일부로직만 가져오고 , 일부는 로직을 살작 바꿈.
+                    
+        Script Parameter
+                    
+        ********** Input Tables (*) **********
+                    
+            1. (Input 1) df_in_Sales_Domain_Dimension
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std1]
+                    * [Sales Domain].[Sales Std2] 
+                    * [Sales Domain].[Sales Std3] 
+                    * [Sales Domain].[Sales Std4] 
+                    * [Sales Domain].[Sales Std5] 
+                    * [Sales Domain].[Sales Std6] 
+                    * [Sales Domain].[Ship To] )
+
+
+                - data
+                    Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Sales Domain.[Ship To]
+                    201,201,201,201,201,201,201
+                    201,300001,300001,300001,300001,300001,300001
+                    201,300001,A300001,A300001,A300001,A300001,A300001
+                    201,300001,A300001,400001,400001,400001,400001
+                    201,300001,A300001,400002,400002,400002,400002
+                    201,300001,A300001,400001,5000001,5000001,5000001
+                    201,300001,A300001,400002,5000002,5000002,5000002
+                    201,300001,A300001,400001,5000001,A5000001,A5000001
+                    201,300001,A300001,400003,400003,400003,400003
+                    201,300001,A300001,400003,5000003,5000003,5000003
+
+
+
+            2. (Input 2) df_in_Time
+                - current version 
+                    - query
+                        Select (
+                        Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key < &CurrentWeek.element(0).leadoffset(1).Key )    );
+                        
+                        
+                    - data
+                        Time.[Partial Week]
+                        202522A
+                        202522B
+
+
+                - 이전 version 
+                    - query
+                        Select (
+                        Time.[Month]
+                        * Time.[Week]
+                        * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )    
+                        );
+                        
+                        
+                    - data
+                        Time.[Week] ,Time.[Partial Week] 
+                        202506,202506A
+                        202507,202507A
+                        202508,202508A
+                        …,…
+                        202606,202606A
+
+            3. (Input 3) df_in_Sales_Domain_Estore
+                - query
+                    Select ( 
+                    [Sales Domain].[Ship To].filter(#.[eStore Account YN] == True) );
+
+                - data
+                    Sales Domain.[Ship To]
+                    5000003
+
+
+            4. (Input 5) df_in_Forecast_Rule
+                - query
+                    Select (
+                        [Item].[Product Group] 
+                        * [Sales Domain].[Ship To] 
+                    )  on row, 
+                    ( { 
+                        Measure.[FORECAST_RULE GC FCST], 
+                        Measure.[FORECAST_RULE AP2 FCST], 
+                        Measure.[FORECAST_RULE AP1 FCST], 
+                        Measure.[FORECAST_RULE AP0 FCST],
+                        Measure.[FORECAST_RULE ISVALID] 
+                    } ) on column 
+                    where {[Version].[Version Name], Measure.[FORECAST_RULE ISVALID] == "Y" };
+
+
+                - data
+                    Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE GC FCST,FORECAST_RULE AP2 FCST,FORECAST_RULE AP1 FCST,FORECAST_RULE AP0 FCST,FORECAST_RULE ISVALID
+                    REF,300001,3,5,6,7,Y
+
+
+            5. (Input 6) df_in_Sales_Product_ASN_Delta
+                - query
+                    Select (
+                        [Sales Domain].[Ship To]
+                        * [Item].[Item] 
+                        * [Location].[Location] 
+                    )  on row, 
+                    ( { 
+                        Measure.[Sales Product ASN Delta] 
+                    } ) on column
+                    where { [Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN Delta
+                    A5000001,RF29BB8600QLAA,S001,N
+                    5000002,RF29BB8600QLAA,S001,Y
+                    5000003,RF29BB8600QLAA,S001,Y
+
+            6. (Input 7) df_in_Sales_Product_ASN
+                - query
+                    Select (
+                        [Sales Domain].[Ship To].filter(#.Name startswith([5]))
+                        * [Item].[Item] 
+                        * [Location].[Location].filter(#.Name != "-") 
+                    )  on row, 
+                    ( { Measure.[Sales Product ASN] } ) on column
+                    Where { [Version].[Version Name], Measure.[Sales Product ASN] == "Y" };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN
+                    A5000001,RF29BB8600QLAA,S001,Y
+                    A5000001,RF29BB8600QLAA,S002,Y
+                    A5000001,Remove_Dummy,S002,Y
+
+            7. (Input 8) df_in_SIn_Assortment
+                - query
+                    Select (
+                        [Sales Domain].[Ship To]
+                        * [Item].[Item]
+                        * [Location].[Location] 
+                    ) on row, 
+                    ({
+                        Measure.[S/In FCST(GI) Assortment_AP1], 
+                        Measure.[S/In FCST(GI) Assortment_AP2], 
+                        Measure.[S/In FCST(GI) Assortment_GC], 
+                        Measure.[S/In FCST(GI) Assortment_Local]}) on column
+                    where { [Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],S/In FCST(GI) Assortment_AP1,S/In FCST(GI) Assortment_AP2,S/In FCST(GI) Assortment_GC,S/In FCST(GI) Assortment_Local
+                    A5000001,RF29BB8600QLAA,S001,,,,1
+                    5000001,RF29BB8600QLAA,S001,1,,,
+                    400001,RF29BB8600QLAA,S001,,1,,
+                    300001,RF29BB8600QLAA,S001,,,1,
+                    A5000001,RF29BB8600QLAA,S002,,,,1
+                    5000001,RF29BB8600QLAA,S002,1,,,
+                    400001,RF29BB8600QLAA,S002,,1,,
+                    300001,RF29BB8600QLAA,S002,,,1,
+
+            8. (Input 9) df_in_SOut_Assortment
+                - query
+                    Select (
+                        [Sales Domain].[Ship To]
+                        * [Item].[Item]
+                        * [Location].[Location]
+                    ) on row, 
+                    ({
+                        Measure.[S/Out FCST Assortment_AP1], 
+                        Measure.[S/Out FCST Assortment_AP2], 
+                        Measure.[S/Out FCST Assortment_GC], 
+                        Measure.[S/Out FCST Assortment_Local]
+                    }) on column
+                    where { [Version].[Version Name] };
+                
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],S/Out FCST Assortment_AP1,S/Out FCST Assortment_AP2,S/Out FCST Assortment_GC,S/Out FCST Assortment_Local
+                    A5000001,RF29BB8600QLAA,-,,,,1
+                    5000001,RF29BB8600QLAA,-,1,,,
+                    400001,RF29BB8600QLAA,-,,1,,
+                    300001,RF29BB8600QLAA,-,,,1,
+
+            9. (Input 10) df_in_Sell_Out_Simul_Master (TO-BE : 7LV)		
+                - query
+                    Select (
+                        [Sales Domain].[Ship To]
+                        * [Item].[Product Group] 
+                    )  on row, 
+                    ( {Measure.[S/Out Master Status] } ) on column
+                    where { [Version].[Version Name] };
+
+                - data
+                    Sales Domain.[Ship To],Item.[Product Group],S/Out Master Status
+                    A5000001,REF,CON
+                    5000002,REF,CON
+                    5000003,REF,CON
+
+            10. (Input 11) df_in_item : Item 정보 ( VD 구별 및 Flooring FCST Dummy Measure 생성)		
+                - query	
+                    Select (
+                    [Item].[Item GBM]
+                    * [Item].[Item Std1] // 추가
+                    * [Item].[Item]
+                    );
+                    
+                    
+                - data                     
+                    Item.[Item GBM],Item.[Item Std1],Item.[Item]
+                    VD,REF,RF29BB8600QLAA                
+                    - 설명
+                        * Test를 위해 임의로 VD 지정 (원래 SHA)                    
+                    
+                    
+
+        **********   Output Tables (*)	**********
+                    
+            1. (Output 1-4) Output_Sales_Product_ASN
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]  ) on row, 
+                    ( { Measure.[Sales Product ASN] } ) on column;
+                    
+            2. (Output 1-5) Output_Sales_Product_ASN_Delta
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]  ) on row, 
+                    ( { Measure.[Sales Product ASN Delta] } ) on column;
+                    
+            3. (Output 2-1) Output_SIn_Assortment_GC
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]  ) on row, 
+                    ( { Measure.[S/In FCST(GI) Assortment_GC] } ) on column;
+                    
+            4. (Output 2-2) Output_SIn_Assortment_AP2
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]  ) on row, 
+                    ( { Measure.[S/In FCST(GI) Assortment_AP2] } ) on column;
+                    
+                    
+            5. (Output 2-3) Output_SIn_Assortment_AP1
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]  ) on row, 
+                    ( { Measure.[S/In FCST(GI) Assortment_AP1] } ) on column;
+                    
+            6. (Output 2-4) Output_SIn_Assortment_Local
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]  ) on row, 
+                    ( { Measure.[S/In FCST(GI) Assortment_Local] } ) on column;
+                    
+            7. (Output 2-5) Output_SOut_Assortment_GC
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_GC] } ) on column ;
+                    
+                    
+            8. (Output 2-6) Output_SOut_Assortment_AP2
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_AP2] } ) on column ;
+                    
+            9. (Output 2-7) Output_SOut_Assortment_AP1
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_AP1] } ) on column ;
+                    
+                    
+            10. (Output 2-8) Output_SOut_Assortment_Local
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_Local] } ) on column ;
+
+            11. (Output 3-1) Output_SIn_Dummy_GC	
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]
+                    * [Time].[Partial Week]
+                    ) on row, 
+                    ( { Measure.[S/In FCST(GI) Dummy_GC] } ) on column;
+                    
+                    
+            13. (Output 3-2) Output_SIn_Dummy_AP2	
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]
+                    * [Time].[Partial Week]
+                    ) on row, 
+                    ( { Measure.[S/In FCST(GI) Dummy_AP2] } ) on column;
+                    
+                    
+            14. (Output 3-3) Output_SIn_Dummy_AP1		
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]
+                    * [Time].[Partial Week]
+                    ) on row, 
+                    ( { Measure.[S/In FCST(GI) Dummy_AP1] } ) on column;
+                    
+            15. (Output 3-4) Output_SIn_Dummy_Local	
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]
+                    * [Time].[Partial Week]
+                    ) on row, 
+                    ( { Measure.[S/In FCST(GI) Dummy_Local] } ) on column;
+                    
+            16. (Output 3-5) Output_SOut_Dummy_GC	
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]
+                    * [Time].[Partial Week]
+                    ) on row, 
+                    ( { Measure.[S/Out FCST Dummy_GC] } ) on column ;
+                    
+            17. (Output 3-6) Output_SOut_Dummy_AP2	
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]
+                    * [Time].[Partial Week]
+                    ) on row, 
+                    ( { Measure.[S/Out FCST Dummy_AP2] } ) on column ;
+                    
+            18. (Output 3-7) Output_SOut_Dummy_AP1
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]
+                    * [Time].[Partial Week]
+                    ) on row, 
+                    ( { Measure.[S/Out FCST Dummy_AP1] } ) on column ;
+                    
+                    
+            19. (Output 3-8) Output_SOut_Dummy_Local
+                    
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]
+                    * [Time].[Partial Week]
+                    ) on row, 
+                    ( { Measure.[S/Out FCST Dummy_Local] } ) on column ;
+
+                    
+            20. (Output 3-9) Output_Flooring_Dummy
+                    
+                    Select ([Version].[Version Name] 
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item]
+                    * [Time].[Week]
+                    ) on row, 
+                    ( { Measure.[Flooring FCST Dummy] } ) on column ;
+					
+                    
+                    
+        **************  주요 로직 (*)	**************				
+                            
+            Step 1) Sales Product ASN 구성				
+                Step 1-1) Sales Product ASN Delta 전처리	
+                    - result_data
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN
+                        A5000001,RF29BB8600QLAA,S001,Y
+                        A5000002,RF29BB8600QLAA,S002,Y
+                        5000003,RF29BB8600QLAA,S001,Y
+                        5000004,RF29BB8600QLAA,S001,Y
+                        A5000001,MOBILEITEM,S003,Y
+                        A5000002,MOBILEITEM,S003,Y
+                        A5000005,FCSTRULETESTITEM,S001,Y
+                        5000006,FCSTRULETESTITEM,S001,Y
+                        5000004,BOITEM,S001,Y
+                        A5000001,RF29BB8600QLAA,S002,N
+                        A5000002,RF29BB8600QLAA,S004,N
+                        5000003,RF29BB8600QLAA,S004,N
+                        5000006,RF29BB8600QLAA,S004,N
+                        5000004,BOITEM,S004,N
+
+                    - process
+                        - Sales Product ASN Delta Data가 없는 경우, 프로그램 종료			
+                        - Version.[Version Name] 삭제			
+                        - Sales Product ASN Delta -> Sales Product ASN 변경			
+                            
+                Step 1-2) Sales Product ASN 전처리		
+                    - result_data
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN
+                        A5000001,RF29BB8600QLAA,S005,Y
+                        5000003,RF29BB8600QLAA,S005,Y
+
+                    - process
+                        - Version.[Version Name] 삭제			
+                        - Sales Product ASN Delta에 존재하는 Item 으로 Filtering 진행			
+                            - Sales Product ASN Delta에 있는 값 제거 ( Ship To, Item, Location 으로 비교 ) , Y -> N, Y -> Y 이 되는 경우 삭제 위함			
+                            
+                Step 1-3) Sales Product ASN 구성 ( Ship To * Item * Location )	
+                    - 개요 
+                        - 나중에 다른 Step을 위한 결과값 return
+                            - Step2
+                            - Step4
+                    - result_data
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN
+                        A5000001,RF29BB8600QLAA,S001,Y
+                        A5000002,RF29BB8600QLAA,S002,Y
+                        5000003,RF29BB8600QLAA,S001,Y
+                        5000004,RF29BB8600QLAA,S001,Y
+                        A5000001,MOBILEITEM,S003,Y
+                        A5000002,MOBILEITEM,S003,Y
+                        A5000005,FCSTRULETESTITEM,S001,Y
+                        5000006,FCSTRULETESTITEM,S001,Y
+                        5000004,BOITEM,S001,Y
+                        A5000001,RF29BB8600QLAA,S002,N
+                        A5000002,RF29BB8600QLAA,S004,N
+                        5000003,RF29BB8600QLAA,S004,N
+                        5000006,RF29BB8600QLAA,S004,N
+                        5000004,BOITEM,S004,N
+                        A5000001,RF29BB8600QLAA,S005,Y
+                        5000003,RF29BB8600QLAA,S005,Y
+
+                    - process
+                        - Sales Product ASN Delta 와 Filtering Sales Product ASN 합치기
+                        
+
+                Step 1-4) (로직삭제) Sales Product ASN No Location
+                    - 개요 
+                        - 1-5)를 위한 작업
+                    - result_data
+                        Sales Domain.[Ship To],Item.[Item],Sales Product ASN
+                        A5000001,RF29BB8600QLAA,Y
+                        5000003,RF29BB8600QLAA,Y
+                    - process
+                        - Step 1-2) Sales Product ASN 정보에서 Location 제외하고, ( Ship To, Item ) 으로 Group by 진행.		
+                            - Sales Product ASN (Y,N) -> Y 적용		
+                        
+                Step 1-5) (로직삭제) Sales Product ASN Delta No Location
+                    - 개요 
+                        - 나중에 다른 Step을 위한 결과값 return
+                            - Step4
+                            - Step5
+                            - Step6
+
+                    - result_data
+                        Sales Domain.[Ship To],Item.[Item],Sales Product ASN
+                        A5000002,RF29BB8600QLAA,Y
+                        5000004,RF29BB8600QLAA,Y
+                        A5000001,MOBILEITEM,Y
+                        A5000002,MOBILEITEM,Y
+                        A5000005,FCSTRULETESTITEM,Y
+                        5000006,FCSTRULETESTITEM,Y
+                        5000004,BOITEM,Y
+                        5000006,RF29BB8600QLAA,N
+
+                    - process
+                        - Step 1-1) Sales Product ASN Delta 정보에서 Location 제외하고, ( Ship To, Item ) 으로 Group by 진행.		
+                        - Sales Product ASN (Y,N) -> Y 적용		
+                        - Step 1-4) 의 값이 존재하면 삭제		
+                        
+
+                            
+                Step 1-4) Sales Product ASN output
+                    - 개요
+                        - Output_Sales_Product_ASN 을 return 한다.
+                        - 기존 PYSalesProductASNDelta 의 Step 1-6 에 해당한다.
+                        - 기존 PYSalesProductASNDelta 의 Step 1-4, 1-5 는 삭제한다.
+                    - result_data
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN
+                        CWV_DP,A5000001,RF29BB8600QLAA,S001,Y
+                        CWV_DP,A5000002,RF29BB8600QLAA,S002,Y
+                        CWV_DP,5000003,RF29BB8600QLAA,S001,Y
+                        CWV_DP,5000004,RF29BB8600QLAA,S001,Y
+                        CWV_DP,A5000001,MOBILEITEM,S003,Y
+                        CWV_DP,A5000002,MOBILEITEM,S003,Y
+                        CWV_DP,A5000005,FCSTRULETESTITEM,S001,Y
+                        CWV_DP,5000006,FCSTRULETESTITEM,S001,Y
+                        CWV_DP,5000004,BOITEM,S001,Y
+                        CWV_DP,A5000001,RF29BB8600QLAA,S002,
+                        CWV_DP,A5000002,RF29BB8600QLAA,S004,
+                        CWV_DP,5000003,RF29BB8600QLAA,S004,
+                        CWV_DP,5000006,RF29BB8600QLAA,S004,
+                        CWV_DP,5000004,BOITEM,S004,
+                    - process
+                        - Input 5(df_in_Sales_Product_ASN_Delta) 에 대해서 N -> Null 적용				
+                        - Rename : Sales Product ASN Delta -> Sales Product ASN
+                        - return Output_Sales_Product_ASN
+                                
+                Step 1-5) Sales Product ASN Delta output
+                    - 개요
+                        - Output_Sales_Product_ASN_Delta 을 return 한다.
+                        - 기존 PYSalesProductASNDelta 의 Step 1-7 에 해당한다.
+                    - result_data
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN Delta
+                        CWV_DP,A5000001,RF29BB8600QLAA,S001,
+                        CWV_DP,A5000002,RF29BB8600QLAA,S002,
+                        CWV_DP,5000003,RF29BB8600QLAA,S001,
+                        CWV_DP,5000004,RF29BB8600QLAA,S001,
+                        CWV_DP,A5000001,MOBILEITEM,S003,
+                        CWV_DP,A5000002,MOBILEITEM,S003,
+                        CWV_DP,A5000005,FCSTRULETESTITEM,S001,
+                        CWV_DP,5000006,FCSTRULETESTITEM,S001,
+                        CWV_DP,5000004,BOITEM,S001,
+                        CWV_DP,A5000001,RF29BB8600QLAA,S002,
+                        CWV_DP,A5000002,RF29BB8600QLAA,S004,
+                        CWV_DP,5000003,RF29BB8600QLAA,S004,
+                        CWV_DP,5000006,RF29BB8600QLAA,S004,
+                        CWV_DP,5000004,BOITEM,S004,
+
+                    - process
+                        - Input 5(df_in_Sales_Product_ASN_Delta) 에 대해서 전체 Null 적용
+                        - return Output_Sales_Product_ASN_Delta				
+                                
+
+            Step 2) Assortment 구성							
+                Step 2-1) Assortment 전처리				
+                    - result_data
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],S/In FCST(GI) Assortment_AP1,S/In FCST(GI) Assortment_AP2,S/In FCST(GI) Assortment_GC,S/In FCST(GI) Assortment_Local
+                        A5000001,RF29BB8600QLAA,S005,,,,1
+                        5000001,RF29BB8600QLAA,S005,1,,,
+                        400001,RF29BB8600QLAA,S005,,1,,
+                        300001,RF29BB8600QLAA,S005,,,1,
+                        5000003,RF29BB8600QLAA,S005,1,,,
+                        A5000001,RF29BB8600QLAA,S002,,,,1
+                        5000001,RF29BB8600QLAA,S002,1,,,
+                        400001,RF29BB8600QLAA,S002,,1,,
+                        300001,RF29BB8600QLAA,S002,,,1,
+                        A5000002,RF29BB8600QLAA,S004,,,,1
+                        5000002,RF29BB8600QLAA,S004,1,,,
+                        400001,RF29BB8600QLAA,S004,,1,,
+                        300001,RF29BB8600QLAA,S004,,,1,
+                        5000003,RF29BB8600QLAA,S004,1,,,
+                        5000006,RF29BB8600QLAA,S004,1,,,
+                        400003,RF29BB8600QLAA,S004,,1,,
+                        300002,RF29BB8600QLAA,S004,,,1,
+                        5000004,BOITEM,S004,1,,,
+                        400002,BOITEM,S004,,1,,
+                        300001,BOITEM,S004,,,1,
+                    
+                    - 개요
+                        - Step 2-1 에서는 두개의 dataframe을 return 하는 것 같다.
+                    - process
+                        - df_in_SIn_Assortment 에서 Sales Product ASN Delta (1-1) 에 존재하는 Item 으로 Filtering 진행
+                        - df_in_SOut_Assortment 에서 Sales Product ASN Delta (1-1) 에 존재하는 Item 으로 Filtering 진행
+                        - Version.[Version Name] 삭제
+                        - return df_step02_01_sin_assort, df_step02_01_sout_assort
+                                        
+
+                Step 2-2) Sales Product ASN( 1-3 ) 로 Assortment Measure (GC, AP2, AP1, AP0) 구성 ( AP2 를 예시로 구성 )	
+                    - result_data for S/In
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/In FCST(GI) Assortment_AP2
+                        400001,RF29BB8600QLAA,S001,Y,1
+                        400001,RF29BB8600QLAA,S002,Y,1
+                        400001,RF29BB8600QLAA,S004,N,
+                        400001,RF29BB8600QLAA,S005,Y,1
+                        400002,RF29BB8600QLAA,S001,Y,1
+                        400003,RF29BB8600QLAA,S004,N,
+                        400002,BOITEM,S001,Y,1
+                        400002,BOITEM,S004,N,
+                        400001,MOBILEITEM,S003,Y,1
+                        400003,FCSTRULETESTITEM,S001,Y,1
+
+            
+
+                    - result_data for S/Out
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out FCST Assortment_AP2
+                        400001,RF29BB8600QLAA,-,Y,1
+                        400002,RF29BB8600QLAA,-,Y,1
+                        400001,MOBILEITEM,-,Y,1
+                        400002,BOITEM,-,Y,1
+                        400001,RF29BB8600QLAA,S001,Y,1
+                        400003,FCSTRULETESTITEM,S001,Y,1
+                        400001,FCSTRULETESTITEM,S001,Y,1
+                        400001,RF29BB8600QLAA,S005,Y,1
+                        400001,RF29BB8600QLAA,S004,N,
+                        400003,RF29BB8600QLAA,S004,N,
+                    
+                    - 개요
+                        
+                        - PYForecastCreateSellInAndSellOutAssortment 로직 활용	   
+                        - PYDPMakeActualAndInventoryForecastLevel 에서 Forecast‑Rule 을 적용하는 로직이 더 효율적임.
+                            - 중복제거를 나중에 안해도 된다.  
+                        - Sales Product ASN 이 N 인경우 Assortment_XX 은 NaN 이 된다.                   
+                    - process
+                        - 1. 데이타 load
+                            - load 1-3 데이타 (df_step01_03_asn_all)
+                            - load df_in_Forecast_Rule
+                            - load df_in_Item_Master
+                            - load df_in_Sales_Domain
+                            - load df_in_Sales_Domain_Estore
+
+                        - 2. S/In 데이타 만들기(4개: GC, AP2, AP1, AP0)
+                            - df_in_Forecast_Rule 을 활용하여 만든다.
+                        - 3. S/Out 데이타 만들기(4개: GC, AP2, AP1, AP0)
+                            - 위 2 의 데이타로 group by 하여 만든다.
+                                - groupby column
+                                    - Sales Domain.[Ship To]
+                                    - Item.[Item]
+                            - location = '-'
+                        - 4. E-Store 로 필터링된 S/Out 데이타 만들기(4개)
+                        - 5. 위 3 과 4 의 데이타를 합친다.
+                        - 6. 결과값 return
+                            - 위 2 와 5 를 return 한다. 
+                                
+                Step 2-3) S/In Assortment Measure (GC, AP2, AP1, AP0) 비교		
+                    - result_data for AP2
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/In FCST(GI) Assortment_AP2
+                        400001,RF29BB8600QLAA,S001,Y,1
+                        400001,RF29BB8600QLAA,S004,N,
+                        400002,RF29BB8600QLAA,S001,Y,1
+                        400003,RF29BB8600QLAA,S004,N,
+                        400002,BOITEM,S001,Y,1
+                        400002,BOITEM,S004,N,
+                        400001,MOBILEITEM,S003,Y,1
+                        400003,FCSTRULETESTITEM,S001,Y,1
+
+                    - 개요
+                        - df_in_SIn_Assortment 와 값을 비교한다.
+                        - 4개의 dataframe을 return 한다.
+                    - process
+                        - load data
+                            df_step02_02_SIn_Assortment_GC
+                            df_step02_02_SIn_Assortment_AP2
+                            df_step02_02_SIn_Assortment_AP1
+                            df_step02_02_SIn_Assortment_Loca
+
+                        - df_in_SIn_Assortment 와 값을 비교한다. 				
+                            Ship To, Item, Location 단위로 값 비교. 				
+                            - Sales Product ASN = "Y" 인 경우				
+                                - df_in_SIn_Assortment에 S/In FCST(GI) Assortment_XX의 값이 있는 경우, 해당 Row 삭제				
+                            - Sales Product ASN = "N" 인 경우				
+                                - S/In FCST(GI) Assortment_XX = NULL 적용				
+                                
+                Step 2-4) S/Out Assortment Measure (GC, AP2, AP1, AP0) 비교		
+                    - result_data for AP2
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out FCST Assortment_AP2
+                        400002,RF29BB8600QLAA,-,Y,1
+                        400001,MOBILEITEM,-,Y,1
+                        400002,BOITEM,-,Y,1
+                        400001,RF29BB8600QLAA,S001,Y,1
+                        400003,FCSTRULETESTITEM,S001,Y,1
+                        400001,FCSTRULETESTITEM,S001,Y,1
+                        400001,RF29BB8600QLAA,S005,Y,1
+                        400001,RF29BB8600QLAA,S004,N,
+                        400003,RF29BB8600QLAA,S004,N,
+                    - 개요
+                        - df_in_SOut_Assortment 와 값을 비교한다.
+                        - 4개의 dataframe을 return 한다.                
+                    - process
+                        - load data
+                            df_step02_02_SOut_Assortment_GC
+                            df_step02_02_SOut_Assortment_AP2
+                            df_step02_02_SOut_Assortment_AP1
+                            df_step02_02_SOut_Assortment_Local
+
+                        - df_in_SOut_Assortment 와 값을 비교한다. 				
+                            Ship To, Item, Location 단위로 값 비교. 				
+                            - Sales Product ASN = "Y" 인 경우				
+                                - df_in_SOut_Assortment에 S/Out FCST Assortment_XX의 값이 있는 경우, 해당 Row 삭제				
+                            - Sales Product ASN = "N" 인 경우				
+                                - S/Out FCST Assortment_XX = NULL 적용				
+                                
+                                
+                Step 2-5) Assortment Measure Output 구성	
+                    - process
+                        - Version.[Version Name] = CWV_DP 추가	
+                            - 'CWV_DP'를 하드코딩 하지 않고 전역변수인 Version 을 사용한다.			
+                        - Sales Product ASN Column 삭제				
+                        - 8개의 Output 구성				
+                            Output_SIn_Assortment_GC
+                            Output_SIn_Assortment_AP2
+                            Output_SIn_Assortment_AP1
+                            Output_SIn_Assortment_Local
+                            Output_SOut_Assortment_GC
+                            Output_SOut_Assortment_AP2
+                            Output_SOut_Assortment_AP1
+                            Output_SOut_Assortment_Local
+                                
+
+            Step 3) FCST Dummy 값 생성 (Y,N)			
+                - 목적	
+                    * UI Action Button으로 0 값 생성을 위한 Sell-in AP1 Forecast, Sell-in AP2 Forecast, Sell-in GC Forecast, Sell-out AP1 Forecast, Sell-out AP2 Forecast, Sell-out GC Forecast MG에 Dummy 생성 및 현재 주차에 0 값 생성 
+                - 가이드
+                    - 아래의 Step 3-1 , 3-2, 3-3, 3-4 을 일괄적으로 하나의 function 처리한다.
+                    - 기존의 fn_step03_build_dsr 을 참조하여 처리하는데 아래의 경우를 제외하고 동일하다.
+                        - 기존은 groupby 를 하는데 group 는 없다.
+                            - Step 3-1, 3-2 는 groupby 없다. 
+                            - Step 3-3 은 groupby 한다.
+                        - df_in_Time 로 부터 Time.[Partial Week] 를 각 row 마다 붙인다.		
+                            - Step 3-1, 3-2 에 해당.	
+                
+                Step 3-1) S/In Assortment 생성된 값에 대해서 당주주차에 대해 Dummy Measure Y -> 1, N -> Null 처리				
+                
+                    - result_data
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI)_AP2_Dummy
+                        400001,RF29BB8600QLAA,S001,202522A,
+                        400001,RF29BB8600QLAA,S001,202522B,
+                        400002,RF29BB8600QLAA,S001,202522A,1
+                        400002,RF29BB8600QLAA,S001,202522B,1
+                        400003,RF29BB8600QLAA,S001,202522A,1
+                        400003,RF29BB8600QLAA,S001,202522B,1
+                        400001,RF29BB8600QLAA,S002,202522A,1
+                        400001,RF29BB8600QLAA,S002,202522B,1
+                    - process
+                        - load data
+                            - Step 2-3) Data(df_step02_03_sin_dict) 사용
+                                - df_step02_03_sin_dict 에는 아래의 네개의 dataframe이 있다.
+                                - Output_SIn_Assortment_AP1
+                                - Output_SIn_Assortment_AP2
+                                - Output_SIn_Assortment_GC
+                                - Output_SIn_Assortment_Local
+                            - load df_in_Time(input_dataframes[DF_IN_TIME])	
+                                
+                        - Rename : Sales Product ASN -> S/In FCST(GI)_AP2_Dummy				
+                        - S/In FCST(GI)_AP2_Dummy 값 변경 :  Y -> 1, N -> Null				
+                        - Time.[Partial Week] Column 을 당주주차의 값으로 추가, A/B주차가 있는 경우 A로 생성한 값 Copy
+                            - 추가 단위는 	Sales Domain.[Ship To],Item.[Item],Location.[Location] 임.
+                                
+                                
+                                
+                                
+                Step 3-2) S/Out Assortment 생성된 값에 대해서 당주주차에 대해 Dummy Measure Y -> 1, N -> Null 처리		
+                    - result_data		
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST_AP2_Dummy
+                        400001,RF29BB8600QLAA,-,202522A,
+                        400001,RF29BB8600QLAA,-,202522B,
+                        400002,RF29BB8600QLAA,-,202522A,1
+                        400002,RF29BB8600QLAA,-,202522B,1
+                        400003,RF29BB8600QLAA,S001,202522A,1
+                        400003,RF29BB8600QLAA,S001,202522B,1
+                    - process
+                        - load data 
+                            - Step 2-4) Data (df_step02_04_sout_dict) 사용				
+                        - Rename : Sales Product ASN -> S/Out FCST_AP2_Dummy				
+                        - S/Out FCST_AP2_Dummy값 변경 :  Y -> 1, N -> Null				
+                        - Time.[Partial Week] Column 을 당주주차의 값으로 추가, A/B주차가 있는 경우 A로 생성한 값 Copy		
+                            - 추가 단위는 	Sales Domain.[Ship To],Item.[Item],Location.[Location] 임.		
+
+                Step 3-3) Flooring FCST Dummy Measure 생성		
+                    Step 3-3-1) Flooring FCST Dummy Measure 생성 모수 산정		
+                        - result_data
+                            Sales Domain.[Ship To],Item.[Item],Sales Product ASN 
+                            5000001,RF29BB8600QLAA,N
+                            5000002,RF29BB8600QLAA,Y
+                            5000003,RF29BB8600QLAA,Y
+
+                        - process
+                            - load data
+                                - df_step01_01_asn_delta
+                                - df_step01_03_asn_all
+                            - Step 1-1(df_step01_01_asn_delta )에서 [Item].[Item GBM] == "VD" 인 Item 만 남긴다. 		
+                            - Sales Product ASN 에서 위에 존재하는 Item 으로만 Filtering을 하고, 각각 Sales Std5, Item 으로 Group By 진행. Sales Product ASN (N,Y) -> N		
+                            - Sales Product ASN Delta에서 Sales Product ASN에 이미 존재하는 값인 경우 Row 삭제 ( Ship To, Item, Location, Sales Product ASN  으로 비교하여 전체가 같은 경우 )	
+
+                            - 참고: Sales Product ASN 원본		
+                            Sales Domain.[Ship To]	Item.[Item]	Sales Product ASN 
+                            5000001	RF29BB8600QLAA	Y
+
+                    Step 3-3-2) Flooring FCST Dummy Measure 생성		
+                        - result_data	
+                            Sales Domain.[Ship To],Item.[Item],Time.[Week],Flooring FCST Dummy
+                            5000001,RF29BB8600QLAA,202522A,
+                            5000001,RF29BB8600QLAA,202522B,
+                            5000002,RF29BB8600QLAA,202522A,1
+                            5000002,RF29BB8600QLAA,202522B,1
+                            5000003,RF29BB8600QLAA,202522A,1
+                            5000003,RF29BB8600QLAA,202522B,1
+                        - process
+                            - Step 3-3-1) Data 사용			
+                            - Rename : Sales Product ASN -> Flooring FCST Dummy			
+                            - Flooring FCST Dummy값 변경 :  Y -> 1, N -> Null			
+                            - Time.[Partial Week] Column 을 당주주차의 값으로 추가, A/B주차가 있는 경우 A로 생성한 값 Copy			
+                            
+
+
+                Step 3-4) FCST Dummy Output 정리	
+                    - return 아래의 data frame 을 리턴한다.	
+                        Output_SIn_Dummy_GC				
+                        Output_SIn_Dummy_AP2				
+                        Output_SIn_Dummy_AP1				
+                        Output_SIn_Dummy_Local				
+                        Output_SOut_Dummy_GC				
+                        Output_SOut_Dummy_AP2				
+                        Output_SOut_Dummy_AP1				
+                        Output_SOut_Dummy_Local	
+                        Output_Flooring_Dummy
+
+
+                    - process
+                        - Version.[Version Name] = CWV_DP 추가
+
+
+        호출 (*)		
+                
+            EXEC plugin instance [PYSalesProductASNDeltaBatch]	
+            for measures {	
+                Measure.[Sales Product ASN],Measure.[Sales Product ASN Delta],	
+                Measure.[S/In FCST(GI) Assortment_AP1],Measure.[S/In FCST(GI) Assortment_AP2],Measure.[S/In FCST(GI) Assortment_GC],Measure.[S/In FCST(GI) Assortment_Local],	
+                Measure.[S/Out FCST Assortment_AP1],Measure.[S/Out FCST Assortment_AP2],Measure.[S/Out FCST Assortment_GC],Measure.[S/Out FCST Assortment_Local],	
+                Measure.[S/In FCST(GI) Dummy_AP1],Measure.[S/In FCST(GI) Dummy_AP2],Measure.[S/In FCST(GI) Dummy_GC],Measure.[S/In FCST(GI) Dummy_Local],	
+                Measure.[S/Out FCST Dummy_AP1],Measure.[S/Out FCST Dummy_AP2],Measure.[S/Out FCST Dummy_GC],Measure.[S/Out FCST Dummy_Local],	
+                Measure.[Flooring FCST Dummy]	
+            }	
+            using scope (	
+                [Version].[Version Name].[CWV_DP]	
+                * [Sales Domain].[Ship To]	
+                * [Item].[Product Group]	
+                * [Item].[Item]	
+                * [Location].[Location]	
+                * [Time].[Partial Week]	
+            )	
+            using arguments {	
+                (ExecutionMode, "MediumWeight")	
+                ,(IncludeNullrows, False)	
+            };	
+                
+                              

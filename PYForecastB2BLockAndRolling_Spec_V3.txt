@@ -1,0 +1,396 @@
+	개요 (*)										
+											
+		* 프로그램명									
+			PYForecastB2BLockAndRolling								
+											
+											
+		* 목적									
+			- B2B FCST 가상 BO 생성 및 Lock 주차 반영								
+											
+											
+											
+		* 변경이력									
+			2025.02.27 전창민 작성								
+			2025.03.06 Input 추가 MaxPartialWeek을 통해 최대 주차 Data 생성								
+			2025.05.29 VBO_00000000 으로 변경 (숫자 8 자리)								
+			2025.05.29 
+                1. ASN 정보로 모수 Data 생성로직 추가, 
+                2. ASN 정보로 Assortment 생성 로직 추가, 
+                3. FCST 값이 0보다 큰 경우에만 VBO 생성 로직 및 추가								
+											
+	Script Parameter										
+											
+											
+		(Input 1) CurrentPartialWeek									
+			&CurrentPartialWeek - NameSet 활용								
+			202506A								
+			* Week 주차 마감이니 B주차가 들어올 경우 없음								
+											
+											
+											
+											
+	Input Tables (*)										
+											
+		(Input 1) BO FCST 정보									
+			df_in_BO_FCST								
+				Select ([Version].[Version Name]							
+				 * [Item].[Item]							
+				 * [Sales Domain].[Ship To]							
+				 * [Location].[Location] 							
+				 * [DP Virtual BO ID].[Virtual BO ID]							
+				 * [DP BO ID].[BO ID]							
+				 * [Time].[Partial Week].filter(#.Key >= &CurrentPartialWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )  )  on row, 							
+				( { Measure.[BO FCST], 
+                    Measure.[BO FCST.Lock] } ) on column;							
+											
+											
+			Version.[Version Name]	[Item].[Item]	Sales Domain.[Ship To]	Location.[Location]	DP Virtual BO ID.[Virtual BO ID]	DP BO ID.[BO ID]	Time.[Partial Week]	BO FCST	BO FCST.Lock
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202506A	60	TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202507A	70	TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531A	155	TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531B	155	TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202532A	320	FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202605B	25	FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202606A	60	FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202506A		TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202507A		TRUE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	…	…	…
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202531A	155	FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202531B	155	FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202532A		FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	…	…	…
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202605B		FALSE
+			CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202606A		FALSE
+
+		(Input 2) Total BOD L/T 정보												
+			df_in_Total BOD_LT											
+				Select ([Version].[Version Name]										
+				 * [Item].[Item]										
+				 * [Location].[Location]  ) on row, 										
+				( { Measure.[BO Total BOD LT] } ) on column;										
+														
+			df_In_Total_BOD_LT											
+			Version.[Version Name]	Item.[Item]	Location.[Location]	BO Total BOD LT								
+			CurrentWorkingView	LH015IEACFS/GO	S001	182	 7 * 26							
+			CurrentWorkingView	LH015IEACFS/GO	S002	175	7 * 25							
+														
+		(Input 3) MAX_Partial_Week 정보												
+			df_In_MAX_PartialWeek											
+				select ( 										
+				Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).leadoffset(52).Key && #.Key < &CurrentWeek.element(0).leadoffset(53).Key )										
+				 ) ;										
+														
+			df_In_MAX_PartialWeek											
+			Time.[Partial Week]											
+			202606A											
+			202606B	x										
+														
+		(Input 4) RTS&EOS 정보 (추가됨)												
+			df_in_MST_RTS_EOS											
+				Select ([Version].[Version Name].[CWV_DP]										
+				* [Sales Domain].[Ship To]										
+				* [Item].[Item] ) on row, 										
+				({										
+				    Measure.[RTS_ISVALID], 
+                    Measure.[RTS_STATUS], 
+                    Measure.[RTS_COM_DATE], 
+                    Measure.[RTS_DEV_DATE], 
+                    Measure.[RTS_INIT_DATE], 										
+				    Measure.[EOS_STATUS], 
+                    Measure.[EOS_CHG_DATE], 
+                    Measure.[EOS_COM_DATE], 
+                    Measure.[EOS_INIT_DATE]										
+				    }) on column 										
+				where { Measure.[RTS_ISVALID] == "Y"} ;										
+														
+			Version.[Version Name]	Item.[Item]	Sales Domain.[Ship To]	RTS_ISVALID	RTS_STATUS	RTS_INIT_DATE	RTS_DEV_DATE	RTS_COM_DATE	EOS_STATUS	EOS_INIT_DATE	EOS_CHG_DATE	EOS_COM_DATE
+			CWV_DP	RF29BB8600QLAA	300114	Y	COM	2022-02-28	2022-02-28	2022-03-04	INI	2023-02-28	2027-03-01	
+			CWV_DP	SM-S911ULIAATT	300114	Y	COM	2022-12-20	2022-12-13	2023-01-20	INI	2024-02-07	2025-01-05	
+			CWV_DP	SM-S911UZKEATT	300114	Y	COM	2022-12-20	2022-12-13	2023-01-20	INI	2024-02-07	2025-01-05	
+			CWV_DP	SM-S921UZKAAIO	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2025-01-21	2026-01-07	
+			CWV_DP	SM-S921UZKAATT	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
+			CWV_DP	SM-S921UZKEATT	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
+			CWV_DP	SM-S921UZVAATT	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
+			CWV_DP	SM-S911NLIEKOC	211	Y	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
+			CWV_DP	SM-S911NLIEKOD	211	Y	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
+			CWV_DP	SM-S911NZGEKOC	211	Y	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
+			CWV_DP	SM-S921NZAEKOC	211	Y	COM	2023-12-15	2024-01-13	2024-01-13	INI	2024-12-15	2025-01-31	
+			CWV_DP	LH65WAFWLGCXZA	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+			CWV_DP	BAS-GREEN1	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+			CWV_DP	HA-EOP-YELLOW1	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+			CWV_DP	QA65QN70FAJXXZ	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
+
+
+		(Input 5) Sales Product ASN 정보 (추가됨)							
+			df_in_Sales_Product_ASN						
+				Select ([Version].[Version Name].[CWV_DP]					
+				* [Sales Domain].[Ship To].filter(#.Name startswith([5]))					
+				 * Item.[Item]					
+				 * [Location].[Location] )  on row, 					
+				( { Measure.[Sales Product ASN] } ) on column					
+				where {[Item].[Item Std3].[MONITOR_SMART_SIGNAGE_LED_SIGNAGE], Measure.[Sales Product ASN] == "Y" };					
+									
+			Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Sales Product ASN		
+			CWV_DP	5002453	RF29BB8600QLAA	S359WC18	Y		
+			CWV_DP	5002453	RF29BB8600QLAA	S377	Y		
+									
+		(Input 6) Sales Domian Master 정보 (추가됨)					
+			df_in_Sales_Domain_Dimension						
+				Select (					
+				 [Sales Domain].[Sales Std1]					
+				 [Sales Domain].[Sales Std2]					
+				 [Sales Domain].[Sales Std3]					
+				 [Sales Domain].[Sales Std4]					
+				 [Sales Domain].[Sales Std5]					
+				 [Sales Domain].[Sales Std6]					
+				 * [Sales Domain].[Ship To] );					
+									
+			Sales Domain.[Sales Domain Lv2]	Sales Domain.[Sales Domain Lv3]	Sales Domain.[Sales Domain Lv4]	Sales Domain.[Sales Domain Lv5]	Sales Domain.[Sales Domain Lv6]	Sales Domain.[Sales Domain Lv7]	Sales Domain.[Ship To]
+			203	203	203	203	203	203	203
+			203	300114	300114	300114	300114	300114	300114
+			203	300114	A300114	A300114	A300114	A300114	A300114
+			203	300114	A300114	400362	400362	400362	400362
+			203	300114	A300114	400362	5002453	5002453	5002453
+			203	300114	A300114	400362	5002453	A5002453	A5002453
+			203	300114	A300114	400362	5003074	5003074	5003074
+			203	300114	A300114	400362	5003074	A5003074	A5003074
+			203	300114	A300114	400362	5005569	5005569	5005569
+			203	300114	A300114	400362	5005569	A5005569	A5005569
+			203	300114	A300114	400362	5007280	5007280	5007280
+			203	300114	A300114	400362	5007280	A5007280	A5007280
+			203	300114	A300114	400362	5013134	5013134	5013134
+			203	300114	A300114	400362	5013134	A5013134	A5013134
+			203	300114	A300114	408273	408273	408273	408273
+			203	300114	A300114	408273	5006941	5006941	5006941
+			203	300114	A300114	408273	5006941	A5006941	A5006941
+			203	300114	A300114	408273	5019692	5019692	5019692
+			203	300114	A300114	408273	5019692	A5019692	A5019692
+			211	211	211	211	211	211	211
+			211	300227	300227	300227	300227	300227	300227
+			211	300227	A300227	A300227	A300227	A300227	A300227
+			211	300227	A300227	400144	400144	400144	400144
+			211	300227	A300227	400144	A400144	A400144	A400144
+			211	300227	A300227	400144	A400144	5002090	5002090
+			211	300227	A300227	400144	A400144	5002090	A5002090
+									
+	Output Tables (*)			
+				
+				
+			[Version].[Version Name]	
+			[Item].[Item]	
+			[Sales Domain].[Ship To]	
+			[Location].[Location] 	
+			[Virtual BO ID].[Virtual BO ID]	
+			[BO ID].[BO ID]	
+			[Time].[Partial Week]	
+			Measure.[BO FCST]	
+			Measure.[BO FCST.Lock]	
+				
+		(Output 1)		
+			out_Demand	
+				Select ([Version].[Version Name]
+				 * [Item].[Item]
+				 * [Sales Domain].[Ship To]
+				 * [Location].[Location] 
+				 * [Virtual BO ID].[Virtual BO ID]
+				 * [BO ID].[BO ID]
+				 * [Time].[Partial Week]  )  on row, 
+				( { Measure.[BO FCST] , 
+                    Measure.[BO FCST.Lock], 
+                    Measure.[BO FCST Color Condition]  } ) on column;
+
+
+	주요 로직 (*)									
+										
+										
+	    *로직 단계							
+			Step 1) RTS_EOS Color 생성 (PYForecastSellInAndEstoreSellOutLockColor 와 동일)							
+                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	BO FCST.Lock	BO FCST Color Condition		
+                5006941	LH015IEACFS/GO	S001	…	True	19_GRAY		
+                            202446	True	19_GRAY		
+                            202447	False			
+                            202448	False			
+                            …	False			
+                            202707	False	11_LIGHTRED		
+                            202708	False	11_LIGHTRED		
+                            202707	False	11_LIGHTRED		
+                            202709	True	16_DARKRED		
+                            202710	True	16_DARKRED		
+                            202711	True	16_DARKRED		
+                * refer to PYForecastSellInAndEstoreSellOutLockColor_V3.py
+                    * Step1) ~ Step5) 진행 (단, Sales Domain 이 아닌 Sales Std 참조로 변경 필요)	
+                        * step1 : fn_step01_load_rts_eos
+                        * step2 : fn_step02_convert_date_to_partial_week
+                        * step3 : fn_step03_join_rts_eos
+                        * step4 : fn_step04_add_partialweek_measurecolumn
+                        * step5 : fn_step05_set_lock_values
+                    * Step 7) ~ Step8) 진행  (단, Sales Domain 이 아닌 Sales Std 참조로 변경 필요)
+                        * step7 : step07_prepare_asn
+                        * step8 : fn_step08_match_rts							
+                    * BO FCST Color Condition 명칭 사용	(Instead 'Lock Condition')					
+                    * BO FCST.Lock 명칭 사용	        (Instead 'S/In FCST Color Condition'
+                    )						
+										
+			Step 2) df_in_BO_FCST RTS/EOS 적용							
+                Step 2-1) Step1 에서 만든 DataFrame 에 DP Virtual BO ID.[Virtual BO ID], DP BO ID.[BO ID] Column 추가							
+                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	DP Virtual BO ID.[Virtual BO ID]	DP BO ID.[BO ID]	Time.[Partial Week]	BO FCST.Lock	BO FCST Color Condition
+                    5006941	LH015IEACFS/GO	S001	-	-	202506A	True	19_GRAY
+                                -	-	202507A	True	19_GRAY
+                                -	-	…	False	14_WHITE
+                                -	-	202531A	False	14_WHITE
+                                -	-	202531B	False	14_WHITE
+                                -	-	202532A	False	11_LIGHTRED
+                                -	-	…	False	11_LIGHTRED
+                                -	-	202605B	False	11_LIGHTRED
+                                -	-	202606A	True	16_DARKRED
+                    - DP Virtual BO ID.[Virtual BO ID] = '-' 추가							
+                    - DP BO ID.[BO ID] = '-' 추가							
+                    - 아래 로직 처리하는데 필요 없다면 추가안해도 무관							
+
+                Step 2-2) df_in_BO_FCST RTS/EOS 적용                         
+                    Version.[Version Name]	[Item].[Item]	Sales Domain.[Ship To]	Location.[Location]	DP Virtual BO ID.[Virtual BO ID]	DP BO ID.[BO ID]	Time.[Partial Week]	BO FCST	BO FCST.Lock	BO FCST Color Condition
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202506A	60	True	19_GRAY
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202507A	70	True	19_GRAY
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	False	14_WHITE
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531A	155	False	14_WHITE
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531B	155	False	14_WHITE
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202532A	320	False	11_LIGHTRED
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	False	11_LIGHTRED
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202605B	25	False	11_LIGHTRED
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202606A	60	True	16_DARKRED
+                    * df_in_BO_FCST  에 BO FCST Color Condition = Null 로 생성									
+                    * Step 2-1)의 Ship To, Item, Location을 기준으로 df_in_BO_FCST 에 값이 존재하는 경우 BO FCST.Lock 값 update 및 BO FCST Color Condition 값 update									
+                        * Virtual BO ID = '-' , BO ID = '-' 인 경우만 진행								
+                        * Time.[Partial Week] 에 없는 주차가 있다면, 신규 생성 및 BO FCST = 0								
+                    * Step 2-1)의 Ship To, Item, Location을 기준으로 df_in_BO_FCST 에 값이 존재하지 않는 경우  BO FCST.Lock 값 및 BO FCST Color Condition 값 사용하고, BO FCST = 0 으로 신규 Column 추가									
+                                                    
+												
+			Step 3) df_in_BO_FCST 에서 Lock 조건 적용
+                * 기존 PYForecastB2BLockAndRolling.py 의 step03_apply_lock_conditions 에 해당한다.
+                    * refert to step03_apply_lock_conditions  of  PYForecastB2BLockAndRolling.py            									
+                Step 3-1) (Input 2) df_in_Total BOD LT 의 Week 단위로 정보 가공									
+                    Item.[Item]	Location.[Location]	BO Total BOD LT							
+                    LH015IEACFS/GO	S001	202532A							
+                    LH015IEACFS/GO	S002	202531A							
+                    * (Input 2) df_in_Total BOD LT 에서 Item * Location 별로 BO Total BOD LT 의 값을 7로 나누어 Week Data로 변경한다. Ex )  182 / 7 = 26									
+                    * 당주 주차에 LT을 더한다. Ex) 202506A + 26 = 202632A									
+                                                    
+                                                    
+                Step 3-2) (Step2) 에 Lock 조건 적용	
+                    data)								
+                        Version.[Version Name]	[Item].[Item]	Sales Domain.[Ship To]	Location.[Location]	DP Virtual BO ID.[Virtual BO ID]	DP BO ID.[BO ID]	Time.[Partial Week]	BO FCST	BO FCST.Lock	BO FCST Color Condition
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202506A	60	TRUE	19_GRAY
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202507A	70	TRUE	19_GRAY
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531A	155	TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531B	155	TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202532A	320	TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202605B	25	FALSE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202606A	60	FALSE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	-	202506A		TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	-	202507A		TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	-	…	…	…	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	-	202531A	150	FALSE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	-	202531B	150	FALSE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	-	202532A		TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	-	…	…	…	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	-	202605B		TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	-	202606A		TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	OPP-0000000001	202506A		TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	OPP-0000000001	202507A		TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	OPP-0000000001	…	…	…	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	OPP-0000000001	202531A		FALSE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	OPP-0000000001	202531B		FALSE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	OPP-0000000001	202532A	10	FALSE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	OPP-0000000001	202533A		TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	OPP-0000000001	202534A		TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	OPP-0000000001	…	…	…	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	OPP-0000000001	202605B		TRUE	
+                        CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_10000001	OPP-0000000001	202606A		TRUE	
+                        ( 매 주차 Rolling 조건)		
+                    
+                    * Item * Location 단위로 진행한다.									
+                    * Step 1의 Item * Location 단위의 BO Total BOD LT의 값에 해당하는 주차에 대해 다음 로직을 적용한다.									
+                        * A/B 주차가 있는 경우 A/B 주차에 모두 반영해준다.								
+                        1) Item * Location  단위의 Virtual BO ID.[Virtual BO ID] = '-'  이고, DP BO ID.[BO ID] = '-' 인 경우								
+                            - 당주 주차 (202506A) ~  BO Total BOD LT 주차 (202632A) 주차에 대해서 BO FCST.Lock = True 처리, 18_DGRAY_RED 처리 , RTS 와 EOS가 있는 경우에는 적용하지 않음							
+                            - 최대주차 (202606A) 의 BO FCST.Lock = False 적용한다. 없으면 생성한다. A/B주차가 있으면 모두 생성한다. (삭제)							
+                        2) Item * Location  단위의 Virtual BO ID.[Virtual BO ID] != '-'  이고, DP BO ID.[BO ID] = '-' 인 경우								
+                            - 최대주차 (202606A) 의 BO FCST.Lock = True 적용한다. 없으면 생성한다. A/B주차가 있으면 모두 생성한다.							
+                            * A/B 주차 인 경우 A/B 모두 Lock = True							
+                        3) Item * Location  단위의 Virtual BO ID.[Virtual BO ID] != '-'  이고, DP BO ID.[BO ID] != '-' 인 경우								
+                            - BO Total BOD LT 의 값에 해당하는 주차 (202532A) 에 BO FCST.Lock = False 적용 (삭제)							
+                            - 최대주차 (202606A) 의 BO FCST.Lock = True 적용한다. 없으면 생성한다. A/B주차가 있으면 모두 생성한다. (삭제)							
+                            - MAX(당주주차, 존재하는 최소주차) ~ BO Total BOD LT 의 값에 해당하는 주차 의 BO FCST.Lock = False, 그 이후 주차 BO FCST.Lock = True							
+                        * 2), 3) 은 Color 건드리지 않음								
+                                                    
+												
+			Step 4)  가상 BO 생성	                								
+                Step 4-1) (Input 1) df_in_BO_FCST 에서 Virtual BO ID 의 최대 값을 찾는다.
+                    * 이 Step은 PYForecastB2BLockAndRolling.py 의 step02_find_max_virtual_bo_id 에 해당한다.
+                        refert to step02_find_max_virtual_bo_id
+
+                    Virtual_BO_ID_MAX = VBO_10000001									
+                    * 해당 Value 는 Sequence 로 사용할 때 1씩 증가하고 사용한다.									
+                    (25.05.29)  VBO 가 모두 '-' 인 경우 Default = 'VBO_00000000' 를 사용한다.									
+												
+                    
+                    
+												
+												
+                Step 4-2)  가상 BO 생성									
+                    Version.[Version Name]	[Item].[Item]	Sales Domain.[Ship To]	Location.[Location]	DP Virtual BO ID.[Virtual BO ID]	DP BO ID.[BO ID]	Time.[Partial Week]	BO FCST	BO FCST.Lock	BO FCST Color Condition
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202506A	60	TRUE	19_GRAY
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202507A	70	TRUE	19_GRAY
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531A	155	TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202531B	155	TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202532A	320	TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	…	…	…	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202605B	25	FALSE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	-	-	202606A	60	FALSE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202506A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202507A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	…	…	…	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202531A	150	FALSE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202531B	150	FALSE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202532A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	…	…	…	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202605B		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	-	202606A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202506A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202507A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	…	…	…	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202531A	10	FALSE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202531B	0	FALSE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202532A		FALSE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202533A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202534A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	…	…	…	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202605B		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000001	OPP-0000000001	202606A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202506A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202507A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	…	…	…	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202531A		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202531B		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202532A	320	FALSE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	…	…	…	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202605B		TRUE	
+                    CurrentWokringView	LH015IEACFS/GO	5006941	S001	VBO_100000002	-	202606A		TRUE	
+
+                    * 이 Step은 PYForecastB2BLockAndRolling.py 의 step04_create_virtual_bo 에 해당한다.
+                        refert to step04_create_virtual_bo
+
+                    * Item * Ship To * Location 단위로 진행한다.									
+                    * Item * Ship To * Location 의 DP Virtual BO ID.[Virtual BO ID] = '-'  & DP BO ID.[BO ID] = '-' 인 값을 기준으로 한다.									
+                    (25.05.30)  BO FCST > 0 큰 값에 대해서만 생성한다.									
+                    * Item * Ship To * Location 은 동일하고,  DP Virtual BO ID.[Virtual BO ID] = Virtual_BO_ID_MAX + 1 , DP BO ID.[BO ID] = '-' 인  Data를 생성한다. 이때, Time.[Partial Week] 의 주차 Data ( 202506A ~ 202606A ) 에 대해, BO FCST.Lock 값은 모두 TRUE를 적용한다.									
+                    * 당주 주차 (202506A) 를 기준으로 Step1) 의 Total BOD L/T 값 (26) 을 더한 주차 (202632A)의  BO FCST 값 (320) 을 입력한다.									
+                    * 당주 주차 (202506A) 를 기준으로 Step1) 의 Total BOD L/T 값 (26) 을 더한 주차 (202632A)의  BO FCST.Lock = FALSE 를 입력한다.									
+                        * Total BOD L/T 값은 Item * Location 에 해당하는 값을 가져온다.								
+                    * 만약 최종 주차가 A/B 주차인 경우, A/B 주차에 모두 반영한다. Ex) VBO_00000001 처럼 202531A,202531B 모두 생성									
+                                                        

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """
     * 프로그램명
         - PYForecastVDPanelMonthInput
@@ -204,14 +205,21 @@
         ;
 """
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 import os,sys
 import time,datetime,shutil
 import inspect
 import traceback
 import pandas as pd
 from NSCMCommon import NSCMCommon as common
+<<<<<<< HEAD
 from NSCMCommon import VDCommon as vdCommon
 import glob
+=======
+import glob
+import numpy as np
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 ########################################################################################################################
 # Local 개발 시에 필요한 공통 변수 선언
@@ -248,7 +256,11 @@ COL_SHIP_TO         = 'Sales Domain.[Ship To]'
 COL_LOC             = 'Location.[Location]'
 COL_TIME_WK         = 'Time.[Week]'
 COL_TIME_PW         = 'Time.[Partial Week]'
+<<<<<<< HEAD
 COL_TOTAL_BOD_LT    = 'VD Total BOD LT'  
+=======
+COL_TOTAL_BOD_LT    = 'Total BOD L/T'  
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 COL_SIN_FCST_AP2    = 'S/In FCST(GI)_AP2'
 
 # ───────────────────────────────────────────────────────────────
@@ -264,7 +276,11 @@ STR_DF_STEP03_ADJUST        = 'df_step03_adjust'
 # out
 STR_OUT_DEMAND              = 'out_Demand'
 
+<<<<<<< HEAD
 ################  Start of Functions  ################
+=======
+################  Start of Util Functions  ################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 def fn_log_dataframe(df_p_source: pd.DataFrame, str_p_source_name: str) -> None:
     """
     Dataframe 로그 출력 조건 지정 함수
@@ -321,7 +337,10 @@ def _decoration_(func):
         # Step No
         _step_no = kwargs.get('p_step_no')
         _step_desc = kwargs.get('p_step_desc')
+<<<<<<< HEAD
         vdCommon.gfn_pyLog_detail(_step_desc)
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         _df_name = kwargs.get('p_df_name')
         _warn_desc = kwargs.get('p_warn_desc')
         _exception_flag = kwargs.get('p_exception_flag')
@@ -412,11 +431,19 @@ def normalize_week(week_str):
 
 
 
+<<<<<<< HEAD
 ################  End of Functions  ################
 
 
 
 
+=======
+################  End of Util Functions  ################
+
+
+
+################  Start of Step Functions  ################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 @_decoration_
 def fn_output_formatter(df_p_source: pd.DataFrame, str_p_out_version: str) -> pd.DataFrame:
     """
@@ -505,6 +532,7 @@ def fn_process_in_df_mst():
         csv_files = glob.glob(file_pattern)
 
         file_to_df_mapping = {
+<<<<<<< HEAD
             "df_in_SIn_FCST_GI_AP2.csv"     :    STR_DF_IN_FCST       ,
             "df_in_Total_BOD_LT.csv"        :    STR_DF_IN_TOTAL_BOD_LT    
         }
@@ -530,6 +558,27 @@ def fn_process_in_df_mst():
                 if file_name.startswith(keyword.split('.')[0]):
                     input_dataframes[frame_name] = df
                     break
+=======
+            "df_In_FCST(GI)_AP2.csv" :      STR_DF_IN_FCST       ,
+            "df_in_Total_BOD_LT.csv"   :    STR_DF_IN_TOTAL_BOD_LT    
+        }
+
+
+        # Read all CSV files into a dictionary of DataFrames
+        for file in csv_files:
+            df = pd.read_csv(file)
+            file_name = file.split("/")[-1].split("\\")[-1].split(".")[0]
+            # df['SourceFile'] = file_name
+            # df.set_index('SourceFile',inplace=True)
+            mapped = False
+            for keyword, frame_name in file_to_df_mapping.items():
+                if file_name.startswith(keyword.split('.')[0]):
+                    input_dataframes[frame_name] = df
+                    mapped = True
+                    break
+            # if not mapped:
+            #     input_dataframes[file_name] = df
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         fn_convert_type(input_dataframes[STR_DF_IN_FCST], COL_TIME_WK, str)
         fn_convert_type(input_dataframes[STR_DF_IN_TOTAL_BOD_LT], COL_TIME_WK, str)
@@ -541,7 +590,11 @@ def fn_process_in_df_mst():
     else:
         # o9 에서 
         input_dataframes[STR_DF_IN_FCST]            = df_in_SIn_FCST_GI_AP2
+<<<<<<< HEAD
         input_dataframes[STR_DF_IN_TOTAL_BOD_LT]    = df_in_Total_BOD_LT
+=======
+        input_dataframes[STR_DF_IN_TOTAL_BOD_LT]    = df_in_Forecast_Rule
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 
 @_decoration_
@@ -562,6 +615,7 @@ def step01_join_dataframes() -> pd.DataFrame:
         df_in_fcst, df_in_bod_lt, 
         on=[COL_ITEM, COL_LOC, COL_TIME_WK], 
         how='left')
+<<<<<<< HEAD
     df_out_step01_join[COL_TOTAL_BOD_LT].fillna(0, inplace=True)
     fn_convert_type(df_out_step01_join, COL_TOTAL_BOD_LT, 'int32')
     return df_out_step01_join
@@ -572,21 +626,38 @@ def step02_allocate_month_total_value_back(month_total_value: int) -> pd.DataFra
     Step 2: Allocate MonthTotalValue to the unlock range.
     """
     logger.Note(p_note='Step 2', p_log_level=LOG_LEVEL.debug())
+=======
+    return df_out_step01_join
+
+@_decoration_
+def step02_allocate_month_total_value(month_total_value: int) -> pd.DataFrame:
+    """
+    Step 2: Allocate MonthTotalValue to the unlock range.
+    """
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     # Load data
     df_out_step01_join = output_dataframes[STR_DF_STEP01_JOIN]
 
     # Determine unlock range
+<<<<<<< HEAD
     logger.Note(p_note='Determine unlock range', p_log_level=LOG_LEVEL.debug())
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     lock_condition = df_out_step01_join[COL_TOTAL_BOD_LT].astype(str).str.startswith(('1', '2'))
     unlock_condition = ~lock_condition
 
     # Determine values to allocate
+<<<<<<< HEAD
     logger.Note(p_note='Determine values to allocate', p_log_level=LOG_LEVEL.debug())
     df_out_step01_join[COL_SIN_FCST_AP2] = df_out_step01_join[COL_SIN_FCST_AP2].round().astype(int)
     allocate_sum = month_total_value - df_out_step01_join.loc[lock_condition, COL_SIN_FCST_AP2].sum()
     logger.Note(p_note=f'allocate_sum: {allocate_sum}', p_log_level=LOG_LEVEL.debug())
     sum_of_ap2_in_unlock_range = df_out_step01_join.loc[unlock_condition, COL_SIN_FCST_AP2].sum()
     logger.Note(p_note=f'unlock_condition: {unlock_condition}', p_log_level=LOG_LEVEL.debug())
+=======
+    allocate_sum = month_total_value - df_out_step01_join.loc[lock_condition, COL_SIN_FCST_AP2].sum()
+    sum_of_ap2_in_unlock_range = df_out_step01_join.loc[unlock_condition, COL_SIN_FCST_AP2].sum()
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     # Allocate values to unlock range
     def allocate(row):
@@ -595,6 +666,7 @@ def step02_allocate_month_total_value_back(month_total_value: int) -> pd.DataFra
             return allocate_value
         return row[COL_SIN_FCST_AP2]
 
+<<<<<<< HEAD
     
     df_out_step01_join[COL_SIN_FCST_AP2] = df_out_step01_join.apply(allocate, axis=1)
 
@@ -604,6 +676,14 @@ def step02_allocate_month_total_value_back(month_total_value: int) -> pd.DataFra
 
     # Adjust to match allocate_sum
     logger.Note(p_note='Adjust to match allocate_sum', p_log_level=LOG_LEVEL.debug())
+=======
+    df_out_step01_join[COL_SIN_FCST_AP2] = df_out_step01_join.apply(allocate, axis=1)
+
+    # Convert to integers
+    df_out_step01_join[COL_SIN_FCST_AP2] = df_out_step01_join[COL_SIN_FCST_AP2].round().astype(int)
+
+    # Adjust to match allocate_sum
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     difference = allocate_sum - df_out_step01_join.loc[unlock_condition, COL_SIN_FCST_AP2].sum()
     if difference != 0:
         # Adjust the first unlock row to account for the rounding difference
@@ -612,6 +692,7 @@ def step02_allocate_month_total_value_back(month_total_value: int) -> pd.DataFra
 
     return df_out_step01_join
 
+<<<<<<< HEAD
 @_decoration_
 def step02_allocate_month_total_value(month_total_value) -> pd.DataFrame:
     """
@@ -679,6 +760,8 @@ def step02_allocate_month_total_value(month_total_value) -> pd.DataFrame:
     df[COL_SIN_FCST_AP2] = df[COL_SIN_FCST_AP2].astype(int)
     return df
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 @_decoration_
 def step03_adjust_negative_values() -> pd.DataFrame:
@@ -735,7 +818,14 @@ def step03_adjust_negative_values() -> pd.DataFrame:
     df_fixed[COL_SIN_FCST_AP2] = df_fixed[COL_SIN_FCST_AP2].astype(int)
 
     return df_fixed
+<<<<<<< HEAD
 
+=======
+################  End of Step Functions  ################
+
+
+################  Start of Main  ################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 if __name__ == '__main__':
     logger.debug(f'[START] {str_instance} {time.strftime("%Y-%m-%d - %H:%M:%S")}')
     logger.Start()
@@ -755,10 +845,15 @@ if __name__ == '__main__':
             # input , output 폴더설정. 작업시마다 History를 남기고 싶으면
             # ----------------------------------------------------
 
+<<<<<<< HEAD
             # input_folder_name  = str_instance
             # output_folder_name = str_instance
             input_folder_name  = 'PYForecastVDPanelMonthInput_o9'
             output_folder_name = 'PYForecastVDPanelMonthInput_o9'
+=======
+            input_folder_name  = str_instance
+            output_folder_name = str_instance
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             
             # ------
             str_input_dir = f'Input/{input_folder_name}'
@@ -775,6 +870,7 @@ if __name__ == '__main__':
             # Week
             # ----------------------------------------------------
             CurrentPartialWeek  = '202447A'
+<<<<<<< HEAD
             MonthTotalValue     = 600     
             
         # vdLog 초기화
@@ -782,6 +878,13 @@ if __name__ == '__main__':
         vdCommon.gfn_pyLog_start(Version, str_instance, logger, is_local, log_path)
         # --------------------------------------------------------------------------
         # df_input 체크
+=======
+            MonthTotalValue     = 200     
+            
+        
+        # --------------------------------------------------------------------------
+        # df_input 체크 시작
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         # --------------------------------------------------------------------------
         logger.Note(p_note='df_input 체크 시작', p_log_level=LOG_LEVEL.debug())
         fn_process_in_df_mst()
@@ -790,6 +893,7 @@ if __name__ == '__main__':
             fn_check_input_table(input_dataframes[in_df], in_df, '1')
 
 
+<<<<<<< HEAD
         # current_week_normalized = normalize_week(CurrentPartialWeek)
 
         # --------------------------------------------------------------------------
@@ -797,6 +901,9 @@ if __name__ == '__main__':
         # --------------------------------------------------------------------------
         logger.Note(p_note=f'[Script Params] Version            : {Version}', p_log_level=LOG_LEVEL.info())
         logger.Note(p_note=f'[Script Params] MonthTotalValue    : {MonthTotalValue}', p_log_level=LOG_LEVEL.info())
+=======
+        current_week_normalized = normalize_week(CurrentPartialWeek)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 
         ################################################################################################################
@@ -887,4 +994,8 @@ if __name__ == '__main__':
         logger.Finish()
         logger.warning(f'{str_instance} {time.strftime("%Y-%m-%d - %H:%M:%S")}::: Finish :::') # 25.05.12 need warning Log by Logger Issue
         
+<<<<<<< HEAD
         
+=======
+################  End of Main  ################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0

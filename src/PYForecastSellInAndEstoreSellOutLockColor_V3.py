@@ -1,731 +1,3 @@
-<<<<<<< HEAD
-"""
-    (25.04.16) 변경점
-        1. Step 10-1) 의 VD Lead Time 반영 로직 변경 
-            - Lock = False 처리로 변경
-            - RTS 혹은 EOS가 있는 경우에는 색구간 덮어 씌우지 않음.
-            - TATTERM -> ITEMTAT TATTERM 으로 참고 Measure 명칭 변경
-            ex) BLUE, BLUE, BLUE, DGRAY_RED, DGRAY_RED 형태로 존재해야함.
-
-        2. Step 10-2) 의 VD SET Lead Time 반영 로직 변경
-            - Lock = False 처리로 변경
-            - RTS 혹은 EOS가 있는 경우에는 색구간 덮어 씌우지 않음.
-            - TATTERM_SET -> ITEMTAT TATTERM_SET 으로 참고 Measure 명칭 변경
-            ex) BLUE, BLUE, BLUE, DGRAY_REDB, DGRAY_REDB 형태로 존재해야함.
-
-        3. Time 입력 구간 변경
-            - 당월에 해당하는 주차부터 ~ 당주주차+52
-            - 로직상 변경점 없음 (실적구간 Lock)
-            - 당주주차 정보 Input으로 넣어주는 것으로 변경
-
-        4. Step 8) ASN 조건 변경
-            - Sales Product ASN Data가 6Lv 과 7Lv 이 모두 존재함.
-            - Lock 과 Color 반영 시, 6Lv 과 7Lv 모두 고려될 수 있도록 한다.
-            - ASN 에만 존재하는 값들에 대해서 Lock = False. Color = 14_WHITE 반영
-            - Step 7) 에서 위의 Data 붙여오도록 변경
-
-        5. MST_RTS 와 MST_EOS Table 변경
-            -  Input 4 삭제 및 Input 3로 이동
-            -  Step 1) 전처리로 명칭 및 로직 변경 ( Data Merge 되어서 들어옴)
-            -  Step3) Join 없이 Item 과 Ship To 값 가져옴.
-
-        6. Step 9) ASN 조건 변경에 따른 6Lv 처리 로직 추가
-            - 하위 7Lv 뿐만 아니라, 6Lv에 대해서도 처리
-
-        7. Step 11) ASN 조건 변경에 따른 6Lv 처리 로직 추가
-            - 하위 7Lv 뿐만 아니라, 6Lv에 대해서도 처리
-
-        8. 의미에 따른 명칭 변경 Step 12) 이전 Column 명 변경 (오류 방지)
-            - S/In FCST(GI)_GC.Lock -> Lock Condition
-
-        9. Step 12) 로직 변경 및 Step 13) 변경
-            - GC, AP2, AP1 각각에 대해서 진행함.
-
-
-
-
-    개요 (*)			
-                
-        * 프로그램명		
-            PYForecastSellInAndEstoreSellOutLockColor	
-                
-                
-        * 목적		
-            - Forecast Rule, ProductSalesASN, RST&EOS 조건을 활용하여, Forecast Measure의 Lock 및 Color 조건 관리	
-                
-                
-                
-    Script Parameter			
-                
-        (Input 1) CurrentPartialWeek		
-            &CurrentPartialWeek - NameSet 활용	하위 자료에서는 202447 사용
-                
-                
-    Input Tables (*)			
-                
-                
-        (Input 1) Forecast Rule 정보		
-            df_in_Forecast_Rule	
-                Select ([Version].[Version Name]
-                * [Item].[Product Group] 
-                * [Sales Domain].[Ship To] )  on row, 
-                ( { Measure.[FORECAST_RULE GC FCST], Measure.[FORECAST_RULE AP2 FCST], Measure.[FORECAST_RULE AP1 FCST], Measure.[FORECAST_RULE CUST FCST],Measure.[FORECAST_RULE ISVALID] } ) on column;
-        
-        (Input 2) Sales Domian Master 정보		
-            df_in_Sales_Domain_Dimension	
-                Select (
-                * [Sales Domain].[Sales Domain Lv2]
-                * [Sales Domain].[Sales Domain Lv3] 
-                * [Sales Domain].[Sales Domain Lv4] 
-                * [Sales Domain].[Sales Domain Lv5] 
-                * [Sales Domain].[Sales Domain Lv6] 
-                * [Sales Domain].[Sales Domain Lv7] 
-                * [Sales Domain].[Ship To] )
-
-        (Input 3) RTS&EOS 정보		
-            df_in_MST_RTS_EOS	
-                Select ([Version].[Version Name]
-                * [Sales Domain].[Ship To]
-                * [Item].[Item] ) on row, 
-                ({
-                    Measure.[RTS_ISVALID], Measure.[RTS_STATUS], Measure.[RTS_COM_DATE], Measure.[RTS_DEV_DATE], Measure.[RTS_INIT_DATE], 
-                    Measure.[EOS_STATUS], Measure.[EOS_CHG_DATE], Measure.[EOS_COM_DATE], Measure.[EOS_INIT_DATE]
-                    }) on column 
-                where { Measure.[RTS_ISVALID] == "Y"} ;
-
-            Version.[Version Name]	Item.[Item]	Sales Domain.[Ship To]	RTS_ISVALID	RTS_STATUS	RTS_INIT_DATE	RTS_DEV_DATE	RTS_COM_DATE	EOS_STATUS	EOS_INIT_DATE	EOS_CHG_DATE	EOS_COM_DATE
-            CWV_DP	RF29BB8600QLAA	300114	Y	COM	2022-02-28	2022-02-28	2022-03-04	INI	2023-02-28	2027-03-01	
-            CWV_DP	SM-S911ULIAATT	300114	Y	COM	2022-12-20	2022-12-13	2023-01-20	INI	2024-02-07	2025-01-05	
-            CWV_DP	SM-S911UZKEATT	300114	Y	COM	2022-12-20	2022-12-13	2023-01-20	INI	2024-02-07	2025-01-05	
-            CWV_DP	SM-S921UZKAAIO	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2025-01-21	2026-01-07	
-            CWV_DP	SM-S921UZKAATT	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
-            CWV_DP	SM-S921UZKEATT	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
-            CWV_DP	SM-S921UZVAATT	300114	Y	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
-            CWV_DP	SM-S911NLIEKOC	211	Y	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
-            CWV_DP	SM-S911NLIEKOD	211	Y	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
-            CWV_DP	SM-S911NZGEKOC	211	Y	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
-            CWV_DP	SM-S921NZAEKOC	211	Y	COM	2023-12-15	2024-01-13	2024-01-13	INI	2024-12-15	2025-01-31	
-            CWV_DP	LH65WAFWLGCXZA	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
-            CWV_DP	BAS-GREEN1	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
-            CWV_DP	HA-EOP-YELLOW1	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
-            CWV_DP	QA65QN70FAJXXZ	300114	Y	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
-
-
-
-        (Input 4) Sales Product ASN 정보		
-            df_in_Sales_Product_ASN	
-                Select ([Version].[Version Name]
-                * [Sales Domain].[Ship To] 
-                * Item.[Item]
-                * [Location].[Location] )  on row, 
-                ( { Measure.[Sales Product ASN] } ) on column;
-
-        (Input 5) Time Partial Week 정보 ( 올해 ~ 차년 )		
-            df_in_Time_Partial_Week	
-                Select (
-                Time.[Partial Week].filter(#.Key >= &CurrentMonth.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )    );
-                
-        (Input 6) MST Item Class 정보		
-            df_in_Item_CLASS	
-                Select ([Version].[Version Name]
-                * [Sales Domain].[Ship To] 
-                * [Item].[Item]
-                * [Location].[Location] )  on row, 
-                ( { Measure.[CLASS] } ) on column
-                where { [Item].[Item GBM].[SHA], [Item].[Section].filter(#.Name in {"DA","DAS"}),  Measure.[CLASS] == "X" };
-
-
-        (Input 7) MST_ITEMTAT정보		
-            df_in_Item_TAT	
-                Select ([Version].[Version Name]
-                * [Item].[Item GBM]
-                * [Item].[Item]
-                * [Location].[Location] )  on row, 
-                ( { Measure.[ITEMTAT TATTERM], Measure.[ITEMTAT ITEMTAT TATTERM_SET] } ) on column;
-
-        
-        (Input 8) MST_ITEM 정보		
-            df_in_Item_Master	
-                Select (
-                * [Item].[ProductType]
-                * [Item].[Item GBM]
-                * [Item].[Product Group]
-                * [Item].[Item]
-                );
-
-
-        (Input 9) E-Store 정보		
-            df_in_Sales_Domain_Estore	
-                Select ( 
-                [Sales Domain].[Ship To].filter(#.[eStore Account YN] == True) );
-
-
-        (Input 10) Sell-In Lock 필요한 Item 정보		
-            df_in_SELLOUTFCST_NOTEXIST	
-                Select ([Version].[Version Name]
-                * [Sales Domain].[Sales Std2]
-                * [Item].[Item]  )  on row, 
-                ( { Measure.[S/Out Fcst Not Exist Flag] } ) on column where { Measure.[S/Out Fcst Not Exist Flag] == True};
-
-                Sales Domain.[Ship To]	Item.[Item]	S/Out Fcst Not Exist Flag
-                300131	SM-G965FZAFTIM	True
-                300980	SM-T580NZWETPH	True
-                300135	SM-T813NZWEBTU	True
-                300492	SM-A217NZKNSKO	True
-                300142	SM-A520FZKAXSA	True
-    Output Tables (*)			
-                
-        (Output 1)		
-            df_output_Sell_In_FCST_GI_GC_Lock	
-                Select ([Version].[Version Name]
-                * [Item].[Item] 
-                * [Sales Domain].[Ship To] 
-                * [Location].[Location]
-                * Time.[Partial Week] ) on row, 
-                ( { Measure.[S/In FCST(GI)_GC.Lock]
-                ) on column;
-                
-        (Output 2)		
-            df_output_Sell_In_FCST_GI_AP2_Lock	
-                Select ([Version].[Version Name]
-                * [Item].[Item] 
-                * [Sales Domain].[Ship To] 
-                * [Location].[Location]
-                * Time.[Partial Week] ) on row, 
-                ( { Measure.[S/In FCST(GI)_AP2.Lock]
-                } ) on column;
-                
-        (Output 3)		
-            df_output_Sell_In_FCST_GI_AP1_Lock	
-                Select ([Version].[Version Name]
-                * [Item].[Item] 
-                * [Sales Domain].[Ship To] 
-                * [Location].[Location]
-                * Time.[Partial Week] ) on row, 
-                ( { Measure.[S/In FCST(GI)_AP1.Lock]
-                } ) on column;
-                
-        (Output 4)		
-            df_output_Sell_In_FCST_Color_Condition	
-                Select ([Version].[Version Name]
-                * [Item].[Item] 
-                * [Sales Domain].[Ship To] 
-                * [Location].[Location]
-                * Time.[Partial Week] ) on row, 
-                ( { Measure.[S/In FCST Color Condition]
-                } ) on column;
-                
-        (Output 5)		
-            df_output_Sell_Out_FCST_GC_Lock	
-                Select ([Version].[Version Name]
-                * [Item].[Item] 
-                * [Sales Domain].[Ship To] 
-                * [Location].[Location]
-                * Time.[Partial Week] ) on row, 
-                ( { Measure.[S/Out FCST_GC.Lock],
-                ) on column;
-                
-        (Output 6)		
-            df_output_Sell_Out_FCST_AP2_Lock	
-                Select ([Version].[Version Name]
-                * [Item].[Item] 
-                * [Sales Domain].[Ship To] 
-                * [Location].[Location]
-                * Time.[Partial Week] ) on row, 
-                ( { Measure.[S/Out FCST_AP2.Lock],
-                } ) on column;
-                
-        (Output 7)		
-            df_output_Sell_Out_FCST_AP1_Lock	
-                Select ([Version].[Version Name]
-                * [Item].[Item] 
-                * [Sales Domain].[Ship To] 
-                * [Location].[Location]
-                * Time.[Partial Week] ) on row, 
-                ( { Measure.[S/Out FCST_AP1.Lock],
-                } ) on column;
-                
-        (Output 8)		
-            df_output_Sell_Out_FCST_Color_Condition	
-                Select ([Version].[Version Name]
-                * [Item].[Item] 
-                * [Sales Domain].[Ship To] 
-                * [Location].[Location]
-                * Time.[Partial Week] ) on row, 
-                ( { Measure.[S/Out FCST Color Condition]
-                } ) on column;
-
-
-    주요 로직 (*)											
-                                                
-            Step 1) df_in_MST_RTS_EOS 전처리									
-                                                
-                Item.[Item]	Sales Domain.[Ship To]	RTS_STATUS	RTS_INIT_DATE	RTS_DEV_DATE	RTS_COM_DATE	EOS_STATUS	EOS_INIT_DATE	EOS_CHG_DATE	EOS_COM_DATE
-                RF29BB8600QLAA	300114	COM	2022-02-28	2022-02-28	2022-03-04	INI	2023-02-28	2027-03-01	
-                SM-S911ULIAATT	300114	COM	2022-12-20	2022-12-13	2023-01-20	INI	2024-02-07	2025-01-05	
-                SM-S911UZKEATT	300114	COM	2022-12-20	2022-12-13	2023-01-20	INI	2024-02-07	2025-01-05	
-                SM-S921UZKAAIO	300114	COM	2023-12-12	2024-01-14	2024-01-14	INI	2025-01-21	2026-01-07	
-                SM-S921UZKAATT	300114	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
-                SM-S921UZKEATT	300114	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
-                SM-S921UZVAATT	300114	COM	2023-12-12	2024-01-14	2024-01-14	INI	2024-11-11	2026-01-07	
-                SM-S911NLIEKOC	211	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
-                SM-S911NLIEKOD	211	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
-                SM-S911NZGEKOC	211	COM	2022-12-16	2022-12-16	2023-01-20	INI	2023-12-16	2024-04-13	
-                SM-S921NZAEKOC	211	COM	2023-12-15	2024-01-13	2024-01-13	INI	2024-12-15	2025-01-31	
-                LH65WAFWLGCXZA	300114	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
-                BAS-GREEN1	300114	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
-                HA-EOP-YELLOW1	300114	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
-                QA65QN70FAJXXZ	300114	COM	2025-01-13	2025-01-13	2024-12-09	INI	2026-12-14	2026-12-14	
-                
-                * Version.[Version Name] 삭제									
-                * RTS_ISVALID Column 삭제									
-                                                
-                                                
-            Step 2) Step1의 Result에 Time을 Partial Week 으로 변환									
-                                                
-                Item.[Item]	Sales Domain.[Ship To]	RTS_STATUS	RTS_INIT_DATE	RTS_DEV_DATE	RTS_COM_DATE	EOS_STATUS	EOS_INIT_DATE	EOS_CHG_DATE	EOS_COM_DATE
-                RF29BB8600QLAA	300114	COM	202209A	202209A	202209B	INI	202308A	202709A	
-                SM-S911ULIAATT	300114	COM	202251A	202250A	202302A	INI	202405A	202501A	
-                SM-S921UZKEATT	300114	COM	202349A	202402A	202402A	INI	202445A	202601A	
-                SM-S921UZKAATT	300114	COM	202349A	202402A	202402A	INI	202445A	202601A	
-                SM-S921UZKAAIO	300114	COM	202349A	202402A	202402A	INI	202503A	202601A	
-                SM-S921UZVAATT	300114	COM	202349A	202402A	202402A	INI	202445A	202601A	
-                SM-S911UZKEATT	300114	COM	202251A	202250A	202302A	INI	202405A	202501A	
-                LH65WAFWLGCXZA	300114	COM	202503A	202503A	202450A	INI	202651A	202651A	
-                BAS-GREEN1	300114	COM	202503A	202503A	202450A	INI	202651A	202651A	
-                HA-EOP-YELLOW1	300114	COM	202503A	202503A	202450A	INI	202651A	202651A	
-                SM-S921NZAEKOC	211	COM	202349A	202401A	202401A	INI	202450A	202504A	
-                SM-S911NZGEKOC	211	COM	202250A	202250A	202302A	INI	202349A	202414A	
-                SM-S911NLIEKOD	211	COM	202250A	202250A	202302A	INI	202349A	202414A	
-                SM-S911NLIEKOC	211	COM	202250A	202250A	202302A	INI	202349A	202414A	
-                                                    
-                * A/B 주차 고려			
-
-            Step 3) df_in_MST_RTS_EOS 에서 ITEM * Ship To로 새로운 DF 생성	
-                
-                Item.[Item]	Sales Domain.[Ship To]
-                RF29BB8600QLAA	300114
-                SM-S911ULIAATT	300114
-                SM-S921UZKEATT	300114
-                SM-S921UZKAATT	300114
-                SM-S921UZKAAIO	300114
-                SM-S921UZVAATT	300114
-                SM-S911UZKEATT	300114
-                LH65WAFWLGCXZA	300114
-                SM-S921NZAEKOC	211
-                SM-S911NZGEKOC	211
-                SM-S911NLIEKOD	211
-                SM-S911NLIEKOC	211
-                BAS-GREEN1	300114
-                HA-EOP-YELLOW1	300114
-
-
-            Step 4) Step3의 df에 Partial Week 및 Measure Column 추가				
-                            
-                Item.[Item]	Sales Domain.[Ship To]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
-                RF29BB8600QLAA	300114	202252B	True	19_GRAY
-                        202301A	True	19_GRAY
-                        202302A	True	19_GRAY
-                        …	True	19_GRAY
-                        202446A	True	19_GRAY
-                        202447A	True	19_GRAY
-                        202448A	True	19_GRAY
-                        …	True	19_GRAY
-                        202651A	True	19_GRAY
-                        202652A	True	19_GRAY
-                        202653A	True	19_GRAY
-                …	…	…	…	…
-                * df_in_Time_Partial Week를 활용하여 Time.[Partial Week] Column 추가				
-                * Lock Condition Column 추가, True로 일괄 생성				
-                * S/In FCST Color Condition Column 추가, 19_GRAY로 일괄 생성				
-                            
-                            
-            Step 5) Step4의 df에 당주주차부터 RTS 와 EOS 반영 및 Color 표시				
-                            
-                Item.[Item]	Sales Domain.[Ship To]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
-                RF29BB8600QLAA	300114	…	True	19_GRAY
-                        202446A	True	19_GRAY
-                        202447A (당주)	False	
-                        202448A	False	
-                        …	False	
-                        202707A	False	11_LIGHTRED
-                        202708A	False	11_LIGHTRED
-                        202708B	False	11_LIGHTRED
-                        202709A ( EOS )	True	16_DARKRED
-                        202710A	True	16_DARKRED
-                        202711A	True	16_DARKRED
-                        …	True	16_DARKRED
-                LH65WAFWLGCXZA	300114	…	True	19_GRAY
-                        202446A	True	19_GRAY
-                        202447A	True	19_GRAY
-                        202448A	True	19_GRAY
-                        202449A	True	19_GRAY
-                        202450A	False	10_LIGHTBLUE
-                        202451A	False	10_LIGHTBLUE
-                        202452A	False	10_LIGHTBLUE
-                        202501A	False	10_LIGHTBLUE
-                        202501B	False	10_LIGHTBLUE
-                        202502A	False	
-                        …	False	
-                        202647A	False	11_LIGHTRED
-                        202648A	False	11_LIGHTRED
-                        202649A	False	11_LIGHTRED
-                        202650A	False	11_LIGHTRED
-                        202651A	True	16_DARKRED
-                        202652A	True	16_DARKRED
-                …	…	…	…	…
-                                
-                * CurrentPartialWeek 포함 ( ex. 202447 )				
-                * 당주주차부터 RTS & EOS 반영				
-                * STATUS가 COM 이면, COM_DATE 사용				
-                * STATUS가 INI 이면 RTS = DEV_DATE , EOS = CHG_DATE 사용 				
-                * STATUS가 INI 일때, DEV/CHG_DATE 가 없으면 INIT_DATE 사용, INIT_DATE가 NULL 인 경우 적용 X , 최대 주차까지 반영 (25.02.24)				
-                * A/B 주차에 경우 하나의 Week로 취급				
-                                
-                * COLOR 반영	* Lock 반영	* 반영 구간		* 예시 반영 구간
-                5-1	14_WHITE	False	* MAX(RTS주차, 당주주차) ~ MIN(EOS주차 - 1, 최대주차) 		202302 ~ 202452
-                5-2	15_DARKBLUE	True	* RTS_INIT_DATE ~ (RTS_DEV_DATE or RTS_COM_DATE) - 1 구간		202251 ~ 202301
-                5-3	10_LIGHTBLUE	False, 당주주차 이전이면 True	* RTS_COM_DATE 포함한 이후 4주 주차 구간		202302, 202303, 202304, 202305
-                5-4	11_LIGHTRED	False, 당주주차 이전이면 True	* (EOS_CHG_DATE or EOS_COM_DATE) 제외한 이전 4주 주차 구간		202449, 202450, 202451, 202452
-                5-5	16_DARKRED	True	* (EOS_CHG_DATE or EOS_COM_DATE) 포함 이후 주차 구간		202501 ~ END
-            
-                * Example										
-                RTS_STATUS	RTS_ISVALID	RTS_INIT_DATE	RTS_DEV_DATE	RTS_COM_DATE	EOS_STATUS	EOS_INIT_DATE	EOS_CHG_DATE	EOS_COM_DATE		
-                COM	Y	202251	202250	202302	INI	202405	202501			
-
-
-            Step 6) 무선 BAS 제품 8주 구간 13_GREEN UPDATE				
-                                
-                Item.[Item]	Sales Domain.[Ship To]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
-                BAS-GREEN1	300114	…	True	19_GRAY
-                        202446A	True	19_GRAY
-                        202447A	False	13_GREEN
-                        202448A	False	13_GREEN
-                        202449A	False	13_GREEN
-                        202450A	False	13_GREEN
-                        202451A	False	13_GREEN
-                        202452A	False	13_GREEN
-                        202453A	False	13_GREEN
-                        202454A	False	13_GREEN
-                        …	False	
-                        202647A	False	
-                        202648A	False	
-                        202649A	False	
-                        202650A	True	
-                        202651A	True	19_GRAY
-                        202652A	True	19_GRAY
-                        …	True	19_GRAY
-                * df_in_Item_Master를 활용하여				
-                * Item.[ProductType] = "BAS"				
-                * Item.[Item GBM] = "MOBILE"				
-                * 위 두 조건에 해당하는 모든 Item에 대해서 당주 주차부터 8주 구간에 대해, 19_GRAY 가 아니면 13_GREEN 처리 , Lock = False				
-                * 해당 Item 이 없는 경우 Skip				
-
-
-            Step 7) df_in_Sales_Product_ASN 전처리
-                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
-                A5002453	RF29BB8600QLAA	S359WC18	…	True	19_GRAY
-                            202446	True	19_GRAY
-                            202447	False	14_WHITE
-                            202448	False	14_WHITE
-                            …	False	14_WHITE
-                            202707	False	14_WHITE
-                            202708	False	14_WHITE
-                            202707	False	14_WHITE
-                            202709	False	14_WHITE
-                            202710	False	14_WHITE
-                            202711	False	14_WHITE
-                A5002453	RF29BB8600QLAA	S377	…	…	…
-                A5002453	RF29BB8600QLAA	S376	…	…	…
-                A5002453	RF29BB8600QLAA	S348WDB1	…	…	…
-                A5002453	RF29BB8600QLAA	S359	…	…	…
-                A5002453	RF29BB8600QLAA	S358	…	…	…
-                A5002453	RF29BB8600QLAA	S356	…	…	…
-                A5002453	RF29BB8600QLAA	S348WDD1	…	…	…
-                A5002453	RF29BB8600QLAA	S348WDD2	…	…	…
-                A5002453	RF29BB8600QLAA	S362	…	…	…
-                A5002453	RF29BB8600QLAA	S360	…	…	…
-                A5002453	RF29BB8600QLAA	S366	…	…	…
-                A5002453	RF29BB8600QLAA	S367	…	…	…
-                A5006941	SM-S911ULIAATT	S341	…	…	…
-                A5006941	SM-S911UZKEATT	S341	…	…	…
-                A5006941	SM-S921UZKAATT	S341	…	…	…
-                A5006941	SM-S921UZKEATT	S341	…	…	…
-                A5006941	SM-S921UZVAATT	S341	…	…	…
-                A5019692	SM-S921UZKAAIO	S341	…	…	…
-                A5019692	SM-S921UZKEATT	S341	…	…	…
-                A5002090	SM-S911NLIEKOC	L999	…	…	…
-                A5002090	SM-S911NLIEKOD	L101	…	…	…
-                A5002090	SM-S911NZGEKOC	L999	…	…	…
-                A5002090	SM-S921NZAEKOC	L999	…	…	…
-                A5002453	LH65WAFWLGCXZA	S358	…	…	…
-                A5002453	LH65WAFWLGCXZA	S356	…	…	…
-                A5002453	BAS-GREEN1	S356	…	…	…
-                A5002453	HA-EOP-YELLOW1	S356	…	…	…
-                
-                - df_in_Sales_Product_ASN 에서 Version.[Version Name], Sales Product ASN 삭제					
-                * df_in_Time_Partial Week 으로 Time.[Partial Week] Data 추가					
-                * Lock Condition = False., Color = 14_WHITE 로 생성 					
-                * 당주주차 이전 주차에 대해서는 Lock Condition = True, Color = 19_GRAY 적용					
-
-            Step 8)  ASN만 있는 경우 조건 추가 						
-                Step 7) Sales Product ASN에 Partial Week 에 따른 Lock 값과, Color 값 적용 ( Step 7에 Step 6를 적용 )					
-                                    
-                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
-                A5002453	RF29BB8600QLAA	S359WC18	…	True	19_GRAY
-                            202446	True	19_GRAY
-                            202447	False	
-                            202448	False	
-                            …	False	
-                            202707	False	
-                            202708	False	
-                            202707	False	
-                            202709	True	19_GRAY
-                            202710	True	19_GRAY
-                            202711	True	19_GRAY
-                * Setp7) 에 Step6) Partial Week에 따른 Lock, Color 값을 붙인다.					
-                * Sales Product ASN 에 존재하는 값에 대해서					
-                * Step 6) 의 Item * Ship To 를 기준으로 2LV 하위의 LV7의 값, 3LV 하위의 LV7의 값에 각각 Partial Week에 따른 Lock, Color 값을 반영한다.					
-                * Step 6) 의 Item * Ship To 를 기준으로 2LV 하위의 LV6의 값, 3LV 하위의 LV6의 값에 각각 Partial Week에 따른 Lock, Color 값을 반영한다. 					
-                * Step 6) 의 Sales Domain.[Ship To] 값이 3으로 시작하는 경우					
-                    * df_in_Sales_Domain_Dimension의 Sales Domain.[Sales Domain Lv3] = '300114' 를 찾고, 그에 해당하는 Sales Domain.[Sales Domain Lv7] 의 모든 'A5'로 시작하는 값들에 대해서  Step6) 의 Data 값 update				
-                    * df_in_Sales_Domain_Dimension의 Sales Domain.[Sales Domain Lv3] = '300114' 를 찾고, 그에 해당하는 Sales Domain.[Sales Domain Lv6] 의 모든 '5'로 시작하는 값들에 대해서  Step6) 의 Data 값 update 				
-                * Step 6) 의 Sales Domain.[Ship To] 값이 2 로 시작하는 경우					
-                    * df_in_Sales_Domain_Dimension의 Sales Domain.[Sales Domain Lv2] 에서 찾고, 그에 해당하는 Sales Domain.[Sales Domain Lv7] 의 모든 'A5'로 시작하는 값들에 대해서  Step6) 의 Data 값 update				
-                    * df_in_Sales_Domain_Dimension의 Sales Domain.[Sales Domain Lv2] 에서 찾고, 그에 해당하는 Sales Domain.[Sales Domain Lv6] 의 모든 '5'로 시작하는 값들에 대해서  Step6) 의 Data 값 update				
-
-
-            Step 9) HA EOP management model 조건 반영					
-                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
-                A5002453	HA-EOP-YELLOW1	S356	…	True	19_GRAY
-                            202446	True	19_GRAY
-                            202447	False	12_YELLOW
-                            202448	False	12_YELLOW
-                            …	False	12_YELLOW
-                            202504	False	12_YELLOW
-                            202505	False	11_LIGHTRED
-                            202506	False	11_LIGHTRED
-                            202507	False	11_LIGHTRED
-                            202508	False	11_LIGHTRED
-                            202509	True	16_DARKRED
-                            202510	True	16_DARKRED
-                            …	True	19_GRAY
-                * ITEMCLASS의 (Sales Domain 6LV, Location, Item )에 해당하는 값에 대해서 Color = 12_YELLOW, Lock = False					
-                * Sales Domain 6LV 의 하위 7LV 의 Ship To 와 6Lv이 ShipTo에 있는 경우에 대해서 로직을 적용한다. 					
-                Case 1) EOS 가 현재 주차 이후에 있는 경우	19_GRAY(~ 과거주차) - 12_YELLOW(현재주차 ~ ) - 11_LIGHTRED (EOS - 4 ) - 16_DARKRED (EOS)				
-                    * 현재주차 ~ 11_LIGHTRED 까지 12_YELLOW 및 FALSE 처리				
-                Case 2) EOS 가 현재 주차 이후에 없는 경우	19_GRAY(~ 과거주차) - 12_YELLOW				
-                    * 현재주차 ~ 끝까지 12_YELLOW 및 FALSE 처리			
-
-
-            Step 10-1) VD Lead Time 구간 DARKGRAY RED UPDATE 					
-                                
-                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
-                A5002453	Item A	S356	…	True	19_GRAY
-                            202446	True	19_GRAY
-                            202447	False	18_DGRAY_RED
-                            202448	False	18_DGRAY_RED
-                            202449	False	18_DGRAY_RED
-                            202450	False	
-                            202451	False	
-                            …	False	
-                            202504	False	
-                            202505	False	11_LIGHTRED
-                            202506	False	11_LIGHTRED
-                            202507	False	11_LIGHTRED
-                            202508	False	11_LIGHTRED
-                            202509	True	16_DARKRED
-                            202510	True	16_DARKRED
-                            …	True	19_GRAY
-                * GBM = 'VD' || 'SHA' 적용					
-                * MST_ITEMTAT (ITEM * SITEID) 의 ITEMTAT TATTERM 활용					
-                * 당주 주차 기준 + ITEMTAT TATTERM 까지 18_DGRAY_RED 처리					
-                * 당주 주차 기준 + ITEMTAT TATTERM 까지 Lock=False 처리					
-                * 202447 기준, ITEMTAT TATTERM = 3 이면, 202447,202448,202449 처리					
-                * (25.04.10) RTS/EOS가 있는 경우 덮어씌우지 않음. Color로 판단 -> 14_WHITE인 경우에만 적용					
-                                    
-            Step 10-2) VD SET Lead Time 구간 DARKGRAY REDB  UPDATE					
-                                
-                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
-                A5002453	Item A	S356	…	True	19_GRAY
-                            202446	True	19_GRAY
-                            202447	False	17_DGRAY_REDB
-                            202448	False	17_DGRAY_REDB
-                            202449	False	18_DGRAY_RED
-                            202450	False	
-                            202451	False	
-                            …	False	
-                            202504	False	
-                            202505	False	11_LIGHTRED
-                            202506	False	11_LIGHTRED
-                            202507	False	11_LIGHTRED
-                            202508	False	11_LIGHTRED
-                            202509	True	16_DARKRED
-                            202510	True	16_DARKRED
-                            …	True	19_GRAY
-                * GBM = 'VD' || 'SHA' 적용					
-                * MST_ITEMTAT (ITEM * SITEID) 의 ITEMTAT TATTERM_SET 활용					
-                * 당주 주차 기준 + ITEMTAT TATTERM_SET 까지 18_DGRAY_RED인 값에 대해 중복 해당 되는 경우 17_DGRAY_REDB 처리					
-                * 당주 주차 기준 + ITEMTAT TATTERM_SET 까지 Lock=False 처리					
-                * 202447 기준, ITEMTAT TATTERM_SET = 2 이면, 202447,202448 처리					
-                * (25.04.10) RTS/EOS가 있는 경우 덮어씌우지 않음. Color로 판단 -> 14_WHITE인 경우에만 적용					
-            
-            Step 11)  MX Sellout FCST 없는 모델 당주 이후 미래구간 GRAY UPDATE					
-                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
-                A5002453	Item A	S356	…	True	19_GRAY
-                            202446	True	19_GRAY
-                            202447	True	19_GRAY
-                            202448	True	19_GRAY
-                            202449	True	19_GRAY
-                            202450	True	19_GRAY
-                            202451	True	19_GRAY
-                            …	True	19_GRAY
-                            202504	True	19_GRAY
-                            202505	True	19_GRAY
-                            202506	True	19_GRAY
-                            202507	True	19_GRAY
-                            202508	True	19_GRAY
-                            202509	True	19_GRAY
-                            202510	True	19_GRAY
-                            …	True	19_GRAY
-                * df_in_SELLOUTFCST_NOTEXIST 에 해당하는 Sales Std2(3LV) * 의 Item 의 Lock = True, Color = 19_GRAY 적용					
-                * 3Lv 하위의 6LV Ship To에 대하여 적용					
-                * 3Lv 하위의 7LV Ship To에 대하여 적용					
-
-            Step 12) Forecast Rule에 따른 Data 생성							
-                - Forecast Rule의 정보를 활용하여, GC FCST, AP2 FCST, AP1 FCST를 각각 구성함.							
-                FORECAST_RULE AP2 FCST 를 예시로 진행							
-                                            
-                Step 12-1) Forecast Rule에서 FORECAST_RULE AP2 FCST 정보 추출							
-                    Version.[Version Name]	Item.[Product Group]	Sales Domain.[Ship To]	FORECAST_RULE AP2 FCST				
-                    CWV_DP	REF	300114	5				
-                    CWV_DP	REF	300115	5				
-                    CWV_DP	REF	300116	5				
-                    CWV_DP	REF	300117	5				
-                    CWV_DP	REF	300118	5				
-                    CWV_DP	REF	400362	5				
-                    * GC FCST, AP1 FCST 에 대해서도 동일하게 진행							
-                                            
-                                            
-                                            
-                Step 12-2) Lock 및 Color Data 를 Forecast Rule 입력 Lv에 맞게 변환							
-                                            
-                    Step 12-2-1) Sales Domain Data 구성							
-                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition	GBRULE	FORECAST_RULE AP2 FCST
-                    A5002453	Item A	S356	…	True	19_GRAY	5002453	5
-                                202446	True	19_GRAY	5002453	5
-                                202447	True	17_DGRAY_REDB	5002453	5
-                                202448	True	17_DGRAY_REDB	5002453	5
-                                202449	True	18_DGRAY_RED	5002453	5
-                                202450	False		5002453	5
-                                202451	False		5002453	5
-                                …	False		5002453	5
-                                202504	False		5002453	5
-                                202505	False	11_LIGHTRED	5002453	5
-                                202506	False	11_LIGHTRED	5002453	5
-                                202507	False	11_LIGHTRED	5002453	5
-                                202508	False	11_LIGHTRED	5002453	5
-                                202509	True	16_DARKRED	5002453	5
-                                202510	True	16_DARKRED	5002453	5
-                                …	True	19_GRAY	5002453	5
-                    - Sales Domain Master Data 참고							
-                    1. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 2Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 2LV 값은 GBRULE에 각각 Update							
-                    2. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 3Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 3LV 값은 GBRULE에 각각 Update							
-                    2. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 4Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 4LV 값은 GBRULE에 각각 Update							
-                    3. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 5Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 5LV 값은 GBRULE에 각각 Update							
-                    4. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 6Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 6LV 값은 GBRULE에 각각 Update							
-                    5. Shiip To에 해당하는 값을 Sales Domain Master 에서 찾아, 7Lv 값을 가져오고, 해당 값이 Forecast Rule에 있으면, 해당하는 FORECAST_RULE AP2 FCST의 값과 7LV 값은 GBRULE에 각각 Update							
-                    * 기존에 찾은 값에 대해서도 하위 순번에 값이 존재하면 Update 진행 -> Forecast Rule 예외조건 반영							
-                    * 해당 로직  MultiIndex/Dataframe Merge 활용 여부는 성능 고려, MultiIndex 사용시 FORECAST_RULE_AP2 FCST 값 안가져와도 될 것으로 보임.							
-                                                
-                                                
-                    Step 12-2-2) GroupBy 진행							
-                        Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	S/In FCST(GI)_AP2.Lock	S/In FCST Color Condition		
-                        5002453	Item A	S356	…	True	19_GRAY		
-                                    202446	True	19_GRAY		
-                                    202447	True	17_DGRAY_REDB		
-                                    202448	True	17_DGRAY_REDB		
-                                    202449	True	18_DGRAY_RED		
-                                    202450	False			
-                                    202451	False			
-                                    …	False			
-                                    202504	False			
-                                    202505	False	11_LIGHTRED		
-                                    202506	False	11_LIGHTRED		
-                                    202507	False	11_LIGHTRED		
-                                    202508	False	11_LIGHTRED		
-                                    202509	True	16_DARKRED		
-                                    202510	True	16_DARKRED		
-                                    …	True	19_GRAY		
-                        - GBRULE, Item.[Item], Location.[Location], Time.[Partial Week], Lock Condition, S/In FCST Color Condition  으로 Filtering 진행							
-                        - GBRULE, Item.[Item], Location.[Location], Time.[Partial Week] 으로 Group by 진행 (MIN)							
-                        - Rename : GBRULE -> Sales Domain.[Ship To]							
-                        - Rename : Lock Condition -> S/In FCST(GI)_AP2.Lock							
-                        * S/In FCST(GI)_AP2.Lock 은 AP1, GC 에 맞는 값 사용							
-                        * df_output_Sell_In_FCST_GI_GC_Lock 생성 							
-                        * df_output_Sell_In_FCST_GI_AP2_Lock 생성							
-                        * df_output_Sell_In_FCST_GI_AP1_Lock 생성							
-                                                
-                                                
-                                                
-                Step 12-3) S/In FCST Color Condition Output 생성							
-                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	S/In FCST Color Condition			
-                    5002453	Item A	S356	…	19_GRAY			
-                                202446	19_GRAY			
-                                202447	17_DGRAY_REDB			
-                                202448	17_DGRAY_REDB			
-                                202449	18_DGRAY_RED			
-                                202450				
-                                202451				
-                                …				
-                                202504				
-                                202505	11_LIGHTRED			
-                                202506	11_LIGHTRED			
-                                202507	11_LIGHTRED			
-                                202508	11_LIGHTRED			
-                                202509	16_DARKRED			
-                                202510	16_DARKRED			
-                                …	19_GRAY			
-                    - df_output_Sell_In_FCST_GI_GC_Lock, df_output_Sell_In_FCST_GI_AP2_Lock, df_output_Sell_In_FCST_GI_AP1_Lock 에서 Sales Domain.[Ship To], Item.[Item], Location.[Location], Time.[Partial Week], S/In FCST Color Condition 로 Filtering 이후 Merge 진행							
-                    - df_output_Sell_In_FCST_Color_Condition 으로 생성							
-                                            
-                Step 12-4) S/In FCST Output 생성 (4개)							
-                    - df_output_Sell_In_FCST_Color_Condition							
-                    * df_output_Sell_In_FCST_GI_GC_Lock - S/In FCST Color Condition Column 제거							
-                    * df_output_Sell_In_FCST_GI_AP2_Lock - S/In FCST Color Condition Column 제거							
-                    * df_output_Sell_In_FCST_GI_AP1_Lock - S/In FCST Color Condition Column 제거							
-                    * df_output에 대하여 모두 Version.[Version Name] = CWV_DP 추가							
-                                        
-                                        
-            Step 13) E-store Sell-Out Data 생성					
-                Step 13-1) E-store Account에 대한 Data 추출					
-                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	Lock Condition	S/In FCST Color Condition
-                    A5002453	Item A	S356	…	True	19_GRAY
-                                202446	True	19_GRAY
-                                202447	True	17_DGRAY_REDB
-                                202448	True	17_DGRAY_REDB
-                                202449	True	18_DGRAY_RED
-                                202450	False	
-                                202451	False	
-                                …	False	
-                                202504	False	
-                                202505	False	11_LIGHTRED
-                                202506	False	11_LIGHTRED
-                                202507	False	11_LIGHTRED
-                                202508	False	11_LIGHTRED
-                                202509	True	16_DARKRED
-                                202510	True	16_DARKRED
-                    - Step 11) 에서 df_in_Sales_Domain_Estore 를 활용하여 E-store Account에 대한 값만 추출					
-                                    
-                Step 13-2) Step 12) 과정 동일 수행 및 S/Out FCST Output 생성 (4개)					
-                    - 최종 output 에 대한 Column 명 변경					
-                    * df_output_Sell_Out_FCST_GC_Lock	Measure.[S/Out FCST_GC.Lock]				
-                    * df_output_Sell_Out_FCST_AP2_Lock	Measure.[S/Out FCST_AP2.Lock]				
-                    * df_output_Sell_Out_FCST_AP1_Lock	Measure.[S/Out FCST_AP1.Lock]				
-                    * df_output_Sell_Out_FCST_Color_Condition	Measure.[S/Out FCST Color Condition]				
-
-"""
-
 from re import X
 import os,sys,json,shutil,io,zipfile
 import time
@@ -735,7 +7,6 @@ import traceback
 import pandas as pd
 from pandas.core.resample import T
 from NSCMCommon import NSCMCommon as common
-from NSCMCommon import VDCommon as vdCommon
 # from typing_extensions import Literal
 import glob
 import numpy as np
@@ -743,22 +14,11 @@ from typing import Collection, Tuple,Union,Dict
 import re
 # import rbql
 # import duckdb
-=======
-import os,sys
-import time,datetime,shutil
-import inspect
-import traceback
-import pandas as pd
-from NSCMCommon import NSCMCommon as common
-# from typing_extensions import Literal
-import glob
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 ########################################################################################################################
 # Local 개발 시에 필요한 공통 변수 선언
 ########################################################################################################################
 # o9에 저장된 instanceName
-<<<<<<< HEAD
 is_local = common.gfn_get_isLocal()
 str_instance = 'PYForecastSellInAndEstoreSellOutLockColor'
 str_input_dir = f"Input/{str_instance}"
@@ -874,7 +134,7 @@ EOS_STATUS                          = 'EOS_STATUS'
 # ───────────────────────────────────────────────────────────────
 # input
 str_df_in_Sales_Domain_Dimension        = 'df_in_Sales_Domain_Dimension'
-# STR_DF_ESTORE           = 'df_in_Sales_Domain_Estore'
+str_df_in_Sales_Domain_Estore           = 'df_in_Sales_Domain_Estore'
 str_df_in_Time_Partial_Week             = 'df_in_Time_Partial_Week'
 str_df_in_Item_CLASS                    = 'df_in_Item_CLASS'
 str_df_in_Item_TAT                      = 'df_in_Item_TAT'
@@ -907,67 +167,18 @@ str_df_fn_Forcast_out                       = 'df_fn_Forcast_out'
 
 
 
-=======
-str_instance = 'PYForecastB2BLockAndRolling'
-str_input_dir = f"Input/{str_instance}"
-str_output_dir = f"Output/{str_instance}"
-is_local = common.gfn_get_isLocal()
-is_print = True
-flag_csv = True
-flag_exception = True
-# Global variable for max_week
-max_week = None
-current_partial_week = None
-max_week_normalized = None
-current_week_normalized = None
-
-v_chunk_size = 100000
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 ########################################################################################################################
 # log 설정 : PROGRAM file_name
 ########################################################################################################################
 logger = common.G_Logger(p_py_name=str_instance)
 common.gfn_set_local_logfile()
-<<<<<<< HEAD
 # fn_set_local_logfile()
 LOG_LEVEL = common.G_log_level
 
-=======
-LOG_LEVEL = common.G_log_level
-
 ########################################################################################################################
-# 컬럼상수
+# Start Function Of Utils
 ########################################################################################################################
-# ── column constants ──────────────────────────────────────────────────────────────────────────────────────────
-COL_VERSION         = 'Version.[Version Name]'
-COL_ITEM            = 'Item.[Item]'
-COL_SHIP_TO         = 'Sales Domain.[Ship To]'
-COL_LOC             = 'Location.[Location]'
-COL_VIRTUAL_BO_ID   = 'DP Virtual BO ID.[Virtual BO ID]'
-COL_BO_ID           = 'DP BO ID.[BO ID]'
-
-COL_TIME_PW             = 'Time.[Partial Week]'
-COL_CURRENT_ROW_WEEK    = 'WEEK_NUM'
-COL_BO_FCST             = 'BO FCST' 
-COL_BO_FCST_LOCK        = 'BO FCST.Lock'          
-COL_BO_TOTAL_BOD_LT     = 'BO Total BOD LT'  
-COL_BO_TOTAL_BOD_LT_NOM     = 'BO Total BOD LT NORMALIZED'  
-# ───────────────────────────────────────────────────────────────
-# CONSTANT STRING VARIABLES FOR DATAFRAME NAMES
-# ───────────────────────────────────────────────────────────────
-# input
-STR_DF_IN_BO_FCST       = 'df_in_BO_FCST'
-STR_DF_IN_TOTAL_BOD_LT  = 'df_in_Total_BOD_LT'
-STR_DF_IN_MAX_PW        = 'df_In_MAX_PartialWeek'
-# middle
-STR_DF_STEP01_ADDED_WEEK    = 'df_fn_step01_added_week'
-STR_DF_STEP03_LOCK          = 'df_fn_step03_lock'
-STR_DF_STEP04_CREATED       = 'df_out_step04_created'
-
-
-################  Start of Functions  ################
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 def fn_log_dataframe(df_p_source: pd.DataFrame, str_p_source_name: str) -> None:
     """
     Dataframe 로그 출력 조건 지정 함수
@@ -992,20 +203,7 @@ def fn_log_dataframe(df_p_source: pd.DataFrame, str_p_source_name: str) -> None:
                 # 로컬 Debugging 시 csv 파일 출력
                 df_p_source.to_csv(str_output_dir + "/"+str_p_source_name+".csv", encoding="UTF8", index=False)
 
-<<<<<<< HEAD
 
-=======
-def parse_args():
-    # Extract arguments from sys.argv
-    args = {}
-    for arg in sys.argv[1:]:
-        if ':' in arg:
-            key, value = arg.split(':', 1)  # Split only on the first ':'
-            args[key.strip()] = value.strip()
-        else:
-            print(f"Warning: Argument '{arg}' does not contain a ':' separator.")
-    return args
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 def _decoration_(func):
     """
@@ -1028,10 +226,6 @@ def _decoration_(func):
         # Step No
         _step_no = kwargs.get('p_step_no')
         _step_desc = kwargs.get('p_step_desc')
-<<<<<<< HEAD
-        vdCommon.gfn_pyLog_detail(_step_desc)
-=======
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         _df_name = kwargs.get('p_df_name')
         _warn_desc = kwargs.get('p_warn_desc')
         _exception_flag = kwargs.get('p_exception_flag')
@@ -1076,7 +270,6 @@ def fn_check_input_table(df_p_source: pd.DataFrame, str_p_source_name: str, str_
             logger.Note(p_note=f'Input table({str_p_source_name}) is empty.', p_log_level=LOG_LEVEL.warning())
 
 
-<<<<<<< HEAD
 def fn_get_week(list_p_weeks: list, p_row: any) -> list:
     """
     in_Demand의 행과 Time.[Week] 목록을 받아 Time.[Week] - W Demand Build Ahead Limit<= t < Time.[Week]인 t의 목록을 찾아 리턴
@@ -1090,8 +283,6 @@ def fn_get_week(list_p_weeks: list, p_row: any) -> list:
         int_start = 0
 
     return list_p_weeks[int_start:int_end]
-=======
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 def fn_use_x_after_join(df_source: pd.DataFrame):
     """
@@ -1110,7 +301,6 @@ def fn_use_y_after_join(df_source: pd.DataFrame):
     # Drop columns with '_y' suffix
     df_source.drop(columns=[col for col in df_source.columns if '_x' in col], inplace=True)
 
-<<<<<<< HEAD
 # Remove '_x' and '_y' suffixes, keeping '_x' for specified columns
 def customize_column_names(df_source: pd.DataFrame, column_use_y: list):
     # Replace '_y' with '' for columns not in column_use_y
@@ -1137,105 +327,17 @@ def fn_make_week_list(df_p_source: pd.DataFrame) -> list:
     """
     전처리 - in_Time 테이블에서 Time.[Week]을 오름차순으로 정렬하여 리스트로 변환 후리턴
     :param df_p_source: in_Time
-=======
-
-def gfn_is_partial_week(week_str: str) -> bool:
-    """
-    Check if the input week string represents a partial week by determining if the dates span across different months.
-
-    :param week_str: The week string in the format 'YYYYWW'
-    :return: True if it's a partial week, False otherwise.
-    """
-    year = int(week_str[:4])
-    week = int(week_str[4:])
-    # Calculate the start date of the week using a workaround
-    jan_4 = datetime.datetime(year, 1, 4)
-    start_date = jan_4 + datetime.timedelta(days=(week - 1) * 7 - jan_4.weekday())
-    # Get all dates in the week
-    dates_in_week = [start_date + datetime.timedelta(days=i) for i in range(7)]
-    # Get the set of months from these dates
-    months = {date.month for date in dates_in_week}
-    # If there is more than one unique month, it's a partial week
-    return len(months) > 1
-
-
-
-def gfn_get_partial_week_days(week_str: str) -> dict:
-    """
-    Get the number of days for each part of a partial week ('A' and 'B').
-
-    :param week_str: The week string in the format 'YYYYWW'
-    :return: A dictionary with the number of days for 'A' and 'B'
-    """
-    year = int(week_str[:4])
-    week = int(week_str[4:])
-    jan_4 = datetime.datetime(year, 1, 4)
-    start_date = jan_4 + datetime.timedelta(days=(week - 1) * 7 - jan_4.weekday())
-    dates_in_week = [start_date + datetime.timedelta(days=i) for i in range(7)]
-    
-    days_count = {'A': 0, 'B': 0}
-    first_month = dates_in_week[0].month
-    
-    for date in dates_in_week:
-        if date.month == first_month:
-            days_count['A'] += 1
-        else:
-            days_count['B'] += 1
-    
-    return days_count
-
-
-def set_input_output_folder(is_local, args):
-    global str_input_dir, str_output_dir
-    
-    if is_local:
-        if args.get('input_folder_name') is not None:
-            str_input_dir = f"Input/{args.get('input_folder_name')}"
-        if args.get('output_folder_name') is not None:
-            str_output_dir = f"Output/{args.get('output_folder_name')}"
-            current_time = datetime.datetime.now()
-            formatted_time = current_time.strftime("%Y%m%d_%H_%M")
-            str_output_dir = f"{str_output_dir}_{formatted_time}"
-        # Ensure the input and output directories exist
-        os.makedirs(str_input_dir, exist_ok=True)
-        os.makedirs(str_output_dir, exist_ok=True)
-
-
-def normalize_week(week_str):
-    """Convert a week string with potential suffixes to an integer for comparison."""
-    # Remove any non-digit characters (e.g., 'A' or 'B') and convert to integer
-    try:
-
-        return ''.join(filter(str.isdigit, week_str))
-    except Exception as e:
-        logger.Note(p_note=f"week_str: {week_str}", p_log_level=LOG_LEVEL.error())
-
-
-@_decoration_
-def fn_output_formatter(df_p_source: pd.DataFrame, str_p_out_version: str) -> pd.DataFrame:
-    """
-    최종 Output 형태로 정리
-    :param df_p_source: 주차별로 가공하여 group by 후 sum을 구한 in_Demand
-    :param str_p_out_version: Param_OUT_VERSION
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     :return: DataFrame
     """
     # 함수명
     str_my_name = inspect.stack()[0][3]
-<<<<<<< HEAD
     
-=======
-    # Return 변수
-    df_return = pd.DataFrame()
-
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     # 입력 파라미터가 비어 있는 경우 비어 있는 DataFrame을 리턴
     if df_p_source.empty:
         logger.Note(p_note=f'[{str_my_name}] 입력으로 받은 데이터(df_p_source)가 비어 있습니다.',
                     p_log_level=LOG_LEVEL.warning())
         return df_return
 
-<<<<<<< HEAD
     # 오름차순 정렬 후 'Time.[Week]'를 리스트로 변환
     list_return = df_p_source.sort_values(by='Time.[Week]')['Time.[Week]'].to_list()
     
@@ -1251,63 +353,10 @@ def is_within(current_week, start_week, end_week):
     Check if the current week is within the range defined by start and end weeks.
     """
     return start_week <= current_week <= end_week
-=======
-    # 입력 파라미터(str_p_out_version)가 비어 있는 경우 경고 메시지를 출력 후 빈 데이터 프레임 리턴
-    if str_p_out_version is None or str_p_out_version.strip() == '':
-        logger.Note(p_note=f'[{str_my_name}] 입력으로 받은 데이터(str_p_out_version)가 비어 있습니다.',
-                    p_log_level=LOG_LEVEL.warning())
-        return df_return
-
-    df_return = df_p_source.copy(deep=True)
-    df_return[COL_VERSION] = str_p_out_version
-
-    columns_to_return = [
-        COL_VERSION,
-        COL_ITEM,
-        COL_SHIP_TO,
-        COL_LOC,
-        COL_VIRTUAL_BO_ID,
-        COL_BO_ID,
-        COL_TIME_PW,
-        COL_BO_FCST,
-        COL_BO_FCST_LOCK
-    ]
-
-    df_return = df_return[columns_to_return]
-
-    return df_return
-
-@_decoration_
-def fn_set_header() -> pd.DataFrame:
-    """
-    MediumWeight로 실행 시 발생할 수 있는 Live Server에서의 오류를 방지하기 위해 Header만 있는 Output 테이블을 만든다.
-    :return: DataFrame
-        """
-    df_return = pd.DataFrame()
-
-    # out_Demand
-    df_return = pd.DataFrame(
-        {
-            COL_VERSION         : [],
-            COL_ITEM            : [],
-            COL_SHIP_TO         : [],
-            COL_LOC             : [],
-            COL_VIRTUAL_BO_ID   : [],
-            COL_BO_ID           : [],
-            COL_TIME_PW         : [],
-            COL_BO_FCST         : [],
-            COL_BO_FCST_LOCK    : []    
-
-        }
-    )
-
-    return df_return
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 def fn_convert_type(df: pd.DataFrame, startWith: str, type):
     for column in df.columns:
         if column.startswith(startWith):
-<<<<<<< HEAD
             df[column] = df[column].astype(type,errors='ignore')
 
 # ───── Ship-To → Level LUT ───────────────────────
@@ -1349,18 +398,6 @@ def fn_process_in_df_mst():
 
     if is_local: 
         # 로컬인 경우 Output 폴더를 정리한다.
-=======
-            df[column] = df[column].astype(type)
-
-def fn_convert_type_equal(df: pd.DataFrame, column: str, type):
-    df[column] = df[column].astype(type)
-            
-
-@_decoration_
-def fn_process_in_df_mst():
-    if is_local: 
-    # 로컬인 경우 Output 폴더를 정리한다.
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         for file in os.scandir(str_output_dir):
             os.remove(file.path)
 
@@ -1368,7 +405,6 @@ def fn_process_in_df_mst():
         file_pattern = f"{os.getcwd()}/{str_input_dir}/*.csv" 
         csv_files = glob.glob(file_pattern)
 
-<<<<<<< HEAD
         # file_to_df_mapping = {
         #     'df_in_Sales_Domain_Dimension.csv'          :      str_df_in_Sales_Domain_Dimension     ,
         #     'df_in_Sales_Domain_Estore.csv'             :      str_df_in_Sales_Domain_Estore        ,
@@ -1384,7 +420,7 @@ def fn_process_in_df_mst():
 
         file_to_df_mapping = {
             'df_in_Sales_Domain_Dimension.csv'          :      str_df_in_Sales_Domain_Dimension     ,
-            'df_in_Sales_Domain_Estore.csv'             :      STR_DF_ESTORE        ,
+            'df_in_Sales_Domain_Estore.csv'             :      str_df_in_Sales_Domain_Estore        ,
             'df_in_Time_Partial_Week.csv'               :      str_df_in_Time_Partial_Week          ,
             'df_in_Item_CLASS.csv'                      :      str_df_in_Item_CLASS                 ,
             'df_in_Item_TAT.csv'                        :      str_df_in_Item_TAT                   ,
@@ -1393,12 +429,6 @@ def fn_process_in_df_mst():
             'df_in_Forecast_Rule.csv'                   :      str_df_in_Forecast_Rule              ,
             'df_in_Item_Master.csv'                     :      str_df_in_Item_Master                ,
             'df_in_SELLOUTFCST_NOTEXIST.csv'            :      str_df_in_SELLOUTFCST_NOTEXIST            
-=======
-        file_to_df_mapping = {
-            "df_in_BO_FCST.csv"                 : STR_DF_IN_BO_FCST      ,
-            "df_in_Total_BOD_LT.csv"            : STR_DF_IN_TOTAL_BOD_LT,
-            "df_In_MAX_PartialWeek.csv"         : STR_DF_IN_MAX_PW  
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         }
 
         def read_csv_with_fallback(filepath):
@@ -1424,11 +454,10 @@ def fn_process_in_df_mst():
                     input_dataframes[frame_name] = df
                     mapped = True
                     break
-<<<<<<< HEAD
     else:
         # o9 에서 
         input_dataframes[str_df_in_Sales_Domain_Dimension]  = df_in_Sales_Domain_Dimension
-        input_dataframes[STR_DF_ESTORE]     = df_in_Sales_Domain_Estore
+        input_dataframes[str_df_in_Sales_Domain_Estore]     = df_in_Sales_Domain_Estore
         input_dataframes[str_df_in_Time_Partial_Week]       = df_in_Time_Partial_Week
         input_dataframes[str_df_in_Item_CLASS]              = df_in_Item_CLASS
         input_dataframes[str_df_in_Item_TAT]                = df_in_Item_TAT
@@ -1449,7 +478,7 @@ def fn_process_in_df_mst():
     fn_convert_type(input_dataframes[str_df_in_Sales_Product_ASN], 'Location', str)
 
     fn_convert_type(input_dataframes[str_df_in_Sales_Domain_Dimension], 'Sales Domain', str)
-    fn_convert_type(input_dataframes[STR_DF_ESTORE], 'Sales Domain', str)
+    fn_convert_type(input_dataframes[str_df_in_Sales_Domain_Estore], 'Sales Domain', str)
     fn_convert_type(input_dataframes[str_df_in_Forecast_Rule], 'Sales Domain', str)
 
     input_dataframes[str_df_in_Forecast_Rule][FORECAST_RULE_GC_FCST].fillna(0, inplace=True)
@@ -1774,24 +803,7 @@ def is_valid_add_week(x):
         return True
     except:
         return False
-
-
-# ───── STEP 01 – RTS/EOS 전처리 ───────────────────
-@_decoration_
-def fn_step01_load_rts_eos(df_rts_eos: pd.DataFrame,
-                        shipto_idx: pd.Index,
-                        level_arr:  np.ndarray) -> pd.DataFrame:
-    """
-    * merge 필요 없음 – 입력 그대로 사용
-    * Ship-To → Item_lv(2/3) 계산
-    """
-    # vectorized level
-    pos  = shipto_idx.get_indexer(df_rts_eos[Sales_Domain_ShipTo].to_numpy())
-    lv   = np.where(pos >= 0, level_arr[pos], np.nan)
-    df   = df_rts_eos.assign(Item_Lv=lv.astype('int8'))
-    # ▲TODO: 날짜 → PartialWeek 변환 등 spec Step 02 로직 이곳에 포함
-    return df
-
+        
 
 # common.gfn_get_partial_week(dt: datetime, use_AB=True) 는 그대로 사용# ── 백업용 개별 파서 ──────────────────────────────────────────────────
 _FMT_TRIES = ('%Y/%m/%d', '%Y-%m-%d', '%m-%d-%Y', '%m/%d/%Y')
@@ -1856,6 +868,30 @@ def vec_to_partial_week(col: pd.Series) -> pd.Series:
         out[ok] = np.vectorize(common.gfn_get_partial_week, otypes=[object])(py_dt, True)
 
     return pd.Series(out, index=col.index, dtype=object)
+
+########################################################################################################################
+# End Function Of Utils
+########################################################################################################################
+
+########################################################################################################################
+# Start Function Of Steps
+########################################################################################################################
+# ───── STEP 01 – RTS/EOS 전처리 ───────────────────
+@_decoration_
+def fn_step01_load_rts_eos(df_rts_eos: pd.DataFrame,
+                        shipto_idx: pd.Index,
+                        level_arr:  np.ndarray) -> pd.DataFrame:
+    """
+    * merge 필요 없음 – 입력 그대로 사용
+    * Ship-To → Item_lv(2/3) 계산
+    """
+    # vectorized level
+    pos  = shipto_idx.get_indexer(df_rts_eos[Sales_Domain_ShipTo].to_numpy())
+    lv   = np.where(pos >= 0, level_arr[pos], np.nan)
+    df   = df_rts_eos.assign(Item_Lv=lv.astype('int8'))
+    # ▲TODO: 날짜 → PartialWeek 변환 등 spec Step 02 로직 이곳에 포함
+    return df
+
 
 @_decoration_
 def fn_step02_convert_date_to_partial_week() -> pd.DataFrame:
@@ -2445,7 +1481,6 @@ def step07_prepare_asn(df_asn: pd.DataFrame,
 
     return df_rep
 
-
 @_decoration_
 def fn_step08_match_rts(df_asn_week: pd.DataFrame,
                         df_rts_week: pd.DataFrame,
@@ -2467,9 +1502,7 @@ def fn_step08_match_rts(df_asn_week: pd.DataFrame,
     lv2_arr, lv3_arr = (dim_idx[Sales_Domain_LV2].to_numpy(),
                         dim_idx[Sales_Domain_LV3].to_numpy())
     pos_dim       = dim_idx.index.get_indexer(tgt[Sales_Domain_ShipTo])
-    has_dim       = pos_dim >= 0    
-    
-    # ── RTS/EOS side  MultiIndex  ────────────────────────────────────────
+    has_dim       = pos_dim >= 0    # ── RTS/EOS side  MultiIndex  ────────────────────────────────────────
     rts_idx = df_rts_week.set_index(
         [Item_Item, Sales_Domain_ShipTo, Partial_Week],
         verify_integrity=False)
@@ -3004,277 +2037,20 @@ def step13_build_sellout_outputs(
             _finish(df_ap2_raw, SOut_FCST_AP2_LOCK),
             _finish(df_ap1_raw, SOut_FCST_AP1_LOCK),
             _finish(df_col_raw, SOut_FCST_Color_Condition))
-=======
 
-    else:
-        # o9 에서 
-        input_dataframes[STR_DF_IN_BO_FCST]             = df_in_BO_FCST
-        input_dataframes[STR_DF_IN_TOTAL_BOD_LT]        = df_in_Total_BOD_LT
-        input_dataframes[STR_DF_IN_MAX_PW]              = df_In_MAX_PartialWeek
+########################################################################################################################
+# End Function Of Steps
+########################################################################################################################
 
-    fn_convert_type(input_dataframes[STR_DF_IN_BO_FCST], 'Sales Domain', str)
-    input_dataframes[STR_DF_IN_BO_FCST][COL_BO_FCST].fillna(0, inplace=True)
-    fn_convert_type_equal(input_dataframes[STR_DF_IN_BO_FCST], COL_BO_FCST, 'int32')
-    fn_convert_type_equal(input_dataframes[STR_DF_IN_BO_FCST], COL_BO_FCST_LOCK, bool)
-    input_dataframes[STR_DF_IN_TOTAL_BOD_LT][COL_BO_TOTAL_BOD_LT].fillna(0, inplace=True)
-    fn_convert_type_equal(input_dataframes[STR_DF_IN_TOTAL_BOD_LT], COL_BO_TOTAL_BOD_LT, 'int32')
-
-
-@_decoration_
-def step01_process_total_bod_lt():
-    """
-    Step 1: Process the df_in_Total_BOD_LT dataframe to add week information.
-    Uses global variables for input dataframe and current partial week.
-    :return: Processed dataframe with added week information.
-    """
-    
-    # Copy the input dataframe
-    df_return = input_dataframes[STR_DF_IN_TOTAL_BOD_LT].copy()
-    
-    # Drop the 'Version.[Version Name]' column
-    df_return.drop(columns=[COL_VERSION], inplace=True)
-    
-    
-    # Calculate the new 'BO Total BOD LT' value
-    def extract_week(row):
-        return common.gfn_add_week(current_week_normalized, row[COL_BO_TOTAL_BOD_LT] // 7) + 'A'
-    
-    df_return[COL_BO_TOTAL_BOD_LT] = df_return.apply(extract_week, axis=1)
-    
-    # Add suffix 'A' or 'B' if present in the original dataframe
-    # df_return[COL_BO_TOTAL_BOD_LT] = df_return[COL_BO_TOTAL_BOD_LT].astype(str) + df_in_Total_BOD_LT[COL_BO_TOTAL_BOD_LT].str.extract(r'([AB])$', expand=False).fillna('')
-    
-    return df_return
-
-@_decoration_
-def step02_find_max_virtual_bo_id():
-    """
-    Step 2: Find the maximum 'DP Virtual BO ID' in df_in_BO_FCST.
-    Uses global variable for input dataframe.
-    :return: Maximum 'DP Virtual BO ID'.
-    """
-    df_in_bo_fcst = input_dataframes[STR_DF_IN_BO_FCST]
-
-    # Extract 'DP Virtual BO ID' column and find the maximum value
-    max_virtual_bo_id = df_in_bo_fcst[COL_VIRTUAL_BO_ID].max()
-    
-    return max_virtual_bo_id
-
-@_decoration_
-def step03_apply_lock_conditions():
-    """
-    Step 3: Apply lock conditions to df_in_BO_FCST.
-    Uses global variables for input dataframe and Virtual_BO_ID_MAX.
-    :return: Dataframe with lock conditions applied.
-    """
-    df_in_bo_fcst = input_dataframes[STR_DF_IN_BO_FCST]
-    df_step01 = output_dataframes[STR_DF_STEP01_ADDED_WEEK]
-    
-    # Copy the input dataframe
-    df_return = df_in_bo_fcst.copy()
-    
-    # Join with df_out_step01_added_week
-    df_return = df_return.merge(df_step01, 
-                                left_on=[COL_ITEM, COL_LOC],
-                                right_on=[COL_ITEM, COL_LOC],
-                                # 일치하지 않는 조건이 있기 때문에 innner 로 한다.
-                                how='inner', 
-                                suffixes=('', '_added'))
-    
-    # Normalize COL_TIME_PW and COL_BO_TOTAL_BOD_LT
-    # df_return[COL_CURRENT_ROW_WEEK] = df_return[COL_TIME_PW].apply(normalize_week)
-    # df_return[COL_BO_TOTAL_BOD_LT_NOM] = df_return[COL_BO_TOTAL_BOD_LT].apply(normalize_week)
-    df_return[COL_CURRENT_ROW_WEEK]     = df_return[COL_TIME_PW].str.replace(r'\D', '', regex=True)
-    df_return[COL_BO_TOTAL_BOD_LT_NOM]  = df_return[COL_BO_TOTAL_BOD_LT].str.replace(r'\D', '', regex=True)
-
-    # for test temp
-    # df_return.to_csv(str_output_dir + "/df_return_000.csv", encoding="UTF8", index=True)
-
-    # Apply lock conditions
-
-    ############################################################################################
-    # For rows where 'DP Virtual BO ID' == '-' and 'DP BO ID' == '-'
-    ############################################################################################
-    df_return.loc[(df_return[COL_VIRTUAL_BO_ID] == '-') & (df_return[COL_BO_ID] == '-'), COL_BO_FCST_LOCK] = \
-        (df_return[COL_CURRENT_ROW_WEEK] >= current_week_normalized) & \
-        (df_return[COL_CURRENT_ROW_WEEK] <= df_return[COL_BO_TOTAL_BOD_LT_NOM])
-
-    df_return.loc[(df_return[COL_VIRTUAL_BO_ID] == '-') & (df_return[COL_BO_ID] == '-') & \
-                  (df_return[COL_CURRENT_ROW_WEEK] == max_week_normalized), COL_BO_FCST_LOCK] = False
-    # csv_name = "df_out_step03_01_lock_equal_equal"
-    # fn_log_dataframe(csv_name, df_return)
-
-
-    ############################################################################################
-    # For rows where 'DP Virtual BO ID' != '-' and 'DP BO ID' == '-'
-    ############################################################################################
-    df_return.loc[(df_return[COL_VIRTUAL_BO_ID] != '-') & (df_return[COL_BO_ID] == '-') & \
-                  (df_return[COL_CURRENT_ROW_WEEK] == max_week_normalized), COL_BO_FCST_LOCK] = True
-
-    # csv_name = "df_out_step03_01_lock_not_equal"
-    # fn_log_dataframe(csv_name, df_return)
-
-    ############################################################################################
-    # For rows where 'DP Virtual BO ID' != '-' and 'DP BO ID' != '-'
-    ############################################################################################
-    df_return.loc[(df_return[COL_VIRTUAL_BO_ID] != '-') & (df_return[COL_BO_ID] != '-') & \
-                  (df_return[COL_CURRENT_ROW_WEEK] == df_return[COL_BO_TOTAL_BOD_LT_NOM]), COL_BO_FCST_LOCK] = False
-    df_return.loc[(df_return[COL_VIRTUAL_BO_ID] != '-') & (df_return[COL_BO_ID] != '-') & \
-                  (df_return[COL_CURRENT_ROW_WEEK] == max_week_normalized), COL_BO_FCST_LOCK] = True
-    # csv_name = "df_out_step03_01_lock_not_not"
-    # fn_log_dataframe(csv_name, df_return)
-
-    # Group by 'Item.[Item]', 'Sales Domain.[Ship To]', 'Location.[Location]'
-    # Extract unique combinations from df_return in the order they appear
-    custom_order = df_return.drop_duplicates(subset=[
-        COL_ITEM, 
-        COL_SHIP_TO, 
-        COL_LOC,
-        COL_VIRTUAL_BO_ID,
-        COL_BO_ID
-    ])[
-        [COL_ITEM, COL_SHIP_TO, COL_LOC, 
-        COL_VIRTUAL_BO_ID, COL_BO_ID]
-    ].apply(tuple, axis=1).tolist()
-
-    grouped = df_return.groupby([
-        COL_ITEM, 
-        COL_SHIP_TO, 
-        COL_LOC,
-        COL_VIRTUAL_BO_ID,
-        COL_BO_ID
-    ])
-
-    # Convert the groups to a list of tuples
-    group_list = list(grouped)
-
-    # Sort the groups based on the custom order
-    sorted_groups = sorted(group_list, key=lambda x: custom_order.index(x[0]) if x[0] in custom_order else float('inf'))
-    
-    ############################################################################################
-    # Iterate over each group
-    # Add Data there is no data in 'Time.[Partial Week]_NORMALIZED' == MaxPartialWeek_normalized
-    ############################################################################################
-    added_index = 0
-    for name, group in sorted_groups:
-        # Check if there is no data for the current group
-        if not group[(group[COL_CURRENT_ROW_WEEK] == max_week_normalized)].any().any():
-            latest_row = group.sort_values(by=COL_TIME_PW, ascending=False).iloc[0]
-            latest_index = latest_row.name
-            
-            fcst_lock = True
-            if (latest_row[COL_VIRTUAL_BO_ID] == '-') & (latest_row[COL_BO_ID] == '-'):
-                fcst_lock = False
-            elif (latest_row[COL_VIRTUAL_BO_ID] != '-') & (latest_row[COL_BO_ID] == '-'):
-                fcst_lock = True
-            else:
-                fcst_lock = True
-
-            if gfn_is_partial_week(max_week_normalized):
-                # Add two rows for partial week
-                new_row_a = latest_row.copy()
-                new_row_a[COL_TIME_PW] = max_week_normalized + 'A'
-                new_row_a[COL_CURRENT_ROW_WEEK] = max_week_normalized
-                new_row_a[COL_BO_FCST_LOCK] = fcst_lock
-                df_return = pd.concat([df_return.iloc[:latest_index + 1 + added_index], pd.DataFrame([new_row_a]), df_return.iloc[latest_index + 1 + added_index:]]).reset_index(drop=True)
-                added_index += 1
-
-                new_row_b = latest_row.copy()
-                new_row_b[COL_TIME_PW] = max_week_normalized + 'B'
-                new_row_b[COL_CURRENT_ROW_WEEK] = max_week_normalized
-                new_row_b[COL_BO_FCST_LOCK] = fcst_lock
-                df_return = pd.concat([df_return.iloc[:latest_index + 1 + added_index], pd.DataFrame([new_row_b]), df_return.iloc[latest_index + 1 + added_index:]]).reset_index(drop=True)
-                added_index += 1
-            else:
-                # Add one row for non-partial week
-                new_row = latest_row.copy()
-                new_row[COL_TIME_PW] = max_week_normalized + 'A'
-                new_row[COL_CURRENT_ROW_WEEK] = max_week_normalized
-                new_row[COL_BO_FCST_LOCK] = fcst_lock
-                df_return = pd.concat([df_return.iloc[:latest_index + 1 + added_index], pd.DataFrame([new_row]), df_return.iloc[latest_index + 1 + added_index:]]).reset_index(drop=True)
-                added_index += 1
-            
-            # # Convert the tuple to a string with underscores
-            # file_name = "_".join(map(str, name)).replace("/", "_").replace("-", "_")
-
-            # # Use the file name in the path
-            # fn_log_dataframe(f"df_out_step03_lock_{file_name}", df_return)
-    return df_return
-
-@_decoration_
-def step04_create_virtual_bo():
-    """
-    Step 4: Create virtual BOs based on df_out_step03_lock.
-    Uses global variables for input dataframe and Virtual_BO_ID_MAX.
-    :return: Dataframe with virtual BOs created.
-    """
-
-    # Identify data for creating virtual BOs
-    df_step03 = output_dataframes[STR_DF_STEP03_LOCK]
-    tobe_added_data = df_step03[(df_step03[COL_VIRTUAL_BO_ID] == '-') & 
-                                         (df_step03[COL_BO_ID] == '-')].copy()
-    
-    def _get_new_virtual_bo_id(x):
-        import re
-        # re.search(r'VBO_(\D*)(\d+)', Virtual_BO_ID_MAX)
-        # VBO_(\D*)(\d+)
-        # VBO_ : literal string
-        # (\D*) : not digit (0 or more time)
-        # (\d+) : digit (1 or more time)
-        match = re.search(r'(\D*)(\d+)', Virtual_BO_ID_MAX)
-        if match:
-            return f"{match.group(1)}{int(match.group(2)) + x + 1:09}"
-        else:
-            raise ValueError(f"Virtual_BO_ID_MAX {Virtual_BO_ID_MAX} is not a valid id")
-    # Process by group
-    tobe_added_data[COL_VIRTUAL_BO_ID] = tobe_added_data.groupby(
-        [COL_ITEM, COL_SHIP_TO, COL_LOC]
-    ).ngroup().apply(lambda x: _get_new_virtual_bo_id(x))
-
-
-    
-    tobe_added_data[COL_BO_ID] = '-'
-    
-    # Set 'BO FCST' and 'BO FCST.Lock'
-    def _get_bo_fcst(row):
-        bo_fcst = row[COL_BO_FCST]
-        time_normalized = row[COL_CURRENT_ROW_WEEK]
-        bo_total_bod_lt_normalized = row[COL_BO_TOTAL_BOD_LT_NOM]
-        if time_normalized == bo_total_bod_lt_normalized:
-            return int(bo_fcst)  # Ensure the return value is an integer
-        else:
-            return 0
-    
-    tobe_added_data[COL_BO_FCST] = tobe_added_data.apply(_get_bo_fcst, axis=1)
-    tobe_added_data[COL_BO_FCST_LOCK] = tobe_added_data.apply(
-        lambda row: False if row[COL_CURRENT_ROW_WEEK] == row[COL_BO_TOTAL_BOD_LT_NOM] else True,
-        axis=1
-    )
-    
-    # Add tobe_added_data to df_out_step03_lock
-    df_step04 = pd.concat([df_step03, tobe_added_data], ignore_index=True)
-    
-    return df_step04
-
-# Example usage
-# dict_log = {
-#     'p_step_no': 40,
-#     'p_step_desc': 'Step 4: Create Virtual BOs',
-#     'p_df_name': 'df_out_step04_created'
-# }
-# df_out_step04_created = step04_create_virtual_bo(**dict_log)
-# output_dataframes['df_out_step04_created'] = df_out_step04_created
-# fn_log_dataframe(df_out_step04_created, 'df_out_step04_created')
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
-
-
+########################################################################################################################
+# Start Main
+########################################################################################################################
 if __name__ == '__main__':
     logger.debug(f'[START] {str_instance} {time.strftime("%Y-%m-%d - %H:%M:%S")}')
     logger.Start()
 
     # Output 테이블 선언
     out_Demand = pd.DataFrame()
-<<<<<<< HEAD
     out_sellin = pd.DataFrame()
     out_sellout = pd.DataFrame()
     output_dataframes = {}
@@ -3284,11 +2060,6 @@ if __name__ == '__main__':
         # 전처리 : 모듈 내에서 사용될 데이터에 대한 정합성 체크 및 데이터 선 가공
         ################################################################################################################
         
-=======
-    output_dataframes = {}
-    input_dataframes = {}
-    try:
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         if is_local:
             Version = 'CWV_DP'
             # ----------------------------------------------------
@@ -3298,17 +2069,12 @@ if __name__ == '__main__':
 
             # input_folder_name  = str_instance
             # output_folder_name = str_instance
-<<<<<<< HEAD
             # input_folder_name  = f'{str_instance}_SHA_REF'
             # output_folder_name = f'{str_instance}_SHA_REF'
             # input_folder_name  = f'PYForecastSellInAndEstoreSellOutLockColor_0513_o9_data_local'
             # output_folder_name = f'PYForecastSellInAndEstoreSellOutLockColor_0513_o9_data_local'
             input_folder_name  = f'PYForecastSellInAndEstoreSellOutLockColor_0523_o9_SM_A546UZKBXAG'
             output_folder_name = f'PYForecastSellInAndEstoreSellOutLockColor_0523_o9_SM_A546UZKBXAG'
-=======
-            input_folder_name  = 'PYForecastB2BLockAndRolling_o9'
-            output_folder_name = 'PYForecastB2BLockAndRolling_o9'
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             
             # ------
             str_input_dir = f'Input/{input_folder_name}'
@@ -3321,22 +2087,14 @@ if __name__ == '__main__':
             os.makedirs(str_input_dir, exist_ok=True)
             os.makedirs(str_output_dir, exist_ok=True)
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             # ----------------------------------------------------
             # Week
             # ----------------------------------------------------
             CurrentPartialWeek = '202506A'
 
-<<<<<<< HEAD
             
-        # vdLog 초기화
-        log_path = os.path.dirname(__file__) if is_local else ""
-        vdCommon.gfn_pyLog_start(Version, str_instance, logger, is_local, log_path)
-=======
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
+
         # --------------------------------------------------------------------------
         # df_input 체크 시작
         # --------------------------------------------------------------------------
@@ -3346,7 +2104,6 @@ if __name__ == '__main__':
         for in_df in input_dataframes:
             fn_check_input_table(input_dataframes[in_df], in_df, '1')
 
-<<<<<<< HEAD
         df_dim    = input_dataframes[str_df_in_Sales_Domain_Dimension]
         df_time   = input_dataframes[str_df_in_Time_Partial_Week]
         df_rule   = input_dataframes[str_df_in_Forecast_Rule]
@@ -3356,17 +2113,10 @@ if __name__ == '__main__':
 
         df_eos = input_dataframes.get(str_df_in_Time_Partial_Week)
         max_week = df_eos[Partial_Week].max()
-=======
-
-        df_max_partial_week = input_dataframes[STR_DF_IN_MAX_PW]
-        max_week = df_max_partial_week[COL_TIME_PW].max()
-        # max_week_normalized = normalize_week(max_week)
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         max_week_normalized = normalize_week(max_week)
         current_week_normalized = normalize_week(CurrentPartialWeek)
 
 
-<<<<<<< HEAD
         # 입력 변수 확인
         if Version is None or Version.strip() == '':
             Version = 'CWV_DP'
@@ -3813,69 +2563,6 @@ if __name__ == '__main__':
             └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
         """
-=======
-        ################################################################################################################
-        # Start of processing
-        ################################################################################################################
-        # # Example usage
-        # dict_log = {
-        #     'p_step_no': 30,
-        #     'p_step_desc': 'Step 3: Adjust for negative values',
-        #     'p_df_name': 'df_out_step03_adjust'
-        # }
-        # df_out_step03_adjust = step03_adjust_negative_values(**dict_log)
-        # output_dataframes['df_out_step03_adjust'] = df_out_step03_adjust
-        # fn_log_dataframe(df_out_step03_adjust, 'df_out_step03_adjust')
-
-        dict_log = {
-            'p_step_no': 10,
-            'p_step_desc': 'Step 1: Process Total BOD LT'
-            # 'p_df_name': 'df_out_step01_added_week'
-        }
-        df_fn_step01_added_week = step01_process_total_bod_lt(**dict_log)
-        output_dataframes[STR_DF_STEP01_ADDED_WEEK] = df_fn_step01_added_week
-        fn_log_dataframe(df_fn_step01_added_week, STR_DF_STEP01_ADDED_WEEK)
-
-        dict_log = {
-            'p_step_no': 20,
-            'p_step_desc': 'Step 2: Find Max Virtual BO ID',
-            # 'p_df_name': 'Virtual_BO_ID_MAX'
-        }
-        Virtual_BO_ID_MAX = step02_find_max_virtual_bo_id(**dict_log)
-        # output_dataframes['Virtual_BO_ID_MAX'] = Virtual_BO_ID_MAX
-        # fn_log_dataframe(Virtual_BO_ID_MAX, 'Virtual_BO_ID_MAX')
-
-        dict_log = {
-            'p_step_no': 30,
-            'p_step_desc': 'Step 3: Apply Lock Conditions'
-            # 'p_df_name': 'df_out_step03_lock'
-        }
-        df_step03_lock = step03_apply_lock_conditions(**dict_log)
-        output_dataframes[STR_DF_STEP03_LOCK] = df_step03_lock
-        fn_log_dataframe(df_step03_lock, STR_DF_STEP03_LOCK)
-
-        dict_log = {
-            'p_step_no': 40,
-            'p_step_desc': 'Step 4: Create Virtual BOs'
-            # 'p_df_name': 'df_out_step04_created'
-        }
-        df_step04_created = step04_create_virtual_bo(**dict_log)
-        output_dataframes[STR_DF_STEP04_CREATED] = df_step04_created
-        fn_log_dataframe(df_step04_created, STR_DF_STEP04_CREATED)
-
-        ################################################################################################################
-        # 최종 Output 정리
-        ################################################################################################################
-        dict_log = {
-            'p_step_no': 900,
-            'p_step_desc': '최종 Output 정리 - out_Demand',
-            'p_df_name': 'out_Demand'
-        }
-        out_Demand = fn_output_formatter(df_step04_created, Version, **dict_log)
-        
-        # for df in output_dataframes:
-        #     fn_log_dataframe(output_dataframes[df], df)
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 
     except Exception as e:
@@ -3887,7 +2574,6 @@ if __name__ == '__main__':
         else:
             logger.info(f'{str_instance} exit - {time.strftime("%Y-%m-%d - %H:%M:%S")}')
 
-<<<<<<< HEAD
 
     finally:
         # # MediumWeight 실행 시 Header 없는 빈 데이터프레임이 Output이 되는 경우 오류가 발생함.
@@ -3906,15 +2592,6 @@ if __name__ == '__main__':
             
 
         
-=======
-    finally:
-        # MediumWeight 실행 시 Header 없는 빈 데이터프레임이 Output이 되는 경우 오류가 발생함.
-        # 이 오류를 방지하기 위해 Output이 빈 경우을 체크하여 Header를 만들어 줌.
-        if out_Demand.empty:
-            out_Demand = fn_set_header()
-            fn_log_dataframe(out_Demand, 'out_Demand')
-
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         if is_local:
             log_file_name = common.G_PROGRAM_NAME.replace('py', 'log')
             log_file_name = f'log/{log_file_name}'
@@ -3925,38 +2602,22 @@ if __name__ == '__main__':
             program_path = f"{os.getcwd()}/NSCM_DP_UI_Develop/{str_instance}.py"
             shutil.copyfile(program_path, os.path.join(str_output_dir, os.path.basename(program_path)))
 
-<<<<<<< HEAD
-=======
-            # # task.json copy
-            # task_path = f"{os.getcwd()}/.vscode/tasks.json"
-            # shutil.copyfile(task_path, os.path.join(str_output_dir, os.path.basename(task_path)))
-
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             # log
             input_path = f'{str_output_dir}/input'
             os.makedirs(input_path,exist_ok=True)
             for input_file in input_dataframes:
                 input_dataframes[input_file].to_csv(input_path + "/"+input_file+".csv", encoding="UTF8", index=False)
 
-<<<<<<< HEAD
             # log
             output_path = f'{str_output_dir}/output'
             os.makedirs(output_path,exist_ok=True)
             for output_file in output_dataframes:
                 output_dataframes[output_file].to_csv(output_path + "/"+output_file+".csv", encoding="UTF8", index=False)
 
-        logger.Finish()
         logger.warning(f'{str_instance} {time.strftime("%Y-%m-%d - %H:%M:%S")}::: Finish :::') # 25.05.12 need warning Log by Logger Issue
+        logger.Finish()
         
-=======
-            # # log
-            # output_path = f'{str_output_dir}/output'
-            # os.makedirs(output_path,exist_ok=True)
-            # for output_file in output_dataframes:
-            #     output_dataframes[output_file].to_csv(output_path + "/"+output_file+".csv", encoding="UTF8", index=False)
-
-        # logger.info(f'{str_instance} {time.strftime("%Y-%m-%d - %H:%M:%S")}::: Finish :::')
-        logger.warning(f'{str_instance} {time.strftime("%Y-%m-%d - %H:%M:%S")}::: Finish :::') # 25.05.12 need warning Log by Logger Issue
-        logger.Finish()
        
->>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
+########################################################################################################################
+# End Main
+########################################################################################################################

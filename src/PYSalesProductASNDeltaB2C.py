@@ -1,3 +1,17 @@
+<<<<<<< HEAD
+=======
+# -*- coding: utf-8 -*-
+# Auto-generated from Confluence pages by _build_PYSalesProductASNDeltaB2C_from_confluence.py
+# Source pages: 124977153, 124977160, 125075467, 124977181, 125075489
+# Generated: 2025-11-06 19:58:48
+
+
+
+########################################################################################################################
+# Begin Confluence Page 1/5 — ID 124977153 — 01. Source1 V2 PYSalesProductASNDeltaB2C (v3)
+########################################################################################################################
+
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 from re import X
 import os,sys,json,shutil,io,zipfile
 import time
@@ -53,7 +67,11 @@ COL_ITEM                    = 'Item.[Item]'
 COL_LOCATION                = 'Location.[Location]'
 
 # 시간
+<<<<<<< HEAD
 COL_PW                      = 'Time.[Partial Week]'
+=======
+COL_PWEEK                   = 'Time.[Partial Week]'
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 COL_WEEK                    = 'Time.[Week]'
 COL_MONTH                   = 'Time.[Month]'
 
@@ -125,6 +143,7 @@ COL_SOUT_SR_GC              = 'S/Out FCST Split Ratio_GC'
 COL_SOUT_SR_LOCAL           = 'S/Out FCST Split Ratio_Local'
 
 
+<<<<<<< HEAD
 # Estimated Price 신규 컬럼. 2025.11.07
 COL_EST_PRICE_COLOR       = 'Estimated Price Color'
 
@@ -157,6 +176,8 @@ COL_EP_SALES_STD4_LOCAL      = 'Estimated Price Sales Std2 Item Std4_Local'
 COL_EP_SALES_STD3_LOCAL      = 'Estimated Price Sales Std2 Item Std3_Local'
 COL_EP_SALES_STD2_LOCAL      = 'Estimated Price Sales Std2 Item Std2_Local'
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 # ======================================================
 # 데이터프레임 상수
 # ======================================================
@@ -195,7 +216,11 @@ DF_OUT_FLOORING_DUMMY           = 'Output_Flooring_Dummy'
 
 DF_OUT_SIN_ASSORT               = 'Output_SIn_Assortment'
 DF_OUT_SOUT_ASSORT              = 'Output_SOut_Assortment'
+<<<<<<< HEAD
 DF_OUT_FLOORING_ASSORT          = 'Output_Flooring_Assortment'      # (Output 2-3) Flooring용 Assortment
+=======
+DF_OUT_FLOORING_ASSORT          = 'Output_Flooring_Assortment'
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 DF_OUT_SIN_GI_AP1               = 'df_output_Sell_In_FCST_GI_AP1'
 DF_OUT_SIN_GI_AP2               = 'df_output_Sell_In_FCST_GI_AP2'
@@ -207,7 +232,11 @@ DF_OUT_SOUT_AP2                 = 'df_output_Sell_Out_FCST_AP2'
 DF_OUT_SOUT_GC                  = 'df_output_Sell_Out_FCST_GC'
 DF_OUT_SOUT_LOCAL               = 'df_output_Sell_Out_FCST_Local'
 
+<<<<<<< HEAD
 DF_OUT_FLOORING_FCST            = 'df_output_Flooring_FCST'         # (Output 3-3) Flooring FCST (VD)
+=======
+DF_OUT_FLOORING_FCST            = 'df_output_Flooring_FCST'
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 DF_OUT_BO_FCST                  = 'df_output_BO_FCST'  # (추후 스펙)
 
 DF_OUT_EST_PRICE_LOCAL          = 'df_output_Estimated_Price_Local'
@@ -222,6 +251,7 @@ DF_OUT_SOUT_SR_AP2              = 'df_output_Sell_Out_FCST_Split_Ratio_AP2'
 DF_OUT_SOUT_SR_GC               = 'df_output_Sell_Out_FCST_Split_Ratio_GC'
 DF_OUT_SOUT_SR_LOCAL            = 'df_output_Sell_Out_FCST_Split_Ratio_Local'
 
+<<<<<<< HEAD
 
 # ========================
 # NEW: Input DataFrames. 2025.11.07
@@ -247,6 +277,8 @@ COL_SOUT_MASTER_STATUS  = 'S/Out Master Status'
 
 DF_IN_SOUT_SIMUL_MASTER = 'df_in_Sell_Out_Simul_Master'
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 ########################################################################################################################
 # log 설정 : PROGRAM file_name
 ########################################################################################################################
@@ -606,6 +638,7 @@ def fn_process_in_df_mst():
         f'{DF_IN_SOUT_SR_AP2  }.csv': DF_IN_SOUT_SR_AP2,
         f'{DF_IN_SOUT_SR_GC   }.csv': DF_IN_SOUT_SR_GC,
         f'{DF_IN_SOUT_SR_LOCAL}.csv': DF_IN_SOUT_SR_LOCAL,
+<<<<<<< HEAD
 
         # 2025.11.07
         f'{DF_IN_SIN_FCST  }.csv': DF_IN_SIN_FCST,
@@ -620,6 +653,8 @@ def fn_process_in_df_mst():
         # 2025.11.24
         f'{DF_IN_SOUT_SIMUL_MASTER  }.csv': DF_IN_SOUT_SIMUL_MASTER
         
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     }
 
     def read_csv_with_fallback(filepath: str) -> pd.DataFrame:
@@ -678,6 +713,7 @@ def fn_process_in_df_mst():
         input_dataframes[DF_IN_SOUT_SR_GC   ] = df_in_Sell_Out_FCST_Split_Ratio_GC
         input_dataframes[DF_IN_SOUT_SR_LOCAL] = df_in_Sell_Out_FCST_Split_Ratio_Local
 
+<<<<<<< HEAD
         # 2025.11.07
         input_dataframes[DF_IN_SIN_FCST  ] = df_in_sin_fcst
         input_dataframes[DF_IN_SOUT_FCST ] = df_in_sout_fcst
@@ -691,6 +727,8 @@ def fn_process_in_df_mst():
         # 2025.11.24
         input_dataframes[DF_IN_SOUT_SIMUL_MASTER] = df_in_Sell_Out_Simul_Master
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     # -----------------------------
     # 2) 차원 컬럼: category 로 통일
     # -----------------------------
@@ -796,6 +834,13 @@ def sanitize_date_string(x: object) -> str:
 v_sanitize_date_string = np.vectorize(sanitize_date_string, otypes=[object])
 
 
+<<<<<<< HEAD
+=======
+########################################################################################################################
+# Begin Confluence Page 2/5 — ID 124977160 — 02. Source1 V2 PYSalesProductASNDeltaB2C (v3)
+########################################################################################################################
+
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 # v_sanitize_date_string = np.vectorize(sanitize_date_string)
 
@@ -1066,6 +1111,7 @@ def ultra_fast_groupby_numpy_general(
 
     return result
 
+<<<<<<< HEAD
 
 # ======================================================
 # 공용: 차원형(category) 캐스팅 + 컬럼 순서 정리 유틸
@@ -1111,6 +1157,8 @@ def gfn_parse_sales_item_location(salesItemLocation: str) -> Tuple[pd.DataFrame,
     return df, has_loc
 
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 #####################################################
 #################### Start Step Functions  ##########
 #####################################################
@@ -1118,6 +1166,31 @@ def gfn_parse_sales_item_location(salesItemLocation: str) -> Tuple[pd.DataFrame,
 # Step 01: 생성할 Dummy 선별 (+ 삭제용 Output 구성)
 # ======================================================
 
+<<<<<<< HEAD
+=======
+# ---------- (재확인) 컬럼 상수 ----------
+# COL_VERSION   = 'Version.[Version Name]'
+# COL_SHIP_TO   = 'Sales Domain.[Ship To]'
+# COL_ITEM      = 'Item.[Item]'
+# COL_LOCATION  = 'Location.[Location]'
+# COL_PWEEK     = 'Time.[Partial Week]'
+# COL_WEEK      = 'Time.[Week]'
+
+# COL_SIN_DUMMY_AP1   = 'S/In FCST(GI) Dummy_AP1'
+# COL_SIN_DUMMY_AP2   = 'S/In FCST(GI) Dummy_AP2'
+# COL_SIN_DUMMY_GC    = 'S/In FCST(GI) Dummy_GC'
+# COL_SIN_DUMMY_LOCAL = 'S/In FCST(GI) Dummy_Local'
+SIN_DUMMY_COLS = [COL_SIN_DUMMY_AP1, COL_SIN_DUMMY_AP2, COL_SIN_DUMMY_GC, COL_SIN_DUMMY_LOCAL]
+
+# COL_SOUT_DUMMY_AP1   = 'S/Out FCST Dummy_AP1'
+# COL_SOUT_DUMMY_AP2   = 'S/Out FCST Dummy_AP2'
+# COL_SOUT_DUMMY_GC    = 'S/Out FCST Dummy_GC'
+# COL_SOUT_DUMMY_LOCAL = 'S/Out FCST Dummy_Local'
+SOUT_DUMMY_COLS = [COL_SOUT_DUMMY_AP1, COL_SOUT_DUMMY_AP2, COL_SOUT_DUMMY_GC, COL_SOUT_DUMMY_LOCAL]
+
+# COL_FLOORING_DUMMY = 'Flooring FCST Dummy'
+
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 # ---------- 유틸 ----------
 def _coerce_dims(
     df: pd.DataFrame,
@@ -1135,6 +1208,7 @@ def _to_float32(
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors='coerce').astype('float32')
 
+<<<<<<< HEAD
 
 # ======================================================
 # Step 1-0) Sales 선정 (salesItemLocation → eStore 제거 → SDD 유효 ShipTo 필터)
@@ -1739,6 +1813,482 @@ def fn_step02_03_build_flooring_assortment(
     _to_float32(work, [floor_assort_col])
    
     return work
+=======
+def _any_positive_or_notnull(
+    df: pd.DataFrame,
+    cols: list[str]
+) -> pd.Series:
+    valid_cols = [c for c in cols if c in df.columns]
+    if not valid_cols:
+        return pd.Series(False, index=df.index)
+    mask_notnull = df[valid_cols].notna().any(axis=1)
+    mask_gt0 = (pd.DataFrame({c: pd.to_numeric(df[c], errors='coerce') for c in valid_cols}) > 0).any(axis=1)
+    return mask_notnull | mask_gt0
+
+def _empty_like_sin_dummy(
+    out_version: str
+) -> pd.DataFrame:
+    cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK] + SIN_DUMMY_COLS
+    df = pd.DataFrame(columns=cols)
+    _coerce_dims(df, [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK])
+    _to_float32(df, SIN_DUMMY_COLS)
+    if out_version:
+        df[COL_VERSION] = df[COL_VERSION].astype('category')
+    return df
+def _empty_like_sout_dummy(
+    out_version: str
+) -> pd.DataFrame:
+    cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK] + SOUT_DUMMY_COLS
+    df = pd.DataFrame(columns=cols)
+    _coerce_dims(df, [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK])
+    _to_float32(df, SOUT_DUMMY_COLS)
+    return df
+def _empty_like_flooring_dummy(
+    out_version: str
+) -> pd.DataFrame:
+    cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_WEEK, COL_FLOORING_DUMMY]
+    df = pd.DataFrame(columns=cols)
+    _coerce_dims(df, [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_WEEK])
+    _to_float32(df, [COL_FLOORING_DUMMY])
+    return df
+
+########################################################################################################################
+# Step 1-0) Sales 선정 (SDD에서 eStore ShipTo 제거)
+########################################################################################################################
+@_decoration_
+def fn_step01_00_select_sales(
+    df_sdd   : pd.DataFrame,
+    df_estore: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    """
+    Step 1-0) Sales 선정
+    ----------------------------------------------------------
+    • load: df_in_Sales_Domain_Dimension, df_in_Sales_Domain_Estore
+    • eStore ShipTo( df_in_Sales_Domain_Estore[Ship To] )를 기준으로 SDD에서 제외
+    • 반환: 필터링된 df_in_Sales_Domain_Dimension (원본 컬럼 유지)    기대 컬럼 (존재 확인):
+      - Sales Domain.[Sales Std1..6], Sales Domain.[Ship To]
+    """
+    if df_sdd is None or df_sdd.empty:
+        raise Exception('[Step 1-0] Input df_in_Sales_Domain_Dimension is empty.')
+
+    level_cols = [
+        COL_STD1,
+        COL_STD2,
+        COL_STD3,
+        COL_STD4,
+        COL_STD5,
+        COL_STD6,
+        COL_SHIP_TO
+    ]
+    missing = [c for c in level_cols if c not in df_sdd.columns]
+    if missing:
+        raise KeyError(f"[Step 1-0] Missing required columns in SDD: {missing}")
+
+    # eStore ShipTo 집합
+    estore_set: set[str] = set()
+    if df_estore is not None and not df_estore.empty:
+        if COL_SHIP_TO not in df_estore.columns:
+            raise KeyError(f"[Step 1-0] Missing '{COL_SHIP_TO}' in df_in_Sales_Domain_Estore.")
+        estore_set = set(df_estore[COL_SHIP_TO].astype(str).unique().tolist())
+
+    # eStore 제외 필터
+    df_sel = df_sdd.loc[
+        ~df_sdd[COL_SHIP_TO].astype(str).isin(estore_set)
+    ].copy(deep=False)
+
+    # dtype 최소 정리 (레벨/ShipTo만 category 보장)
+    for c in level_cols:
+        if df_sel[c].dtype.name != 'category':
+            df_sel[c] = df_sel[c].astype('category')
+
+    # 메모리 정리
+    del df_sdd, df_estore
+    gc.collect()
+
+    return df_sel
+
+########################################################################################################################
+# Step 1-1) S/In 더미에서 생성할 Sales 선정
+########################################################################################################################
+@_decoration_
+def fn_step01_01_pick_sin_dummy(
+    df_sin: pd.DataFrame,
+    ship_to_set: Set[str]
+) -> pd.DataFrame:
+    """
+    Step 1-1) S/In 더미에서 생성할 Sales 선정
+    ----------------------------------------------------------
+    • ShipTo ∈ ship_to_set
+    • 더미 measure 중 하나라도 값 존재(>0 또는 not null)
+    • 반환: [ShipTo, Item, Location, PartialWeek, 4 measures]
+    """
+    need = [COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK] + SIN_DUMMY_COLS
+    if df_sin is None or df_sin.empty:
+        return pd.DataFrame(columns=need)
+    miss = [c for c in need if c not in df_sin.columns]
+    if miss:
+        raise KeyError(f"[Step 1-1] Missing columns in df_sin: {miss}")
+
+    df = df_sin[need].copy(deep=False)
+    df = df[df[COL_SHIP_TO].astype(str).isin({str(x) for x in ship_to_set})]
+    df = df[_any_positive_or_notnull(df, SIN_DUMMY_COLS)]
+    _coerce_dims(df, [COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK])
+    _to_float32(df, SIN_DUMMY_COLS)
+    return df
+
+########################################################################################################################
+# Step 1-2) S/In 더미 Output 구성(삭제용: measure NULL)
+########################################################################################################################
+@_decoration_
+def fn_step01_02_build_output_sin_dummy_delete(
+    df_pick: pd.DataFrame,
+    out_version: str
+) -> pd.DataFrame:
+    """
+    Step 1-2) S/In 더미 Output 구성(삭제용)
+    ----------------------------------------------------------
+    • measure 4개 전부 NaN
+    • Version 주입 + dtype/category 정리
+    """
+    if df_pick is None or df_pick.empty:
+        return _empty_like_sin_dummy(out_version)
+
+    df = df_pick[[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK]].copy(deep=False)
+    for c in SIN_DUMMY_COLS:
+        df[c] = np.nan
+
+    df.insert(0, COL_VERSION, out_version)
+    cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK] + SIN_DUMMY_COLS
+    df = df[cols]
+
+    _coerce_dims(df, [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK])
+    _to_float32(df, SIN_DUMMY_COLS)
+    return df
+
+########################################################################################################################
+# Step 1-3) S/Out 더미에서 생성할 Sales 선정
+########################################################################################################################
+@_decoration_
+def fn_step01_03_pick_sout_dummy(
+    df_sout: pd.DataFrame,
+    ship_to_set: Set[str]
+) -> pd.DataFrame:
+    """
+    Step 1-3) S/Out 더미에서 생성할 Sales 선정
+    ----------------------------------------------------------
+    • ShipTo ∈ ship_to_set
+    • 더미 measure 중 하나라도 값 존재
+    """
+    need = [COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK] + SOUT_DUMMY_COLS
+    if df_sout is None or df_sout.empty:
+        return pd.DataFrame(columns=need)
+    miss = [c for c in need if c not in df_sout.columns]
+    if miss:
+        raise KeyError(f"[Step 1-3] Missing columns in df_sout: {miss}")
+
+    df = df_sout[need].copy(deep=False)
+    df = df[df[COL_SHIP_TO].astype(str).isin({str(x) for x in ship_to_set})]
+    df = df[_any_positive_or_notnull(df, SOUT_DUMMY_COLS)]
+    _coerce_dims(df, [COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK])
+    _to_float32(df, SOUT_DUMMY_COLS)
+    return df
+
+########################################################################################################################
+# Step 1-4) S/Out 더미 Output 구성(삭제용: measure NULL)
+########################################################################################################################
+@_decoration_
+def fn_step01_04_build_output_sout_dummy_delete(
+    df_pick: pd.DataFrame,
+    out_version: str
+) -> pd.DataFrame:
+    """
+    Step 1-4) S/Out 더미 Output 구성(삭제용)
+    ----------------------------------------------------------
+    • measure 4개 전부 NaN
+    • Version 주입 + dtype/category 정리
+    """
+    if df_pick is None or df_pick.empty:
+        return _empty_like_sout_dummy(out_version)
+
+    df = df_pick[[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK]].copy(deep=False)
+    for c in SOUT_DUMMY_COLS:
+        df[c] = np.nan
+
+    df.insert(0, COL_VERSION, out_version)
+    cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK] + SOUT_DUMMY_COLS
+    df = df[cols]
+
+    _coerce_dims(df, [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK])
+    _to_float32(df, SOUT_DUMMY_COLS)
+    return df
+
+########################################################################################################################
+# Step 1-5) Flooring 더미에서 생성할 Sales 선정
+########################################################################################################################
+@_decoration_
+def fn_step01_05_pick_flooring_dummy(
+    df_floor: pd.DataFrame,
+    ship_to_set: Set[str]
+) -> pd.DataFrame:
+    """
+    Step 1-5) Flooring 더미에서 생성할 Sales 선정
+    ----------------------------------------------------------
+    • ShipTo ∈ ship_to_set
+    • Flooring Dummy 값 존재
+    • 반환: [ShipTo, Item, Week, Flooring Dummy]
+    """
+    need = [COL_SHIP_TO, COL_ITEM, COL_WEEK, COL_FLOORING_DUMMY]
+    if df_floor is None or df_floor.empty:
+        return pd.DataFrame(columns=need)
+    miss = [c for c in need if c not in df_floor.columns]
+    if miss:
+        raise KeyError(f"[Step 1-5] Missing columns in df_floor: {miss}")
+
+    df = df_floor[need].copy(deep=False)
+    df = df[df[COL_SHIP_TO].astype(str).isin({str(x) for x in ship_to_set})]
+    df = df[_any_positive_or_notnull(df, [COL_FLOORING_DUMMY])]
+    _coerce_dims(df, [COL_SHIP_TO, COL_ITEM, COL_WEEK])
+    _to_float32(df, [COL_FLOORING_DUMMY])
+    return df
+
+########################################################################################################################
+# Step 1-6) Flooring 더미 Output 구성(삭제용: measure NULL)
+########################################################################################################################
+@_decoration_
+def fn_step01_06_build_output_flooring_dummy_delete(
+    df_pick: pd.DataFrame,
+    out_version: str
+) -> pd.DataFrame:
+    """
+    Step 1-6) Flooring 더미 Output 구성(삭제용)
+    ----------------------------------------------------------
+    • Flooring Dummy = NaN
+    • Version 주입 + dtype/category 정리
+    """
+    if df_pick is None or df_pick.empty:
+        return _empty_like_flooring_dummy(out_version)
+
+    df = df_pick[[COL_SHIP_TO, COL_ITEM, COL_WEEK]].copy(deep=False)
+    df[COL_FLOORING_DUMMY] = np.nan
+
+    df.insert(0, COL_VERSION, out_version)
+    cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_WEEK, COL_FLOORING_DUMMY]
+    df = df[cols]
+
+    _coerce_dims(df, [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_WEEK])
+    _to_float32(df, [COL_FLOORING_DUMMY])
+    return df
+
+########################################################################################################################
+# Step 2-1) S/In FCST(GI) Dummy → Assortment Output  (NumPy ultra-fast groupby 사용)
+########################################################################################################################
+@_decoration_
+def fn_step02_01_build_sin_assortment(
+    df_sin_pick : pd.DataFrame,   # Step 1-1 결과 (ShipTo*Item*Location*PartialWeek + Dummy 4종)
+    out_version: str,
+    **kwargs
+) -> pd.DataFrame:
+    """
+    입력  : [Sales Domain.[Ship To], Item.[Item], Location.[Location], Time.[Partial Week],
+            S/In FCST(GI) Dummy_AP1, _AP2, _GC, _Local]
+    처리  : Time 제거, 더미 4종을 ShipTo*Item*Location 기준으로 OR 집계(max) → Assortment로 rename
+           * 초대용량 대비: ultra_fast_groupby_numpy_general 사용 (NumPy reduceat)
+           * NaN 전파 방지: 더미를 집계 전 0/1 플래그로 변환
+    출력  : [Version.[Version Name], Sales Domain.[Ship To], Item.[Item], Location.[Location],
+            S/In FCST(GI) Assortment_AP1, _AP2, _GC, _Local]
+    dtype : 차원 category, measure float32(값 1.0 또는 NaN)
+    """
+    # ── 0) 방어/스키마 ────────────────────────────────────────────────────────
+    out_cols = [
+        COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION,
+        COL_SIN_ASSORT_AP1, COL_SIN_ASSORT_AP2, COL_SIN_ASSORT_GC, COL_SIN_ASSORT_LOCAL
+    ]
+    if df_sin_pick is None or df_sin_pick.empty:
+        df_out = pd.DataFrame(columns=out_cols)
+        for c in (COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION):
+            df_out[c] = df_out[c].astype('category')
+        for m in (COL_SIN_ASSORT_AP1, COL_SIN_ASSORT_AP2, COL_SIN_ASSORT_GC, COL_SIN_ASSORT_LOCAL):
+            df_out[m] = df_out[m].astype('float32')
+        return df_out    
+    
+    need = [
+        COL_SHIP_TO, COL_ITEM, COL_LOCATION,
+        COL_SIN_DUMMY_AP1, COL_SIN_DUMMY_AP2, COL_SIN_DUMMY_GC, COL_SIN_DUMMY_LOCAL
+    ]
+    miss = [c for c in need if c not in df_sin_pick.columns]
+    if miss:
+        raise KeyError(f"[Step 2-1] Required columns missing in df_sin_pick: {miss}")
+
+    # ── 1) 필요 컬럼만 복사 + 더미 → 0/1 플래그로 변환 ───────────────────────
+    use = df_sin_pick[need].copy(deep=False)
+
+    # 숫자/문자 섞여 있어도 안전하게: notna & != 0 → 1(참), 그 외 0(거짓)
+    for m in (COL_SIN_DUMMY_AP1, COL_SIN_DUMMY_AP2, COL_SIN_DUMMY_GC, COL_SIN_DUMMY_LOCAL):
+        v = pd.to_numeric(use[m], errors='coerce')
+        use[m] = ((v.notna()) & (v != 0)).astype(np.int8)
+
+    # ── 2) 초고속 그룹바이(OR = max) ─────────────────────────────────────────
+    grp_flags = ultra_fast_groupby_numpy_general(
+        df=use,
+        key_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION],
+        aggs={
+            COL_SIN_DUMMY_AP1  : 'max',
+            COL_SIN_DUMMY_AP2  : 'max',
+            COL_SIN_DUMMY_GC   : 'max',
+            COL_SIN_DUMMY_LOCAL: 'max',
+        },
+    )
+
+    # ── 3) 더미 → 어소트먼트 rename + 0→NaN, 1→1.0 ─────────────────────────
+    grp_flags.rename(columns={
+        COL_SIN_DUMMY_AP1  : COL_SIN_ASSORT_AP1,
+        COL_SIN_DUMMY_AP2  : COL_SIN_ASSORT_AP2,
+        COL_SIN_DUMMY_GC   : COL_SIN_ASSORT_GC,
+        COL_SIN_DUMMY_LOCAL: COL_SIN_ASSORT_LOCAL,
+    }, inplace=True)
+
+    for m in (COL_SIN_ASSORT_AP1, COL_SIN_ASSORT_AP2, COL_SIN_ASSORT_GC, COL_SIN_ASSORT_LOCAL):
+        grp_flags[m] = grp_flags[m].astype('float32')
+        grp_flags[m] = grp_flags[m].where(grp_flags[m] > 0, np.nan)  # 0 → NaN
+
+    # ── 4) Version 주입 + dtype 정리 ────────────────────────────────────────
+    grp_flags.insert(0, COL_VERSION, out_version)
+    for c in (COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION):
+        if grp_flags[c].dtype.name != 'category':
+            grp_flags[c] = grp_flags[c].astype('category')
+
+    return grp_flags[out_cols]
+
+
+########################################################################################################################
+# Begin Confluence Page 3/5 — ID 125075467 — 03. Source1 V2 PYSalesProductASNDeltaB2C (v3)
+########################################################################################################################
+
+
+########################################################################################################################
+# Step 2-2) S/Out FCST Dummy → Assortment Output  (NumPy ultra-fast groupby 사용)
+########################################################################################################################
+@_decoration_
+def fn_step02_02_build_sout_assortment(
+    df_sout_pick: pd.DataFrame,   # Step 1-3 결과 (ShipTo*Item*Location*PartialWeek + Dummy 4종)
+    out_version: str,
+    **kwargs
+) -> pd.DataFrame:
+    """
+    입력  : [Sales Domain.[Ship To], Item.[Item], Location.[Location], Time.[Partial Week],
+            S/Out FCST Dummy_AP1, _AP2, _GC, _Local]
+    처리  : Time 제거, 더미 4종을 ShipTo*Item*Location 기준으로 OR 집계(max) → Assortment로 rename
+           * 초대용량 대비: ultra_fast_groupby_numpy_general 사용
+           * NaN 전파 방지: 더미를 집계 전 0/1 플래그로 변환
+    출력  : [Version.[Version Name], Sales Domain.[Ship To], Item.[Item], Location.[Location],
+            S/Out FCST Assortment_AP1, _AP2, _GC, _Local]
+    dtype : 차원 category, measure float32(값 1.0 또는 NaN)
+    """
+    out_cols = [
+        COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION,
+        COL_SOUT_ASSORT_AP1, COL_SOUT_ASSORT_AP2, COL_SOUT_ASSORT_GC, COL_SOUT_ASSORT_LOCAL
+    ]
+    if df_sout_pick is None or df_sout_pick.empty:
+        df_out = pd.DataFrame(columns=out_cols)
+        for c in (COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION):
+            df_out[c] = df_out[c].astype('category')
+        for m in (COL_SOUT_ASSORT_AP1, COL_SOUT_ASSORT_AP2, COL_SOUT_ASSORT_GC, COL_SOUT_ASSORT_LOCAL):
+            df_out[m] = df_out[m].astype('float32')
+        return df_out
+
+    need = [
+        COL_SHIP_TO, COL_ITEM, COL_LOCATION,
+        COL_SOUT_DUMMY_AP1, COL_SOUT_DUMMY_AP2, COL_SOUT_DUMMY_GC, COL_SOUT_DUMMY_LOCAL
+    ]
+    miss = [c for c in need if c not in df_sout_pick.columns]
+    if miss:
+        raise KeyError(f"[Step 2-2] Required columns missing in df_sout_pick: {miss}")
+
+    use = df_sout_pick[need].copy(deep=False)
+    for m in (COL_SOUT_DUMMY_AP1, COL_SOUT_DUMMY_AP2, COL_SOUT_DUMMY_GC, COL_SOUT_DUMMY_LOCAL):
+        v = pd.to_numeric(use[m], errors='coerce')
+        use[m] = ((v.notna()) & (v != 0)).astype(np.int8)
+
+    grp_flags = ultra_fast_groupby_numpy_general(
+        df=use,
+        key_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION],
+        aggs={
+            COL_SOUT_DUMMY_AP1  : 'max',
+            COL_SOUT_DUMMY_AP2  : 'max',
+            COL_SOUT_DUMMY_GC   : 'max',
+            COL_SOUT_DUMMY_LOCAL: 'max',
+        },
+    )
+
+    grp_flags.rename(columns={
+        COL_SOUT_DUMMY_AP1  : COL_SOUT_ASSORT_AP1,
+        COL_SOUT_DUMMY_AP2  : COL_SOUT_ASSORT_AP2,
+        COL_SOUT_DUMMY_GC   : COL_SOUT_ASSORT_GC,
+        COL_SOUT_DUMMY_LOCAL: COL_SOUT_ASSORT_LOCAL,
+    }, inplace=True)
+
+    for m in (COL_SOUT_ASSORT_AP1, COL_SOUT_ASSORT_AP2, COL_SOUT_ASSORT_GC, COL_SOUT_ASSORT_LOCAL):
+        grp_flags[m] = grp_flags[m].astype('float32')
+        grp_flags[m] = grp_flags[m].where(grp_flags[m] > 0, np.nan)
+
+    grp_flags.insert(0, COL_VERSION, out_version)
+    for c in (COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION):
+        if grp_flags[c].dtype.name != 'category':
+            grp_flags[c] = grp_flags[c].astype('category')
+
+    return grp_flags[out_cols]
+
+########################################################################################################################
+# Step 2-3) Flooring FCST Dummy → Flooring Assortment Output  (NumPy ultra-fast groupby 사용)
+########################################################################################################################
+@_decoration_
+def fn_step02_03_build_flooring_assortment(
+    df_floor_pick: pd.DataFrame,  # Step 1-5 결과 (ShipTo*Item*Week + Flooring FCST Dummy)
+    out_version : str,
+    **kwargs
+) -> pd.DataFrame:
+    """
+    입력  : [Sales Domain.[Ship To], Item.[Item], Time.[Week], Flooring FCST Dummy]
+    처리  : Time 삭제, ShipTo*Item 기준 OR 집계(max), 'Flooring FCST Assortment' 로 rename
+           * 초대용량 대비: ultra_fast_groupby_numpy_general 사용
+           * NaN 전파 방지: 더미를 집계 전 0/1 플래그로 변환
+    출력  : [Version.[Version Name], Sales Domain.[Ship To], Item.[Item], Flooring FCST Assortment]
+    dtype : 차원 category, measure float32(값 1.0 또는 NaN)
+    """
+    out_cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_FLOORING_ASSORT]
+    if df_floor_pick is None or df_floor_pick.empty:
+        df_out = pd.DataFrame(columns=out_cols)
+        for c in (COL_VERSION, COL_SHIP_TO, COL_ITEM):
+            df_out[c] = df_out[c].astype('category')
+        df_out[COL_FLOORING_ASSORT] = df_out[COL_FLOORING_ASSORT].astype('float32')
+        return df_out
+
+    need = [COL_SHIP_TO, COL_ITEM, COL_FLOORING_DUMMY]
+    miss = [c for c in need if c not in df_floor_pick.columns]
+    if miss:
+        raise KeyError(f"[Step 2-3] Required columns missing in df_floor_pick: {miss}")
+
+    use = df_floor_pick[need].copy(deep=False)
+    v = pd.to_numeric(use[COL_FLOORING_DUMMY], errors='coerce')
+    use[COL_FLOORING_DUMMY] = ((v.notna()) & (v != 0)).astype(np.int8)
+
+    grp_flags = ultra_fast_groupby_numpy_general(
+        df=use,
+        key_cols=[COL_SHIP_TO, COL_ITEM],
+        aggs={COL_FLOORING_DUMMY: 'max'},
+    )
+
+    grp_flags.rename(columns={COL_FLOORING_DUMMY: COL_FLOORING_ASSORT}, inplace=True)
+    grp_flags[COL_FLOORING_ASSORT] = grp_flags[COL_FLOORING_ASSORT].astype('float32')
+    grp_flags[COL_FLOORING_ASSORT] = grp_flags[COL_FLOORING_ASSORT].where(grp_flags[COL_FLOORING_ASSORT] > 0, np.nan)
+
+    grp_flags.insert(0, COL_VERSION, out_version)
+    for c in (COL_VERSION, COL_SHIP_TO, COL_ITEM):
+        if grp_flags[c].dtype.name != 'category':
+            grp_flags[c] = grp_flags[c].astype('category')
+
+    return grp_flags[out_cols]
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 ########################################################################################################################
 # Step 3 — FCST 값 생성 (상수명 정합 반영 버전)
@@ -1770,8 +2320,12 @@ def _unique_keys_from_dummy(
         return pd.DataFrame(columns=key_cols)
 
     s_val = pd.to_numeric(df_in[dummy_col], errors='coerce')
+<<<<<<< HEAD
     # mask  = (s_val.notna()) & (s_val != 0)
     mask  = (s_val.notna())
+=======
+    mask  = (s_val.notna()) & (s_val != 0)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     if not mask.any():
         return pd.DataFrame(columns=key_cols)
 
@@ -1831,6 +2385,7 @@ def _inject_version_and_cast(
         df[m] = pd.to_numeric(df[m], errors='coerce').astype('float32')
     return df
 
+<<<<<<< HEAD
 # -------------------------------------------------------------------------------------------------
 # NEW: 전역 measureLv 판정 유틸
 # -------------------------------------------------------------------------------------------------
@@ -1842,6 +2397,8 @@ def _is_measure(target: str) -> bool:
         return (measureLv or '').strip().lower() == target
     except NameError:
         return False
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 ########################################################################################################################
 # Step 3-1-1) S/In FCST(GI)_AP1, S/In FCST(BL)_AP1, S/In FCST(GI) New Model 생성 (Dummy_AP1 기준)
@@ -1859,6 +2416,7 @@ def fn_step03_01_01_build_sin_fcst_ap1(
      S/In FCST(GI)_AP1, S/In FCST(BL)_AP1, S/In FCST(GI) New Model]
     값은 모두 0.0
     """
+<<<<<<< HEAD
     # measureLv가 ap1이 아니면 즉시 빈 DF 반환
     if not _is_measure('ap1'):
         out_cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW,
@@ -1874,13 +2432,27 @@ def fn_step03_01_01_build_sin_fcst_ap1(
                          float_cols=[COL_SIN_GI_AP1, COL_SIN_BL_AP1, COL_SIN_NEW_MODEL])
 
     df = _expand_by_time(keys, df_time_pw, COL_PW)
+=======
+    key_cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION]
+    keys = _unique_keys_from_dummy(df_sin_pick, key_cols, COL_SIN_DUMMY_AP1)
+    out_cols = [COL_VERSION, *key_cols, COL_PWEEK, COL_SIN_GI_AP1, COL_SIN_BL_AP1, COL_SIN_NEW_MODEL]
+    if keys.empty:
+        return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PWEEK],
+                         float_cols=[COL_SIN_GI_AP1, COL_SIN_BL_AP1, COL_SIN_NEW_MODEL])
+
+    df = _expand_by_time(keys, df_time_pw, COL_PWEEK)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df[COL_SIN_GI_AP1]   = 0.0
     df[COL_SIN_BL_AP1]   = 0.0
     df[COL_SIN_NEW_MODEL]= 0.0
 
     df = _inject_version_and_cast(
         df, out_version,
+<<<<<<< HEAD
         cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW],
+=======
+        cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK],
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         float_cols=[COL_SIN_GI_AP1, COL_SIN_BL_AP1, COL_SIN_NEW_MODEL]
     )
     return df[out_cols]
@@ -1895,6 +2467,7 @@ def fn_step03_01_02_build_sin_fcst_ap2(
     out_version: str,
     **kwargs
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     
     if not _is_measure('ap2'):
         out_cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW,
@@ -1910,12 +2483,26 @@ def fn_step03_01_02_build_sin_fcst_ap2(
                          float_cols=[COL_SIN_GI_AP2, COL_SIN_BL_AP2])
 
     df = _expand_by_time(keys, df_time_pw, COL_PW)
+=======
+    key_cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION]
+    keys = _unique_keys_from_dummy(df_sin_pick, key_cols, COL_SIN_DUMMY_AP2)
+    out_cols = [COL_VERSION, *key_cols, COL_PWEEK, COL_SIN_GI_AP2, COL_SIN_BL_AP2]
+    if keys.empty:
+        return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PWEEK],
+                         float_cols=[COL_SIN_GI_AP2, COL_SIN_BL_AP2])
+
+    df = _expand_by_time(keys, df_time_pw, COL_PWEEK)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df[COL_SIN_GI_AP2] = 0.0
     df[COL_SIN_BL_AP2] = 0.0
 
     df = _inject_version_and_cast(
         df, out_version,
+<<<<<<< HEAD
         cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW],
+=======
+        cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK],
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         float_cols=[COL_SIN_GI_AP2, COL_SIN_BL_AP2]
     )
     return df[out_cols]
@@ -1930,6 +2517,7 @@ def fn_step03_01_03_build_sin_fcst_gc(
     out_version: str,
     **kwargs
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     
     if not _is_measure('gc'):
         out_cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW,
@@ -1945,12 +2533,26 @@ def fn_step03_01_03_build_sin_fcst_gc(
                          float_cols=[COL_SIN_GC, COL_SIN_BL_GC])
 
     df = _expand_by_time(keys, df_time_pw, COL_PW)
+=======
+    key_cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION]
+    keys = _unique_keys_from_dummy(df_sin_pick, key_cols, COL_SIN_DUMMY_GC)
+    out_cols = [COL_VERSION, *key_cols, COL_PWEEK, COL_SIN_GC, COL_SIN_BL_GC]
+    if keys.empty:
+        return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PWEEK],
+                         float_cols=[COL_SIN_GC, COL_SIN_BL_GC])
+
+    df = _expand_by_time(keys, df_time_pw, COL_PWEEK)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df[COL_SIN_GC]    = 0.0
     df[COL_SIN_BL_GC] = 0.0
 
     df = _inject_version_and_cast(
         df, out_version,
+<<<<<<< HEAD
         cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW],
+=======
+        cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK],
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         float_cols=[COL_SIN_GC, COL_SIN_BL_GC]
     )
     return df[out_cols]
@@ -1965,6 +2567,7 @@ def fn_step03_01_04_build_sin_fcst_local(
     out_version: str,
     **kwargs
 ) -> pd.DataFrame:
+<<<<<<< HEAD
         
     if not _is_measure('local'):
         out_cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW,
@@ -1980,12 +2583,26 @@ def fn_step03_01_04_build_sin_fcst_local(
                          float_cols=[COL_SIN_LOCAL, COL_SIN_BL_LOCAL])
 
     df = _expand_by_time(keys, df_time_pw, COL_PW)
+=======
+    key_cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION]
+    keys = _unique_keys_from_dummy(df_sin_pick, key_cols, COL_SIN_DUMMY_LOCAL)
+    out_cols = [COL_VERSION, *key_cols, COL_PWEEK, COL_SIN_LOCAL, COL_SIN_BL_LOCAL]
+    if keys.empty:
+        return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PWEEK],
+                         float_cols=[COL_SIN_LOCAL, COL_SIN_BL_LOCAL])
+
+    df = _expand_by_time(keys, df_time_pw, COL_PWEEK)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df[COL_SIN_LOCAL]    = 0.0
     df[COL_SIN_BL_LOCAL] = 0.0
 
     df = _inject_version_and_cast(
         df, out_version,
+<<<<<<< HEAD
         cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW],
+=======
+        cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK],
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         float_cols=[COL_SIN_LOCAL, COL_SIN_BL_LOCAL]
     )
     return df[out_cols]
@@ -2000,6 +2617,7 @@ def fn_step03_02_01_build_sout_fcst_ap1(
     out_version : str,
     **kwargs
 ) -> pd.DataFrame:
+<<<<<<< HEAD
 
     if not _is_measure('ap1'):
         out_cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW, COL_SOUT_AP1]
@@ -2013,11 +2631,24 @@ def fn_step03_02_01_build_sout_fcst_ap1(
         return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PW], float_cols=[COL_SOUT_AP1])
 
     df = _expand_by_time(keys, df_time_pw, COL_PW)
+=======
+    key_cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION]
+    keys = _unique_keys_from_dummy(df_sout_pick, key_cols, COL_SOUT_DUMMY_AP1)
+    out_cols = [COL_VERSION, *key_cols, COL_PWEEK, COL_SOUT_AP1]
+    if keys.empty:
+        return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PWEEK], float_cols=[COL_SOUT_AP1])
+
+    df = _expand_by_time(keys, df_time_pw, COL_PWEEK)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df[COL_SOUT_AP1] = 0.0
 
     df = _inject_version_and_cast(
         df, out_version,
+<<<<<<< HEAD
         cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW],
+=======
+        cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK],
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         float_cols=[COL_SOUT_AP1]
     )
     return df[out_cols]
@@ -2032,6 +2663,7 @@ def fn_step03_02_02_build_sout_fcst_ap2(
     out_version : str,
     **kwargs
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     if not _is_measure('ap2'):
         out_cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW, COL_SOUT_AP2]
         return _mk_empty(out_cols, with_cats=[COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW],
@@ -2044,11 +2676,24 @@ def fn_step03_02_02_build_sout_fcst_ap2(
         return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PW], float_cols=[COL_SOUT_AP2])
 
     df = _expand_by_time(keys, df_time_pw, COL_PW)
+=======
+    key_cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION]
+    keys = _unique_keys_from_dummy(df_sout_pick, key_cols, COL_SOUT_DUMMY_AP2)
+    out_cols = [COL_VERSION, *key_cols, COL_PWEEK, COL_SOUT_AP2]
+    if keys.empty:
+        return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PWEEK], float_cols=[COL_SOUT_AP2])
+
+    df = _expand_by_time(keys, df_time_pw, COL_PWEEK)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df[COL_SOUT_AP2] = 0.0
 
     df = _inject_version_and_cast(
         df, out_version,
+<<<<<<< HEAD
         cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW],
+=======
+        cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK],
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         float_cols=[COL_SOUT_AP2]
     )
     return df[out_cols]
@@ -2063,6 +2708,7 @@ def fn_step03_02_03_build_sout_fcst_gc(
     out_version : str,
     **kwargs
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     if not _is_measure('gc'):
         out_cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW, COL_SOUT_GC]
         return _mk_empty(out_cols, with_cats=[COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW],
@@ -2075,11 +2721,24 @@ def fn_step03_02_03_build_sout_fcst_gc(
         return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PW], float_cols=[COL_SOUT_GC])
 
     df = _expand_by_time(keys, df_time_pw, COL_PW)
+=======
+    key_cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION]
+    keys = _unique_keys_from_dummy(df_sout_pick, key_cols, COL_SOUT_DUMMY_GC)
+    out_cols = [COL_VERSION, *key_cols, COL_PWEEK, COL_SOUT_GC]
+    if keys.empty:
+        return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PWEEK], float_cols=[COL_SOUT_GC])
+
+    df = _expand_by_time(keys, df_time_pw, COL_PWEEK)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df[COL_SOUT_GC] = 0.0
 
     df = _inject_version_and_cast(
         df, out_version,
+<<<<<<< HEAD
         cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW],
+=======
+        cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK],
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         float_cols=[COL_SOUT_GC]
     )
     return df[out_cols]
@@ -2094,6 +2753,7 @@ def fn_step03_02_04_build_sout_fcst_local(
     out_version : str,
     **kwargs
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     if not _is_measure('local'):
         out_cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW, COL_SOUT_LOCAL]
         return _mk_empty(out_cols, with_cats=[COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW],
@@ -2106,11 +2766,24 @@ def fn_step03_02_04_build_sout_fcst_local(
         return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PW], float_cols=[COL_SOUT_LOCAL])
 
     df = _expand_by_time(keys, df_time_pw, COL_PW)
+=======
+    key_cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION]
+    keys = _unique_keys_from_dummy(df_sout_pick, key_cols, COL_SOUT_DUMMY_LOCAL)
+    out_cols = [COL_VERSION, *key_cols, COL_PWEEK, COL_SOUT_LOCAL]
+    if keys.empty:
+        return _mk_empty(out_cols, with_cats=[COL_VERSION, *key_cols, COL_PWEEK], float_cols=[COL_SOUT_LOCAL])
+
+    df = _expand_by_time(keys, df_time_pw, COL_PWEEK)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df[COL_SOUT_LOCAL] = 0.0
 
     df = _inject_version_and_cast(
         df, out_version,
+<<<<<<< HEAD
         cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PW],
+=======
+        cat_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK],
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         float_cols=[COL_SOUT_LOCAL]
     )
     return df[out_cols]
@@ -2146,8 +2819,14 @@ def fn_step03_03_build_flooring_fcst(
     )
     return df[out_cols]
 
+<<<<<<< HEAD
 ########################################################################################################################
 # Step 4 — Estimated Price Local Data 생성  (1107버전)
+=======
+
+########################################################################################################################
+# Step 4 — Estimated Price Local Data 생성
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 ########################################################################################################################
 from datetime import date
 
@@ -2165,12 +2844,17 @@ def _pweek_to_month_str(pw: str) -> str:
         return np.nan
     y = int(pw[:4])
     w = int(pw[4:6])
+<<<<<<< HEAD
+=======
+    # ISO week 의 월요일 날짜
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     try:
         d = date.fromisocalendar(y, w, 1)
     except ValueError:
         return np.nan
     return f"{d.year}{d.month:02d}"
 
+<<<<<<< HEAD
 # 1107버전추가: 정수 컬럼 지원(NA 허용을 위해 pandas Nullable Int32 사용)
 def _mk_empty_cols(cols: list[str], cat_cols: list[str], float_cols: list[str], int_cols: list[str] = None) -> pd.DataFrame:
     df = pd.DataFrame(columns=cols)
@@ -2181,6 +2865,14 @@ def _mk_empty_cols(cols: list[str], cat_cols: list[str], float_cols: list[str], 
     # 1107버전추가
     for c in (int_cols or []):
         df[c] = pd.Series(pd.array([], dtype="Int32"))
+=======
+def _mk_empty_cols(cols: list[str], cat_cols: list[str], float_cols: list[str]) -> pd.DataFrame:
+    df = pd.DataFrame(columns=cols)
+    for c in cat_cols:
+        df[c] = df[c].astype('category')
+    for c in float_cols:
+        df[c] = df[c].astype('float32')
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     return df
 
 def _expand_s2_by_pweek(df_keys: pd.DataFrame, df_time_pw: pd.DataFrame) -> pd.DataFrame:
@@ -2188,7 +2880,11 @@ def _expand_s2_by_pweek(df_keys: pd.DataFrame, df_time_pw: pd.DataFrame) -> pd.D
     (ShipTo, Item) × PartialWeek 카티전 곱
     """
     if df_keys is None or df_keys.empty or df_time_pw is None or df_time_pw.empty:
+<<<<<<< HEAD
         return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM, COL_PW])
+=======
+        return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM, COL_PWEEK])
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     base = df_keys[[COL_SHIP_TO, COL_ITEM]].drop_duplicates().reset_index(drop=True)
     if base[COL_SHIP_TO].dtype.name != 'category':
@@ -2196,10 +2892,17 @@ def _expand_s2_by_pweek(df_keys: pd.DataFrame, df_time_pw: pd.DataFrame) -> pd.D
     if base[COL_ITEM].dtype.name != 'category':
         base[COL_ITEM] = base[COL_ITEM].astype('category')
 
+<<<<<<< HEAD
     s_pw = df_time_pw[COL_PW]
     if s_pw.dtype.name != 'category':
         s_pw = s_pw.astype('category')
     t = pd.DataFrame({COL_PW: s_pw.values})
+=======
+    s_pw = df_time_pw[COL_PWEEK]
+    if s_pw.dtype.name != 'category':
+        s_pw = s_pw.astype('category')
+    t = pd.DataFrame({COL_PWEEK: s_pw.values})
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     n_b = len(base)
     n_t = len(t)
@@ -2208,6 +2911,7 @@ def _expand_s2_by_pweek(df_keys: pd.DataFrame, df_time_pw: pd.DataFrame) -> pd.D
     tile_t = pd.concat([t] * n_b, ignore_index=True)
 
     df = pd.concat([rep_b, tile_t], axis=1)
+<<<<<<< HEAD
     df[COL_PW] = df[COL_PW].astype('category')
     return df
 
@@ -2237,15 +2941,39 @@ def _inject_version_cast(df: pd.DataFrame, out_version: str, cat_cols: list[str]
         # 우선 숫자화 → 정수로 변환(NA 허용)
         s = pd.to_numeric(df.get(ic), errors='coerce')
         df[ic] = s.astype('Int32')
+=======
+    df[COL_PWEEK] = df[COL_PWEEK].astype('category')
+    return df
+
+def _inject_version_cast(df: pd.DataFrame, out_version: str, cat_cols: list[str], float_cols: list[str]) -> pd.DataFrame:
+    if df is None or df.empty:
+        cols = [COL_VERSION, *cat_cols, *float_cols]
+        return _mk_empty_cols(cols, cat_cols=[COL_VERSION, *cat_cols], float_cols=float_cols)
+    df.insert(0, COL_VERSION, out_version)
+    for c in [COL_VERSION, *cat_cols]:
+        if df[c].dtype.name != 'category':
+            df[c] = df[c].astype('category')
+    for m in float_cols:
+        df[m] = pd.to_numeric(df[m], errors='coerce').astype('float32')
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     return df
 
 def _safe_left_merge(df_left: pd.DataFrame, df_right: pd.DataFrame, on: list[str], how: str = 'left', suffixes=('', '_r')):
     if df_right is None or df_right.empty:
+<<<<<<< HEAD
+=======
+        # 오른쪽이 비어있으면 그냥 왼쪽 반환
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         return df_left
     return df_left.merge(df_right, how=how, on=on, suffixes=suffixes)
 
 # ──────────────────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
 # Step 4-0) Estimated Price 생성 대상 (ShipTo*Item) 선정  (변경 없음)
+=======
+# Step 4-0) Estimated Price 생성 대상 (ShipTo*Item) 선정
+#   - Step 1-1 S/In Dummy pick, Step 1-3 S/Out Dummy pick 을 각각 ShipTo*Item 으로 묶은 뒤 교집합
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 # ──────────────────────────────────────────────────────────────────────────────
 @_decoration_
 def fn_step04_00_select_price_targets(
@@ -2275,6 +3003,7 @@ def fn_step04_00_select_price_targets(
     return df[need_cols]
 
 # ──────────────────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
 # Step 4-1) Estimated Price Local + Estimated Price Color 생성
 #   우선순위 1 → 9
 #   1) Estimated Price Modify_Local
@@ -2335,6 +3064,47 @@ def fn_step04_01_build_est_price_local(
     if df_item_mst is not None and not df_item_mst.empty:
         df = _safe_left_merge(
             df,
+=======
+# Step 4-1) Estimated Price Local 생성 (우선순위 1→6 적용)
+#   우선순위 체인
+#     1) Estimated Price Modify_Local
+#     2) Estimated Price_Local
+#     3) Estimated Price Item Std4_Local (ShipTo, ItemStd4, PartialWeek)
+#     4) Estimated Price Item Std3_Local (ShipTo, ItemStd3, PartialWeek)
+#     5) Estimated Price Item Std2_Local (ShipTo, ItemStd2, PartialWeek)
+#     6) Action Plan Price_USD(ShipTo,Item,Month) * Exchange Rate_Local(SalesStd3,PartialWeek)
+# ──────────────────────────────────────────────────────────────────────────────
+@_decoration_
+def fn_step04_01_build_est_price_local(
+    df_targets        : pd.DataFrame,   # Step 4-0 결과 (ShipTo*Item)
+    df_time_pw        : pd.DataFrame,   # Time.[Partial Week]
+    df_item_mst       : pd.DataFrame,   # Item Std2/3/4
+    df_sdd            : pd.DataFrame,   # SDD (Sales Std3 매핑용)
+    df_est_price      : pd.DataFrame,   # ShipTo*Item*PW → Mod, Local
+    df_ep_std4_local  : pd.DataFrame,   # ItemStd4*ShipTo*PW → 값
+    df_ep_std3_local  : pd.DataFrame,   # ItemStd3*ShipTo*PW → 값
+    df_ep_std2_local  : pd.DataFrame,   # ItemStd2*ShipTo*PW → 값
+    df_ap_price       : pd.DataFrame,   # ShipTo*Item*Month → USD
+    df_exrate_local   : pd.DataFrame,   # SalesStd3*PW → 환율
+    out_version       : str,
+    **kwargs
+) -> pd.DataFrame:
+    # ── 0) 방어 ─────────────────────────────────────────────────────────────
+    out_cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PWEEK, COL_EST_PRICE_LOCAL]
+    if df_targets is None or df_targets.empty or df_time_pw is None or df_time_pw.empty:
+        return _mk_empty_cols(out_cols,
+                              cat_cols=[COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PWEEK],
+                              float_cols=[COL_EST_PRICE_LOCAL])
+
+    # ── 1) (ShipTo*Item)×PW 확장 ───────────────────────────────────────────
+    df = _expand_s2_by_pweek(df_targets, df_time_pw)  # [ShipTo, Item, PW]
+
+    # ── 2) 보조 키 컬럼 주입: Item Std2/3/4, Sales Std3 ────────────────────
+    # Item Std2/3/4
+    if df_item_mst is not None and not df_item_mst.empty:
+        df = _safe_left_merge(
+            df, 
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             df_item_mst[[COL_ITEM, COL_ITEM_STD2, COL_ITEM_STD3, COL_ITEM_STD4]].drop_duplicates(),
             on=[COL_ITEM]
         )
@@ -2343,6 +3113,7 @@ def fn_step04_01_build_est_price_local(
         df[COL_ITEM_STD3] = np.nan
         df[COL_ITEM_STD4] = np.nan
 
+<<<<<<< HEAD
     if df_sdd is not None and not df_sdd.empty:
         # Sales Std3 에 더해 Sales Std2 까지 함께 매핑  # 25.11.17 변경
         sdd_cols = [COL_SHIP_TO, COL_STD3]
@@ -2370,10 +3141,25 @@ def fn_step04_01_build_est_price_local(
             df[COL_EST_PRICE_MOD_LOCAL] = np.nan
         if COL_EST_PRICE_LOCAL not in df.columns:
             df[COL_EST_PRICE_LOCAL] = np.nan
+=======
+    # Sales Std3 (ShipTo → Std3)
+    if df_sdd is not None and not df_sdd.empty:
+        sdd_map = df_sdd[[COL_SHIP_TO, COL_STD3]].drop_duplicates()
+        df = _safe_left_merge(df, sdd_map, on=[COL_SHIP_TO])
+    else:
+        df[COL_STD3] = np.nan
+
+    # ── 3) 1,2 단계 소스 Merge ─────────────────────────────────────────────
+    # (1) df_est_price : ShipTo*Item*PW
+    if df_est_price is not None and not df_est_price.empty:
+        use_cols = [COL_SHIP_TO, COL_ITEM, COL_PWEEK, COL_EST_PRICE_MOD_LOCAL, COL_EST_PRICE_LOCAL]
+        df = _safe_left_merge(df, df_est_price[use_cols], on=[COL_SHIP_TO, COL_ITEM, COL_PWEEK])
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     else:
         df[COL_EST_PRICE_MOD_LOCAL] = np.nan
         df[COL_EST_PRICE_LOCAL]     = np.nan
 
+<<<<<<< HEAD
     # (4) 3~5단계(Std4/3/2) 병합: ShipTo+ItemStdX+PW  # 기존 로직 유지
     if df_ep_std4_local is not None and not df_ep_std4_local.empty:
         m4 = df_ep_std4_local[
@@ -2431,10 +3217,42 @@ def fn_step04_01_build_est_price_local(
         ap = df_ap_price[
             [COL_SHIP_TO, COL_ITEM, COL_MONTH, COL_AP_PRICE_USD]
         ].drop_duplicates()
+=======
+    # ── 4) 3,4,5 단계(Std4/Std3/Std2) 소스 Merge ───────────────────────────
+    # Std4
+    if df_ep_std4_local is not None and not df_ep_std4_local.empty:
+        m4 = df_ep_std4_local[[COL_ITEM_STD4, COL_SHIP_TO, COL_PWEEK, COL_EP_STD4_LOCAL]].drop_duplicates()
+        df = _safe_left_merge(df, m4, on=[COL_ITEM_STD4, COL_SHIP_TO, COL_PWEEK])
+    else:
+        df[COL_EP_STD4_LOCAL] = np.nan
+
+    # Std3
+    if df_ep_std3_local is not None and not df_ep_std3_local.empty:
+        m3 = df_ep_std3_local[[COL_ITEM_STD3, COL_SHIP_TO, COL_PWEEK, COL_EP_STD3_LOCAL]].drop_duplicates()
+        df = _safe_left_merge(df, m3, on=[COL_ITEM_STD3, COL_SHIP_TO, COL_PWEEK])
+    else:
+        df[COL_EP_STD3_LOCAL] = np.nan
+
+    # Std2
+    if df_ep_std2_local is not None and not df_ep_std2_local.empty:
+        m2 = df_ep_std2_local[[COL_ITEM_STD2, COL_SHIP_TO, COL_PWEEK, COL_EP_STD2_LOCAL]].drop_duplicates()
+        df = _safe_left_merge(df, m2, on=[COL_ITEM_STD2, COL_SHIP_TO, COL_PWEEK])
+    else:
+        df[COL_EP_STD2_LOCAL] = np.nan
+
+    # ── 5) 6 단계(AP USD * EXRATE) ─────────────────────────────────────────
+    # PartialWeek → Month
+    df[COL_MONTH] = df[COL_PWEEK].astype(str).map(_pweek_to_month_str)
+
+    # AP USD (ShipTo*Item*Month)
+    if df_ap_price is not None and not df_ap_price.empty and COL_MONTH in df_ap_price.columns:
+        ap = df_ap_price[[COL_SHIP_TO, COL_ITEM, COL_MONTH, COL_AP_PRICE_USD]].drop_duplicates()
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         df = _safe_left_merge(df, ap, on=[COL_SHIP_TO, COL_ITEM, COL_MONTH])
     else:
         df[COL_AP_PRICE_USD] = np.nan
 
+<<<<<<< HEAD
     if df_exrate_local is not None and not df_exrate_local.empty:
         ex = df_exrate_local[
             [COL_STD3, COL_PW, COL_EXRATE_LOCAL]
@@ -2500,16 +3318,60 @@ def fn_step04_01_build_est_price_local(
         cat_cols=[COL_SHIP_TO, COL_ITEM, COL_PW],
         float_cols=[COL_EST_PRICE_LOCAL],
         int_cols=[COL_EST_PRICE_COLOR]  # 1107버전추가
+=======
+    # EXRATE (Std3*PW)
+    if df_exrate_local is not None and not df_exrate_local.empty:
+        ex = df_exrate_local[[COL_STD3, COL_PWEEK, COL_EXRATE_LOCAL]].drop_duplicates()
+        df = _safe_left_merge(df, ex, on=[COL_STD3, COL_PWEEK])
+    else:
+        df[COL_EXRATE_LOCAL] = np.nan
+
+    df['__ap_local'] = pd.to_numeric(df[COL_AP_PRICE_USD], errors='coerce') * pd.to_numeric(df[COL_EXRATE_LOCAL], errors='coerce')
+
+    # ── 6) 우선순위 1→6 coalesce ──────────────────────────────────────────
+    coalesce_cols = [
+        COL_EST_PRICE_MOD_LOCAL,
+        COL_EST_PRICE_LOCAL,
+        COL_EP_STD4_LOCAL,
+        COL_EP_STD3_LOCAL,
+        COL_EP_STD2_LOCAL,
+        '__ap_local'
+    ]
+    # 첫 컬럼부터 순차 적용
+    out_val = None
+    for c in coalesce_cols:
+        v = pd.to_numeric(df[c], errors='coerce')
+        out_val = v if out_val is None else out_val.fillna(v)
+
+    df[COL_EST_PRICE_LOCAL] = out_val.astype('float32')
+
+    # ── 7) 출력 스키마 + Version 주입 ─────────────────────────────────────
+    out = df[[COL_SHIP_TO, COL_ITEM, COL_PWEEK, COL_EST_PRICE_LOCAL]].copy(deep=False)
+    out = _inject_version_cast(
+        out,
+        out_version=out_version,
+        cat_cols=[COL_SHIP_TO, COL_ITEM, COL_PWEEK],
+        float_cols=[COL_EST_PRICE_LOCAL]
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     )
 
     # 메모리 정리
     del df
     gc.collect()
+<<<<<<< HEAD
     return out[[COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PW, COL_EST_PRICE_LOCAL, COL_EST_PRICE_COLOR]]
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 4-2) Estimated Price_Local 결측치 하위 Lv 평균으로 보완
 #   - 결측에서 자식 평균으로 채운 행은 Color=1 로 지정  # 1107버전추가
+=======
+    return out[[COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PWEEK, COL_EST_PRICE_LOCAL]]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 4-2) Estimated Price_Local 결측치 하위 Lv 평균으로 보완 (선택/고급)
+#   - SDD를 이용해 parent ShipTo → children ShipTo 목록 구성
+#   - parent,item,pw 의 값이 NaN 이면 children 동일 item,pw 평균으로 채움
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 # ──────────────────────────────────────────────────────────────────────────────
 @_decoration_
 def fn_step04_02_fill_missing_price_from_children(
@@ -2521,6 +3383,11 @@ def fn_step04_02_fill_missing_price_from_children(
         return df_est_local
 
     # parent → children 매핑(dict)
+<<<<<<< HEAD
+=======
+    # 각 행에서 (Std1..Std6, ShipTo)을 읽어, 각 StdX 값을 parent 로 보고 ShipTo 를 child 로 등록
+    # (실사용시, children 중 df_est_local 에 존재하는 ShipTo 만 유지)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     parent_children = {}
     if df_sdd is not None and not df_sdd.empty:
         cols = [COL_STD1, COL_STD2, COL_STD3, COL_STD4, COL_STD5, COL_STD6, COL_SHIP_TO]
@@ -2531,6 +3398,10 @@ def fn_step04_02_fill_missing_price_from_children(
                 parent = str(r[pcol])
                 parent_children.setdefault(parent, set()).add(child)
 
+<<<<<<< HEAD
+=======
+    # df_est_local 에 존재하는 ShipTo 로 children 필터링
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     existing_shipto = set(df_est_local[COL_SHIP_TO].astype(str).unique())
     parent_children = {
         p: sorted([c for c in ch if c in existing_shipto])
@@ -2540,12 +3411,18 @@ def fn_step04_02_fill_missing_price_from_children(
     if not parent_children:
         return df_est_local
 
+<<<<<<< HEAD
+=======
+    # 평균값 산출용 DF (child rows)
+    # parent 를 확장하여 (parent, child) 쌍 테이블 만들고 child 데이터를 조인 후 parent,item,pw 로 groupby 평균
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     map_rows = []
     for p, childs in parent_children.items():
         for c in childs:
             map_rows.append((p, c))
     df_map = pd.DataFrame(map_rows, columns=['__parent', '__child'])
 
+<<<<<<< HEAD
     df_child = df_est_local.rename(columns={COL_SHIP_TO: '__child'})[['__child', COL_ITEM, COL_PW, COL_EST_PRICE_LOCAL]]
     df_par_join = df_map.merge(df_child, on='__child', how='left')  # [parent, child, item, pw, val]
 
@@ -2561,12 +3438,37 @@ def fn_step04_02_fill_missing_price_from_children(
         if COL_EST_PRICE_COLOR not in out.columns:
             out[COL_EST_PRICE_COLOR] = pd.Series(pd.NA, index=out.index, dtype="Int32")
         out.loc[need, COL_EST_PRICE_COLOR] = 1
+=======
+    df_child = df_est_local.rename(columns={COL_SHIP_TO: '__child'})[['__child', COL_ITEM, COL_PWEEK, COL_EST_PRICE_LOCAL]]
+    df_par_join = df_map.merge(df_child, on='__child', how='left')  # [parent, child, item, pw, val]
+
+    grp = df_par_join.groupby(['__parent', COL_ITEM, COL_PWEEK], as_index=False)[COL_EST_PRICE_LOCAL].mean()
+    grp.rename(columns={'__parent': COL_SHIP_TO, COL_EST_PRICE_LOCAL: '__avg_child_val'}, inplace=True)
+
+    # 결측치 채우기
+    out = df_est_local.merge(grp, on=[COL_SHIP_TO, COL_ITEM, COL_PWEEK], how='left')
+    need = out[COL_EST_PRICE_LOCAL].isna() & out['__avg_child_val'].notna()
+    if need.any():
+        out.loc[need, COL_EST_PRICE_LOCAL] = out.loc[need, '__avg_child_val'].astype('float32')
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     out.drop(columns=['__avg_child_val'], inplace=True)
     return out
 
+<<<<<<< HEAD
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 4-4) Estimated Price Local Output 포맷 (Color 포함)  # 1107버전추가
+=======
+
+########################################################################################################################
+# Begin Confluence Page 4/5 — ID 124977181 — 04. Source1 V2 PYSalesProductASNDeltaB2C (v3)
+########################################################################################################################
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 4-4) Estimated Price Local Output 포맷
+#   - 스키마/타입 고정
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 # ──────────────────────────────────────────────────────────────────────────────
 @_decoration_
 def fn_step04_04_format_est_price_output(
@@ -2574,25 +3476,39 @@ def fn_step04_04_format_est_price_output(
     out_version : str,
     **kwargs
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PW, COL_EST_PRICE_LOCAL, COL_EST_PRICE_COLOR]  # 1107버전추가
     if df_est_local is None or df_est_local.empty:
         return _mk_empty_cols(cols,
                               cat_cols=[COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PW],
                               float_cols=[COL_EST_PRICE_LOCAL],
                               int_cols=[COL_EST_PRICE_COLOR])  # 1107버전추가
+=======
+    cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PWEEK, COL_EST_PRICE_LOCAL]
+    if df_est_local is None or df_est_local.empty:
+        return _mk_empty_cols(cols,
+                              cat_cols=[COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PWEEK],
+                              float_cols=[COL_EST_PRICE_LOCAL])
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     df = df_est_local.copy(deep=False)
     if COL_VERSION not in df.columns:
         df.insert(0, COL_VERSION, out_version)
+<<<<<<< HEAD
     else:
         df[COL_VERSION] = out_version
 
     for c in [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PW]:
+=======
+
+    for c in [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PWEEK]:
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         if df[c].dtype.name != 'category':
             df[c] = df[c].astype('category')
 
     df[COL_EST_PRICE_LOCAL] = pd.to_numeric(df[COL_EST_PRICE_LOCAL], errors='coerce').astype('float32')
 
+<<<<<<< HEAD
     # 1107버전추가: Color 정수화(Int32)
     if COL_EST_PRICE_COLOR not in df.columns:
         df[COL_EST_PRICE_COLOR] = pd.Series(pd.NA, index=df.index, dtype="Int32")
@@ -2616,11 +3532,40 @@ def _unique_keyframe_from_step3(df_in: pd.DataFrame, *, with_loc: bool) -> pd.Da
     if df_in is None or df_in.empty:
         return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM] + ([COL_LOCATION] if with_loc else []) + [COL_PW])
     need_cols = [COL_SHIP_TO, COL_ITEM] + ([COL_LOCATION] if with_loc else []) + [COL_PW]
+=======
+    return df[cols]
+
+########################################################################################################################
+# Step 5) Split Ratio Data 생성	
+########################################################################################################################
+########################################################################################################################
+# [공통] Split Ratio 빌더 (S/In, S/Out 공용)
+########################################################################################################################
+def _empty_split_ratio_schema(with_loc: bool, meas_col: str) -> pd.DataFrame:
+    cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM] + ([COL_LOCATION] if with_loc else []) + [COL_PWEEK, meas_col]
+    return pd.DataFrame(columns=cols)
+
+def _unique_keyframe_from_step3(
+    df_in: pd.DataFrame,
+    *,
+    with_loc: bool
+) -> pd.DataFrame:
+    """
+    Step3 결과에서 Split Ratio 적용을 위한 '키 스켈레톤' 생성
+      - 필요 컬럼만 취해 중복 제거 (ShipTo*Item*(Location)*PW)
+      - 빈 입력 시 빈 DF 반환
+    """
+    if df_in is None or df_in.empty:
+        return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM] + ([COL_LOCATION] if with_loc else []) + [COL_PWEEK])
+
+    need_cols = [COL_SHIP_TO, COL_ITEM] + ([COL_LOCATION] if with_loc else []) + [COL_PWEEK]
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     use_cols  = [c for c in need_cols if c in df_in.columns]
     df = df_in.loc[:, use_cols].copy(deep=False)
     return df.drop_duplicates(ignore_index=True)
 
 def _map_shipto_to_std2(df_sdd: pd.DataFrame) -> pd.DataFrame:
+<<<<<<< HEAD
     if df_sdd is None or df_sdd.empty:
         return pd.DataFrame(columns=[COL_SHIP_TO, COL_STD2])
     return df_sdd[[COL_SHIP_TO, COL_STD2]].drop_duplicates()
@@ -2629,6 +3574,24 @@ def _map_item_to_std1(df_item_mst: pd.DataFrame) -> pd.DataFrame:
     if df_item_mst is None or df_item_mst.empty:
         return pd.DataFrame(columns=[COL_ITEM, COL_ITEM_STD1])
     return df_item_mst[[COL_ITEM, COL_ITEM_STD1]].drop_duplicates()
+=======
+    """
+    SDD에서 ShipTo ↔ Std2 매핑만 추출 (중복 제거)
+    """
+    if df_sdd is None or df_sdd.empty:
+        return pd.DataFrame(columns=[COL_SHIP_TO, COL_STD2])
+    m = df_sdd[[COL_SHIP_TO, COL_STD2]].drop_duplicates()
+    return m
+
+def _map_item_to_std1(df_item_mst: pd.DataFrame) -> pd.DataFrame:
+    """
+    Item Master에서 Item ↔ Item Std1 매핑 추출
+    """
+    if df_item_mst is None or df_item_mst.empty:
+        return pd.DataFrame(columns=[COL_ITEM, COL_ITEM_STD1])
+    m = df_item_mst[[COL_ITEM, COL_ITEM_STD1]].drop_duplicates()
+    return m
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 def _build_split_ratio_generic(
     df_base_step3: pd.DataFrame,
@@ -2637,6 +3600,7 @@ def _build_split_ratio_generic(
     df_ratio_in: pd.DataFrame,   # AP1/AP2/GC/Local 각각의 인풋
     *,
     meas_col: str,               # 최종 산출 컬럼명(예: COL_SIN_SR_AP1)
+<<<<<<< HEAD
     with_loc: bool,              # S/In=True, S/Out=True
     out_version: str
 ) -> pd.DataFrame:
@@ -2645,10 +3609,29 @@ def _build_split_ratio_generic(
         return _empty_split_ratio_schema(with_loc, meas_col)
 
     # 1) 키 스켈레톤
+=======
+    with_loc: bool,              # S/In=True, S/Out=True (둘 다 Location 존재), Flooring용 없음
+    out_version: str
+) -> pd.DataFrame:
+    """
+    공통 Split Ratio 생성:
+      1) Step3 베이스에서 ShipTo*Item*(Loc)*PW 키 추출
+      2) ShipTo→Std2, Item→Std1 매핑 조인
+      3) (Std2, Std1, PW) 로 df_ratio_in 과 매칭하여 ratio 값 취득
+      4) 값 없는 행은 생성하지 않음 (삭제)
+      5) 스키마/타입/Version 정리
+    """
+    # ── 0) 빈 입력 방어 ──────────────────────────────────────────────────────
+    if df_base_step3 is None or df_base_step3.empty:
+        return _empty_split_ratio_schema(with_loc, meas_col)
+
+    # ── 1) 키 스켈레톤 ─────────────────────────────────────────────────────
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     key_df = _unique_keyframe_from_step3(df_base_step3, with_loc=with_loc)
     if key_df.empty:
         return _empty_split_ratio_schema(with_loc, meas_col)
 
+<<<<<<< HEAD
     # 2) ShipTo→Std2, Item→Std1 매핑
     map_std2 = _map_shipto_to_std2(df_sdd)
     map_std1 = _map_item_to_std1(df_item_mst)
@@ -2673,10 +3656,50 @@ def _build_split_ratio_generic(
         return _empty_split_ratio_schema(with_loc, meas_col)
 
     # 5) 스키마/타입/Version
+=======
+    # ── 2) ShipTo→Std2, Item→Std1 매핑 ─────────────────────────────────────
+    map_std2 = _map_shipto_to_std2(df_sdd)
+    map_std1 = _map_item_to_std1(df_item_mst)
+
+    df = key_df.merge(map_std2, on=COL_SHIP_TO, how='left')
+    df = df.merge(map_std1, on=COL_ITEM,    how='left')
+
+    # 매핑 실패(Std2/Std1 결측)은 이후 조인 실패로 자연스레 삭제됨
+
+    # ── 3) Ratio 인풋 준비 & 조인 ──────────────────────────────────────────
+    # 인풋은 (Std2, Std1, PW, Ratio) 그레인
+    if df_ratio_in is None or df_ratio_in.empty:
+        return _empty_split_ratio_schema(with_loc, meas_col)
+
+    need_cols = [COL_STD2, COL_ITEM_STD1, COL_PWEEK, meas_col]
+    miss_cols = [c for c in need_cols if c not in df_ratio_in.columns]
+    if miss_cols:
+        # 필요한 컬럼이 없다면 빈 스키마 반환
+        return _empty_split_ratio_schema(with_loc, meas_col)
+
+    base_cols = [COL_STD2, COL_ITEM_STD1, COL_PWEEK]
+    rmap = df_ratio_in.loc[:, need_cols].copy(deep=False)
+
+    # 숫자화
+    rmap[meas_col] = pd.to_numeric(rmap[meas_col], errors='coerce').astype('float32')
+
+    df = df.merge(rmap, on=base_cols, how='left')
+
+    # ── 4) 값 없는 행은 생성하지 않음(삭제) ────────────────────────────────
+    df = df[df[meas_col].notna()].copy(deep=False)
+
+    # ── 5) 스키마 정리 ──────────────────────────────────────────────────────
+    if df.empty:
+        return _empty_split_ratio_schema(with_loc, meas_col)
+
+    # 출력 컬럼
+    out_cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM] + ([COL_LOCATION] if with_loc else []) + [COL_PWEEK, meas_col]
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     if COL_VERSION not in df.columns:
         df.insert(0, COL_VERSION, out_version)
     else:
         df[COL_VERSION] = out_version
+<<<<<<< HEAD
     for c in [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PW] + ([COL_LOCATION] if with_loc else []):
         if c in df.columns:
             df[c] = df[c].astype('category')
@@ -2697,6 +3720,22 @@ def _meas_lower() -> str:
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 5-1) S/In FCST(GI) Split Ratio_AP1 — 1107버전추가: measureLv 가드
 # ──────────────────────────────────────────────────────────────────────────────
+=======
+
+    # dtype 정리
+    for c in [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_PWEEK] + ([COL_LOCATION] if with_loc else []):
+        if c in df.columns:
+            df[c] = df[c].astype('category')
+
+    df[meas_col] = df[meas_col].astype('float32')
+
+    # 최종 컬럼 순서
+    return df[out_cols]
+
+########################################################################################################################
+# Step 5-1) S/In FCST(GI) Split Ratio_AP1
+########################################################################################################################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 @_decoration_
 def fn_step05_01_build_sin_sr_ap1(
     df_step03_ap1: pd.DataFrame,       # Step 3-1-1 결과 (AP1)
@@ -2705,8 +3744,16 @@ def fn_step05_01_build_sin_sr_ap1(
     df_sr_ap1    : pd.DataFrame,       # DF_IN_SIN_SR_AP1
     out_version  : str
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     if _meas_lower() != 'ap1':  # 1107버전추가
         return _empty_split_ratio_schema(True, COL_SIN_SR_AP1)
+=======
+    """
+    • Step 3-1 AP1 결과의 ShipTo*Item*Location*PW 스켈레톤을 기준으로
+      (Sales Std2, Item Std1, Partial Week) 매핑 → AP1 Split Ratio 생성
+    • 값이 없는 조합은 생성하지 않음
+    """
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     return _build_split_ratio_generic(
         df_base_step3 = df_step03_ap1,
         df_item_mst   = df_item_mst,
@@ -2716,10 +3763,16 @@ def fn_step05_01_build_sin_sr_ap1(
         with_loc      = True,
         out_version   = out_version
     )
+<<<<<<< HEAD
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 5-2) S/In FCST(GI) Split Ratio_AP2 — 1107버전추가: measureLv 가드
 # ──────────────────────────────────────────────────────────────────────────────
+=======
+########################################################################################################################
+# Step 5-2) S/In FCST(GI) Split Ratio_AP2
+########################################################################################################################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 @_decoration_
 def fn_step05_02_build_sin_sr_ap2(
     df_step03_ap2: pd.DataFrame,       # Step 3-1-2 결과 (AP2)
@@ -2728,8 +3781,11 @@ def fn_step05_02_build_sin_sr_ap2(
     df_sr_ap2    : pd.DataFrame,       # DF_IN_SIN_SR_AP2
     out_version  : str
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     if _meas_lower() != 'ap2':  # 1107버전추가
         return _empty_split_ratio_schema(True, COL_SIN_SR_AP2)
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     return _build_split_ratio_generic(
         df_base_step3 = df_step03_ap2,
         df_item_mst   = df_item_mst,
@@ -2739,10 +3795,16 @@ def fn_step05_02_build_sin_sr_ap2(
         with_loc      = True,
         out_version   = out_version
     )
+<<<<<<< HEAD
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 5-3) S/In FCST(GI) Split Ratio_GC — 1107버전추가: measureLv 가드
 # ──────────────────────────────────────────────────────────────────────────────
+=======
+########################################################################################################################
+# Step 5-3) S/In FCST(GI) Split Ratio_GC
+########################################################################################################################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 @_decoration_
 def fn_step05_03_build_sin_sr_gc(
     df_step03_gc : pd.DataFrame,       # Step 3-1-3 결과 (GC)
@@ -2751,8 +3813,11 @@ def fn_step05_03_build_sin_sr_gc(
     df_sr_gc     : pd.DataFrame,       # DF_IN_SIN_SR_GC
     out_version  : str
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     if _meas_lower() != 'gc':  # 1107버전추가
         return _empty_split_ratio_schema(True, COL_SIN_SR_GC)
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     return _build_split_ratio_generic(
         df_base_step3 = df_step03_gc,
         df_item_mst   = df_item_mst,
@@ -2762,10 +3827,16 @@ def fn_step05_03_build_sin_sr_gc(
         with_loc      = True,
         out_version   = out_version
     )
+<<<<<<< HEAD
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 5-4) S/In FCST(GI) Split Ratio_Local — 1107버전추가: measureLv 가드
 # ──────────────────────────────────────────────────────────────────────────────
+=======
+########################################################################################################################
+# Step 5-4) S/In FCST(GI) Split Ratio_Local
+########################################################################################################################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 @_decoration_
 def fn_step05_04_build_sin_sr_local(
     df_step03_local: pd.DataFrame,     # Step 3-1-4 결과 (Local)
@@ -2774,8 +3845,11 @@ def fn_step05_04_build_sin_sr_local(
     df_sr_local    : pd.DataFrame,     # DF_IN_SIN_SR_LOCAL
     out_version    : str
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     if _meas_lower() != 'local':  # 1107버전추가
         return _empty_split_ratio_schema(True, COL_SIN_SR_LOCAL)
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     return _build_split_ratio_generic(
         df_base_step3 = df_step03_local,
         df_item_mst   = df_item_mst,
@@ -2785,10 +3859,16 @@ def fn_step05_04_build_sin_sr_local(
         with_loc      = True,
         out_version   = out_version
     )
+<<<<<<< HEAD
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 5-5) S/Out FCST Split Ratio_AP1 — 1107버전추가: measureLv 가드
 # ──────────────────────────────────────────────────────────────────────────────
+=======
+########################################################################################################################
+# Step 5-5) S/Out FCST Split Ratio_AP1
+########################################################################################################################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 @_decoration_
 def fn_step05_05_build_sout_sr_ap1(
     df_step03_ap1: pd.DataFrame,       # Step 3-2-1 결과 (AP1)
@@ -2797,8 +3877,16 @@ def fn_step05_05_build_sout_sr_ap1(
     df_sr_ap1    : pd.DataFrame,       # DF_IN_SOUT_SR_AP1
     out_version  : str
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     if _meas_lower() != 'ap1':  # 1107버전추가
         return _empty_split_ratio_schema(True, COL_SOUT_SR_AP1)
+=======
+    """
+    • Step 3-2 AP1 결과의 ShipTo*Item*Location*PW 스켈레톤 기준
+    • (Sales Std2, Item Std1, Partial Week) 매핑 → AP1 Split Ratio 생성
+    • 값 미존재 시 행 생성 안함 (삭제)
+    """
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     return _build_split_ratio_generic(
         df_base_step3 = df_step03_ap1,
         df_item_mst   = df_item_mst,
@@ -2809,9 +3897,15 @@ def fn_step05_05_build_sout_sr_ap1(
         out_version   = out_version
     )
 
+<<<<<<< HEAD
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 5-6) S/Out FCST Split Ratio_AP2 — 1107버전추가: measureLv 가드
 # ──────────────────────────────────────────────────────────────────────────────
+=======
+########################################################################################################################
+# Step 5-6) S/Out FCST Split Ratio_AP2
+########################################################################################################################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 @_decoration_
 def fn_step05_06_build_sout_sr_ap2(
     df_step03_ap2: pd.DataFrame,       # Step 3-2-2 결과 (AP2)
@@ -2820,8 +3914,11 @@ def fn_step05_06_build_sout_sr_ap2(
     df_sr_ap2    : pd.DataFrame,       # DF_IN_SOUT_SR_AP2
     out_version  : str
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     if _meas_lower() != 'ap2':  # 1107버전추가
         return _empty_split_ratio_schema(True, COL_SOUT_SR_AP2)
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     return _build_split_ratio_generic(
         df_base_step3 = df_step03_ap2,
         df_item_mst   = df_item_mst,
@@ -2831,10 +3928,16 @@ def fn_step05_06_build_sout_sr_ap2(
         with_loc      = True,
         out_version   = out_version
     )
+<<<<<<< HEAD
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 5-7) S/Out FCST Split Ratio_GC — 1107버전추가: measureLv 가드
 # ──────────────────────────────────────────────────────────────────────────────
+=======
+########################################################################################################################
+# Step 5-7) S/Out FCST Split Ratio_GC
+########################################################################################################################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 @_decoration_
 def fn_step05_07_build_sout_sr_gc(
     df_step03_gc : pd.DataFrame,       # Step 3-2-3 결과 (GC)
@@ -2843,8 +3946,11 @@ def fn_step05_07_build_sout_sr_gc(
     df_sr_gc     : pd.DataFrame,       # DF_IN_SOUT_SR_GC
     out_version  : str
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     if _meas_lower() != 'gc':  # 1107버전추가
         return _empty_split_ratio_schema(True, COL_SOUT_SR_GC)
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     return _build_split_ratio_generic(
         df_base_step3 = df_step03_gc,
         df_item_mst   = df_item_mst,
@@ -2854,10 +3960,16 @@ def fn_step05_07_build_sout_sr_gc(
         with_loc      = True,
         out_version   = out_version
     )
+<<<<<<< HEAD
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 5-8) S/Out FCST Split Ratio_Local — 1107버전추가: measureLv 가드
 # ──────────────────────────────────────────────────────────────────────────────
+=======
+########################################################################################################################
+# Step 5-8) S/Out FCST Split Ratio_Local
+########################################################################################################################
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 @_decoration_
 def fn_step05_08_build_sout_sr_local(
     df_step03_local: pd.DataFrame,     # Step 3-2-4 결과 (Local)
@@ -2866,8 +3978,11 @@ def fn_step05_08_build_sout_sr_local(
     df_sr_local    : pd.DataFrame,     # DF_IN_SOUT_SR_LOCAL
     out_version    : str
 ) -> pd.DataFrame:
+<<<<<<< HEAD
     if _meas_lower() != 'local':  # 1107버전추가
         return _empty_split_ratio_schema(True, COL_SOUT_SR_LOCAL)
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     return _build_split_ratio_generic(
         df_base_step3 = df_step03_local,
         df_item_mst   = df_item_mst,
@@ -2878,6 +3993,41 @@ def fn_step05_08_build_sout_sr_local(
         out_version   = out_version
     )
 
+<<<<<<< HEAD
+=======
+########################################################################################################################
+# Spec2: Parameter utilities (no argparse, o9 plugin style)
+########################################################################################################################
+def parse_sales_item_location_str(s: str) -> pd.DataFrame:
+    cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION]
+    if not s:
+        return pd.DataFrame(columns=cols)
+    rows = []
+    for token in str(s).split('^'):
+        token = token.strip()
+        if not token:
+            continue
+        parts = [p.strip() for p in token.split(':')]
+        if len(parts) >= 2:
+            ship_to, item = parts[0], parts[1]
+            loc = parts[2] if len(parts) >= 3 and parts[2] else '-'
+            rows.append({COL_SHIP_TO: ship_to, COL_ITEM: item, COL_LOCATION: loc})
+    df = pd.DataFrame(rows, columns=cols)
+    for c in cols:
+        if c in df.columns:
+            df[c] = df[c].astype('category')
+    return df
+
+def fn_step01_00_parse_sales_item_location(sales_item_location: str, df_estore: pd.DataFrame) -> pd.DataFrame:
+    df = parse_sales_item_location_str(sales_item_location)
+    if df.empty:
+        return df
+    if df_estore is not None and not df_estore.empty and COL_SHIP_TO in df_estore.columns:
+        estore_set = set(df_estore[COL_SHIP_TO].astype(str).unique().tolist())
+        df = df[~df[COL_SHIP_TO].astype(str).isin(estore_set)].copy(deep=False)
+    return df
+
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 ####################################
 ############ Start Main  ###########
 ####################################
@@ -2893,7 +4043,10 @@ if __name__ == '__main__':
         
         if is_local:
             Version = 'CWV_DP'
+<<<<<<< HEAD
             # 파라메터추가 2025.11.07
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             salesItemLocation = '400001:RF29BB8600QLAA^400002:RF29BB8600QLAA'
             measureLv = 'ap2'
             # ----------------------------------------------------
@@ -2941,8 +4094,12 @@ if __name__ == '__main__':
 
         logger.Note(p_note=f'Parameter Check', p_log_level=LOG_LEVEL.debug())
         logger.Note(p_note=f'Version            : {Version}', p_log_level=LOG_LEVEL.debug())
+<<<<<<< HEAD
         logger.Note(p_note=f'salesItemLocation  : {salesItemLocation}', p_log_level=LOG_LEVEL.debug())
         logger.Note(p_note=f'measureLv          : {measureLv}', p_log_level=LOG_LEVEL.debug())
+=======
+        # logger.Note(p_note=f'CurrentPartialWeek : {CurrentPartialWeek}', p_log_level=LOG_LEVEL.debug())
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 
         ############ To do : 여기 아래에 Step Function 들을 Call 하는 코드 구현. ########
@@ -2965,6 +4122,7 @@ if __name__ == '__main__':
         # =====================================================================================
         # 사전 준비
         # Version = "CWV_DP"
+<<<<<<< HEAD
         
         ################################################################################################################
         # (옵션) 현행 FCST 입력 삭제: STR_DF_IN_SIN_FCST / STR_DF_IN_SOUT_FCST / STR_DF_IN_FLOOR_FCST
@@ -2985,10 +4143,38 @@ if __name__ == '__main__':
             **dict_log
         )
         fn_log_dataframe(df_step01_00_sales_pairs, 'df_step01_00_sales_pairs')   # (ShipTo, Item, [Location?])
+=======
+
+
+        ################################################################################################################
+        # Step 1-0) Sales 선정 (SDD - eStore ShipTo)
+        ################################################################################################################
+        dict_log = {
+            'p_step_no'  : 10,
+            'p_step_desc': 'Step 1-0) Sales 선정',
+            'p_df_name'  : None
+        }
+        if 'salesItemLocation' in locals() and salesItemLocation:
+            df_step01_00_sales_sdd = fn_step01_00_parse_sales_item_location(
+                salesItemLocation,
+                input_dataframes.get(DF_IN_ESTORE, pd.DataFrame())
+            )
+        else:
+            df_step01_00_sales_sdd = fn_step01_00_select_sales(
+                input_dataframes[DF_IN_SDD],
+                input_dataframes.get(DF_IN_ESTORE, pd.DataFrame()),
+                **dict_log
+            )
+        fn_log_dataframe(df_step01_00_sales_sdd, 'df_step01_00_sales_sdd')
+        
+        # 이후 단계에서 사용할 ShipTo 집합
+        ship_to_set = set(df_step01_00_sales_sdd[COL_SHIP_TO].astype(str).unique().tolist())
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         ################################################################################################################
         # Step 1-1) S/In 더미에서 생성할 Sales 선정
         ################################################################################################################
+<<<<<<< HEAD
         dict_log = {'p_step_no': 11, 'p_step_desc': 'Step 1-1) S/In 더미에서 생성할 Sales 선정', 'p_df_name': None}
         df_step01_01_sin_pick = fn_step01_01_pick_sin_dummy(
             input_dataframes.get(DF_IN_SIN_DUMMY, pd.DataFrame()),
@@ -2996,11 +4182,22 @@ if __name__ == '__main__':
             pairs_have_loc,
             measureLv,
             input_dataframes.get(DF_IN_SIN_FCST, pd.DataFrame()),   # (옵션) 현행 FCST 비교
+=======
+        dict_log = {
+            'p_step_no'  : 11,
+            'p_step_desc': 'Step 1-1) S/In 더미에서 생성할 Sales 선정',
+            'p_df_name'  : None
+        }
+        df_step01_01_sin_pick = fn_step01_01_pick_sin_dummy(
+            input_dataframes.get(DF_IN_SIN_DUMMY, pd.DataFrame()),
+            ship_to_set,
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             **dict_log
         )
         fn_log_dataframe(df_step01_01_sin_pick, 'df_step01_01_sin_pick')
 
         ################################################################################################################
+<<<<<<< HEAD
         # Step 1-2) S/In 더미 삭제용 Output
         ################################################################################################################
         dict_log = {'p_step_no': 12, 'p_step_desc': 'Step 1-2) S/In 더미 삭제용 Output', 'p_df_name': None}
@@ -3013,10 +4210,28 @@ if __name__ == '__main__':
         fn_log_dataframe(df_step01_02_out_sin, 'df_step01_02_Output_SIn_Dummy')
         Output_SIn_Dummy                    = df_step01_02_out_sin
         # output_dataframes[DF_OUT_SIN_DUMMY] = df_step01_02_out_sin
+=======
+        # Step 1-2) S/In 더미 Output 구성(삭제용)
+        ################################################################################################################
+        dict_log = {
+            'p_step_no'  : 12,
+            'p_step_desc': 'Step 1-2) S/In 더미 Output 구성(삭제용)',
+            'p_df_name'  : None
+        }
+        df_step01_02_out_sin_dummy = fn_step01_02_build_output_sin_dummy_delete(
+            df_step01_01_sin_pick,
+            Version,
+            **dict_log
+        )
+        # o9에서 인식할 수 있도록 output을 정의한다. <== 1. (Output 1-2) Output_SIn_Dummy	
+        Output_SIn_Dummy = df_step01_02_out_sin_dummy
+        fn_log_dataframe(df_step01_02_out_sin_dummy, f'df_step01_02_{DF_OUT_SIN_DUMMY}')
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         ################################################################################################################
         # Step 1-3) S/Out 더미에서 생성할 Sales 선정
         ################################################################################################################
+<<<<<<< HEAD
         dict_log = {'p_step_no': 13, 'p_step_desc': 'Step 1-3) S/Out 더미에서 생성할 Sales 선정', 'p_df_name': None}
         df_step01_03_sout_pick = fn_step01_03_pick_sout_dummy(
             input_dataframes.get(DF_IN_SOUT_DUMMY, pd.DataFrame()),
@@ -3024,11 +4239,22 @@ if __name__ == '__main__':
             pairs_have_loc,
             measureLv,
             input_dataframes.get(DF_IN_SOUT_FCST, pd.DataFrame()),  # (옵션) 현행 FCST 비교
+=======
+        dict_log = {
+            'p_step_no'  : 13,
+            'p_step_desc': 'Step 1-3) S/Out 더미에서 생성할 Sales 선정',
+            'p_df_name'  : None
+        }
+        df_step01_03_sout_pick = fn_step01_03_pick_sout_dummy(
+            input_dataframes.get(DF_IN_SOUT_DUMMY, pd.DataFrame()),
+            ship_to_set,
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             **dict_log
         )
         fn_log_dataframe(df_step01_03_sout_pick, 'df_step01_03_sout_pick')
 
         ################################################################################################################
+<<<<<<< HEAD
         # Step 1-4) S/Out 더미 삭제용 Output
         ################################################################################################################
         dict_log = {'p_step_no': 14, 'p_step_desc': 'Step 1-4) S/Out 더미 삭제용 Output', 'p_df_name': None}
@@ -3041,10 +4267,28 @@ if __name__ == '__main__':
         fn_log_dataframe(df_step01_04_out_sout, 'df_step01_04_Output_SOut_Dummy')
         Output_SOut_Dummy                    = df_step01_04_out_sout
         # output_dataframes[DF_OUT_SOUT_DUMMY] = df_step01_04_out_sout
+=======
+        # Step 1-4) S/Out 더미 Output 구성(삭제용)
+        ################################################################################################################
+        dict_log = {
+            'p_step_no'  : 14,
+            'p_step_desc': 'Step 1-4) S/Out 더미 Output 구성(삭제용)',
+            'p_df_name'  : None
+        }
+        df_step01_04_out_sout_dummy = fn_step01_04_build_output_sout_dummy_delete(
+            df_step01_03_sout_pick,
+            Version,
+            **dict_log
+        )
+        # o9에서 인식할 수 있도록 output을 정의한다.  ← 2. (Output 1-4) Output_SOut_Dummy
+        Output_SOut_Dummy = df_step01_04_out_sout_dummy
+        fn_log_dataframe(df_step01_04_out_sout_dummy, f'df_step01_04_{DF_OUT_SOUT_DUMMY}')
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         ################################################################################################################
         # Step 1-5) Flooring 더미에서 생성할 Sales 선정
         ################################################################################################################
+<<<<<<< HEAD
         dict_log = {'p_step_no': 15, 'p_step_desc': 'Step 1-5) Flooring 더미에서 생성할 Sales 선정', 'p_df_name': None}
         df_step01_05_floor_pick = fn_step01_05_pick_flooring_dummy(
             input_dataframes.get(DF_IN_FLOORING_DUMMY, pd.DataFrame()),
@@ -3070,10 +4314,43 @@ if __name__ == '__main__':
         Output_Flooring_Dummy = df_step01_06_out_floor
         # output_dataframes[DF_OUT_FLOORING_DUMMY] = df_step01_06_out_floor
 
+=======
+        dict_log = {
+            'p_step_no'  : 15,
+            'p_step_desc': 'Step 1-5) Flooring 더미에서 생성할 Sales 선정',
+            'p_df_name'  : None
+        }
+        df_step01_05_flooring_pick = fn_step01_05_pick_flooring_dummy(
+            input_dataframes.get(DF_IN_FLOORING_DUMMY, pd.DataFrame()),
+            ship_to_set,
+            **dict_log
+        )
+        
+        fn_log_dataframe(df_step01_05_flooring_pick, 'df_step01_05_floor_pick')
+
+        ################################################################################################################
+        # Step 1-6) Flooring 더미 Output 구성(삭제용)
+        ################################################################################################################
+        dict_log = {
+            'p_step_no'  : 16,
+            'p_step_desc': 'Step 1-6) Flooring 더미 Output 구성(삭제용)',
+            'p_df_name'  : None
+        }
+        df_step01_06_out_flooring_dummy = fn_step01_06_build_output_flooring_dummy_delete(
+            df_step01_05_flooring_pick,
+            Version,
+            **dict_log
+        )
+        # o9에서 인식할 수 있도록 output을 정의한다.  ← 3. (Output 1-5) Output_Flooring_Dummy
+        Output_Flooring_Dummy = df_step01_06_out_flooring_dummy
+        fn_log_dataframe(df_step01_06_out_flooring_dummy, f'df_step01_06_{DF_OUT_FLOORING_DUMMY}')
+        
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         ################################################################################################################
         # Step 1-7) 모두 빈 경우 종료 플래그
         ################################################################################################################
         all_empty_step01 = (
+<<<<<<< HEAD
             Output_SIn_Dummy.empty
             and Output_SOut_Dummy.empty
             and Output_Flooring_Dummy.empty
@@ -3164,6 +4441,67 @@ if __name__ == '__main__':
         )
         fn_log_dataframe(df_step02_03_floor_assort, 'df_step02_03_Output_Flooring_Assortment')
         Output_Flooring_Assortment = df_step02_03_floor_assort
+=======
+            df_step01_02_out_sin_dummy.empty
+            and df_step01_04_out_sout_dummy.empty
+            and df_step01_06_out_flooring_dummy.empty
+        )
+        # 필요 시 이 플래그를 체크하여 조기 종료 처리(상위 메인 제어부에서)
+        if all_empty_step01:
+            raise Exception('Step 1-2,Step 1-4,Step 1-6 is empty.')
+        
+        ################################################################################################################
+        # Step 2-1) S/In 더미 → Assortment Output
+        ################################################################################################################
+        dict_log = {
+            'p_step_no'  : 21,
+            'p_step_desc': 'Step 2-1) S/In 더미 → Assortment Output',
+            'p_df_name'  : None
+        }
+        df_step02_01_out_sin_assort = fn_step02_01_build_sin_assortment(
+            df_step01_01_sin_pick,  # Step 1-1 결과
+            Version,
+            **dict_log
+        )
+        # o9 인식용 출력 바인딩  ← 4. (Output 2-1) Output_SIn_Assortment
+        Output_SIn_Assortment = df_step02_01_out_sin_assort
+        fn_log_dataframe(df_step02_01_out_sin_assort, f'df_step02_01_{DF_OUT_SIN_ASSORT}')
+        
+        ################################################################################################################
+        # Step 2-2) S/Out 더미 → Assortment Output
+        ################################################################################################################
+        dict_log = {
+            'p_step_no'  : 22,
+            'p_step_desc': 'Step 2-2) S/Out 더미 → Assortment Output',
+            'p_df_name'  : None
+        }
+        df_step02_02_out_sout_assort = fn_step02_02_build_sout_assortment(
+            df_step01_03_sout_pick,  # Step 1-3 결과
+            Version,
+            **dict_log
+        )
+        # o9 인식용 출력 바인딩  ← 5. (Output 2-2) Output_SOut_Assortment
+        Output_SOut_Assortment = df_step02_02_out_sout_assort
+        fn_log_dataframe(df_step02_02_out_sout_assort, f'df_step02_02_{DF_OUT_SOUT_ASSORT}')
+
+        ################################################################################################################
+        # Step 2-3) Flooring 더미 → Flooring Assortment Output
+        ################################################################################################################
+        dict_log = {
+            'p_step_no'  : 23,
+            'p_step_desc': 'Step 2-3) Flooring 더미 → Flooring Assortment Output',
+            'p_df_name'  : None
+        }
+        df_step02_03_out_flooring_assort = fn_step02_03_build_flooring_assortment(
+            df_step01_05_flooring_pick,  # Step 1-5 결과
+            Version,
+            **dict_log
+        )
+        # o9 인식용 출력 바인딩  ← 6. (Output 2-3) Output_Flooring_Assortment
+        Output_Flooring_Assortment = df_step02_03_out_flooring_assort
+        fn_log_dataframe(df_step02_03_out_flooring_assort, f'df_step02_03_{DF_OUT_FLOORING_ASSORT}')
+
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         ################################################################################################################
         # Step 3 — FCST 값 생성 (상수명 정합 반영 버전)
@@ -3183,7 +4521,11 @@ if __name__ == '__main__':
             Version,
             **dict_log
         )
+<<<<<<< HEAD
         df_step03_01_sin_fcst_ap1 = df_output_Sell_In_FCST_GI_AP1
+=======
+        df_step03_01_ap1 = df_output_Sell_In_FCST_GI_AP1
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         fn_log_dataframe(df_output_Sell_In_FCST_GI_AP1, f'df_step03_01_01_{DF_OUT_SIN_GI_AP1}')
 
         ################################################################################################################
@@ -3200,7 +4542,11 @@ if __name__ == '__main__':
             Version,
             **dict_log
         )
+<<<<<<< HEAD
         df_step03_02_sin_fcst_ap2 = df_output_Sell_In_FCST_GI_AP2
+=======
+        df_step03_02_ap2 = df_output_Sell_In_FCST_GI_AP2
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         fn_log_dataframe(df_output_Sell_In_FCST_GI_AP2, f'df_step03_01_02_{DF_OUT_SIN_GI_AP2}')
 
         ################################################################################################################
@@ -3217,9 +4563,21 @@ if __name__ == '__main__':
             Version,
             **dict_log
         )
+<<<<<<< HEAD
         df_step03_03_sin_fcst_gc = df_output_Sell_In_FCST_GI_GC
         fn_log_dataframe(df_output_Sell_In_FCST_GI_GC, f'df_step03_01_03_{DF_OUT_SIN_GI_GC}')
 
+=======
+        df_step03_03_gc = df_output_Sell_In_FCST_GI_GC
+        fn_log_dataframe(df_output_Sell_In_FCST_GI_GC, f'df_step03_01_03_{DF_OUT_SIN_GI_GC}')
+
+
+########################################################################################################################
+# Begin Confluence Page 5/5 — ID 125075489 — 05. Source1 V2 PYSalesProductASNDeltaB2C (v2)
+########################################################################################################################
+
+
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         ################################################################################################################
         # Step 3-1-4) S/In FCST(GI)_Local, BL_Local
         ################################################################################################################
@@ -3234,7 +4592,11 @@ if __name__ == '__main__':
             Version,
             **dict_log
         )
+<<<<<<< HEAD
         df_step03_04_sin_fcst_local = df_output_Sell_In_FCST_GI_Local
+=======
+        df_step03_04_local = df_output_Sell_In_FCST_GI_Local
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         fn_log_dataframe(df_output_Sell_In_FCST_GI_Local, f'df_step03_01_04_{DF_OUT_SIN_GI_LOCAL}')
 
         ################################################################################################################
@@ -3251,7 +4613,11 @@ if __name__ == '__main__':
             Version,
             **dict_log
         )
+<<<<<<< HEAD
         df_step03_05_sout_fcst_ap1 = df_output_Sell_Out_FCST_AP1
+=======
+        df_step03_05_sout_ap1 = df_output_Sell_Out_FCST_AP1
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         fn_log_dataframe(df_output_Sell_Out_FCST_AP1, f'df_step03_02_01_{DF_OUT_SOUT_AP1}')
 
         ################################################################################################################
@@ -3268,7 +4634,11 @@ if __name__ == '__main__':
             Version,
             **dict_log
         )
+<<<<<<< HEAD
         df_step03_06_sout_fcst_ap2 = df_output_Sell_Out_FCST_AP2
+=======
+        df_step03_06_sout_ap2 = df_output_Sell_Out_FCST_AP2
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         fn_log_dataframe(df_output_Sell_Out_FCST_AP2, f'step03_02_02_{DF_OUT_SOUT_AP2}')
 
         ################################################################################################################
@@ -3285,7 +4655,11 @@ if __name__ == '__main__':
             Version,
             **dict_log
         )
+<<<<<<< HEAD
         df_step03_07_sout_fcst_gc = df_output_Sell_Out_FCST_GC
+=======
+        df_step03_07_sout_gc = df_output_Sell_Out_FCST_GC
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         fn_log_dataframe(df_output_Sell_Out_FCST_GC, f'step03_02_03_{DF_OUT_SOUT_GC}')
 
         ################################################################################################################
@@ -3302,7 +4676,11 @@ if __name__ == '__main__':
             Version,
             **dict_log
         )
+<<<<<<< HEAD
         df_step03_08_sout_fcst_local = df_output_Sell_Out_FCST_Local
+=======
+        df_step03_08_sout_local = df_output_Sell_Out_FCST_Local
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         fn_log_dataframe(df_output_Sell_Out_FCST_Local, f'step03_02_04_{DF_OUT_SOUT_LOCAL}')
 
         ################################################################################################################
@@ -3314,24 +4692,40 @@ if __name__ == '__main__':
             'p_df_name'  : None
         }
         df_output_Flooring_FCST = fn_step03_03_build_flooring_fcst(
+<<<<<<< HEAD
             df_step01_05_floor_pick,
+=======
+            df_step01_05_flooring_pick,
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             input_dataframes[DF_IN_TIME_W],
             Version,
             **dict_log
         )
+<<<<<<< HEAD
         df_step03_09_flooring_fcst = df_output_Flooring_FCST
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         fn_log_dataframe(df_output_Flooring_FCST, f'step03_03_{DF_OUT_FLOORING_FCST}')
 
 
         ################################################################################################################
         # Step 3-4) df_output_BO_FCST  추후스펙. 빈 dataframe
         ################################################################################################################
+<<<<<<< HEAD
         COL_VIRTUAL_BO_ID               = 'DP Virtual BO ID.[Virtual BO ID]'
         COL_BO_ID                       = 'DP BO ID.[BO ID]'
         COL_BO_FCST                     = 'BO FCST'
         df_output_BO_FCST = pd.DataFrame(columns=[
             COL_VERSION, COL_ITEM, COL_SHIP_TO, COL_LOCATION,
             COL_VIRTUAL_BO_ID, COL_BO_ID, COL_PW, COL_BO_FCST])
+=======
+        COL_VIRTUAL_BO_ID               = 'Virtual BO ID.[Virtual BO ID]'
+        COL_BO_ID                       = 'BO ID.[BO ID]'
+        COL_BO_FCST                     = 'BO FCST'
+        df_output_BO_FCST = pd.DataFrame([
+            COL_VERSION, COL_ITEM, COL_SHIP_TO, COL_LOCATION,
+            COL_VIRTUAL_BO_ID, COL_BO_ID, COL_PWEEK, COL_BO_FCST])
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         fn_log_dataframe(df_output_BO_FCST, f'step03_04_{DF_OUT_BO_FCST}')
         
         ################################################################################################################
@@ -3350,7 +4744,11 @@ if __name__ == '__main__':
         fn_log_dataframe(df_step04_00_targets, 'df_step04_00_targets')
         
         ################################################################################################################
+<<<<<<< HEAD
         # Step 4-1) Estimated Price Local 생성 (우선순위 1→9 적용)   # 25.11.17 변경
+=======
+        # Step 4-1) Estimated Price Local 생성 (우선순위 1→6 적용)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         ################################################################################################################
         dict_log = {
             'p_step_no'  : 41,
@@ -3360,6 +4758,7 @@ if __name__ == '__main__':
         df_step04_01_est_local = fn_step04_01_build_est_price_local(
             df_step04_00_targets,
             input_dataframes[DF_IN_TIME_PW],
+<<<<<<< HEAD
             input_dataframes.get(DF_IN_ITEM_MST,  pd.DataFrame()),
             input_dataframes.get(DF_IN_SDD,       pd.DataFrame()),
             input_dataframes.get(DF_IN_EST_PRICE, pd.DataFrame()),
@@ -3373,6 +4772,16 @@ if __name__ == '__main__':
             # 기존 AP / EXRATE
             input_dataframes.get(DF_IN_AP_PRICE,      pd.DataFrame()),
             input_dataframes.get(DF_IN_EXRATE_LOCAL,  pd.DataFrame()),
+=======
+            input_dataframes.get(DF_IN_ITEM_MST, pd.DataFrame()),
+            input_dataframes.get(DF_IN_SDD, pd.DataFrame()),
+            input_dataframes.get(DF_IN_EST_PRICE, pd.DataFrame()),
+            input_dataframes.get(DF_IN_EP_STD4_LOCAL, pd.DataFrame()),
+            input_dataframes.get(DF_IN_EP_STD3_LOCAL, pd.DataFrame()),
+            input_dataframes.get(DF_IN_EP_STD2_LOCAL, pd.DataFrame()),
+            input_dataframes.get(DF_IN_AP_PRICE, pd.DataFrame()),
+            input_dataframes.get(DF_IN_EXRATE_LOCAL, pd.DataFrame()),
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             Version,
             **dict_log
         )
@@ -3419,7 +4828,11 @@ if __name__ == '__main__':
             'p_df_name'  : None
         }
         df_step05_01_sin_sr_ap1 = fn_step05_01_build_sin_sr_ap1(
+<<<<<<< HEAD
             df_step03_01_sin_fcst_ap1,                                # Step 3-1-1 결과
+=======
+            df_step03_01_ap1,                                # Step 3-1-1 결과
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             input_dataframes.get(DF_IN_ITEM_MST, pd.DataFrame()),
             input_dataframes.get(DF_IN_SDD, pd.DataFrame()),
             input_dataframes.get(DF_IN_SIN_SR_AP1, pd.DataFrame()),
@@ -3438,7 +4851,11 @@ if __name__ == '__main__':
             'p_df_name'  : None
         }
         df_step05_02_sin_sr_ap2 = fn_step05_02_build_sin_sr_ap2(
+<<<<<<< HEAD
             df_step03_02_sin_fcst_ap2,                                # Step 3-1-2 결과
+=======
+            df_step03_02_ap2,                                # Step 3-1-2 결과
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             input_dataframes.get(DF_IN_ITEM_MST, pd.DataFrame()),
             input_dataframes.get(DF_IN_SDD, pd.DataFrame()),
             input_dataframes.get(DF_IN_SIN_SR_AP2, pd.DataFrame()),
@@ -3457,7 +4874,11 @@ if __name__ == '__main__':
             'p_df_name'  : None
         }
         df_step05_03_sin_sr_gc = fn_step05_03_build_sin_sr_gc(
+<<<<<<< HEAD
             df_step03_03_sin_fcst_gc,                                  # Step 3-1-3 결과
+=======
+            df_step03_03_gc,                                  # Step 3-1-3 결과
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             input_dataframes.get(DF_IN_ITEM_MST, pd.DataFrame()),
             input_dataframes.get(DF_IN_SDD, pd.DataFrame()),
             input_dataframes.get(DF_IN_SIN_SR_GC, pd.DataFrame()),
@@ -3476,7 +4897,11 @@ if __name__ == '__main__':
             'p_df_name'  : None
         }
         df_step05_04_sin_sr_local = fn_step05_04_build_sin_sr_local(
+<<<<<<< HEAD
             df_step03_04_sin_fcst_local,                               # Step 3-1-4 결과
+=======
+            df_step03_04_local,                               # Step 3-1-4 결과
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             input_dataframes.get(DF_IN_ITEM_MST, pd.DataFrame()),
             input_dataframes.get(DF_IN_SDD, pd.DataFrame()),
             input_dataframes.get(DF_IN_SIN_SR_LOCAL, pd.DataFrame()),
@@ -3495,7 +4920,11 @@ if __name__ == '__main__':
             'p_df_name'  : None
         }
         df_step05_05_sout_sr_ap1 = fn_step05_05_build_sout_sr_ap1(
+<<<<<<< HEAD
             df_step03_05_sout_fcst_ap1,                            # Step 3-2-1 결과
+=======
+            df_step03_05_sout_ap1,                            # Step 3-2-1 결과
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             input_dataframes.get(DF_IN_ITEM_MST, pd.DataFrame()),
             input_dataframes.get(DF_IN_SDD, pd.DataFrame()),
             input_dataframes.get(DF_IN_SOUT_SR_AP1, pd.DataFrame()),
@@ -3514,7 +4943,11 @@ if __name__ == '__main__':
             'p_df_name'  : None
         }
         df_step05_06_sout_sr_ap2 = fn_step05_06_build_sout_sr_ap2(
+<<<<<<< HEAD
             df_step03_06_sout_fcst_ap2,                            # Step 3-2-2 결과
+=======
+            df_step03_06_sout_ap2,                            # Step 3-2-2 결과
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             input_dataframes.get(DF_IN_ITEM_MST, pd.DataFrame()),
             input_dataframes.get(DF_IN_SDD, pd.DataFrame()),
             input_dataframes.get(DF_IN_SOUT_SR_AP2, pd.DataFrame()),
@@ -3533,7 +4966,11 @@ if __name__ == '__main__':
             'p_df_name'  : None
         }
         df_step05_07_sout_sr_gc = fn_step05_07_build_sout_sr_gc(
+<<<<<<< HEAD
             df_step03_07_sout_fcst_gc,                             # Step 3-2-3 결과
+=======
+            df_step03_07_sout_gc,                             # Step 3-2-3 결과
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             input_dataframes.get(DF_IN_ITEM_MST, pd.DataFrame()),
             input_dataframes.get(DF_IN_SDD, pd.DataFrame()),
             input_dataframes.get(DF_IN_SOUT_SR_GC, pd.DataFrame()),
@@ -3552,7 +4989,11 @@ if __name__ == '__main__':
             'p_df_name'  : None
         }
         df_step05_08_sout_sr_local = fn_step05_08_build_sout_sr_local(
+<<<<<<< HEAD
             df_step03_08_sout_fcst_local,                          # Step 3-2-4 결과
+=======
+            df_step03_08_sout_local,                          # Step 3-2-4 결과
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             input_dataframes.get(DF_IN_ITEM_MST, pd.DataFrame()),
             input_dataframes.get(DF_IN_SDD, pd.DataFrame()),
             input_dataframes.get(DF_IN_SOUT_SR_LOCAL, pd.DataFrame()),
@@ -3587,4 +5028,8 @@ if __name__ == '__main__':
 
         logger.Finish()
         logger.warning(f'{str_instance} {time.strftime("%Y-%m-%d - %H:%M:%S")}::: Finish :::')
+<<<<<<< HEAD
         
+=======
+        
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0

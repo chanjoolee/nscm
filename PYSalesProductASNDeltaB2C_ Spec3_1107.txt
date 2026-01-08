@@ -1,0 +1,1375 @@
+Python 개발요청서 : PYSalesProductASNDeltaB2C.py
+
+    개요 (*)
+
+        * 프로그램명
+            PYSalesProductASNDeltaB2C
+
+
+        * 목적
+            - Forecast GBM/PM/KAM/Local View 에서 사용자가 Button을 눌러서 입력 여부 최종 확정
+            - FCST 입력시 필요한 정보 생성
+
+
+
+        * 변경이력
+            2025.10.11 전창민 최초 작성
+            2025.09.16 Estimated Price 로직 보완
+                - Input 3 df_in_Item_Master 정보 변경
+                - Input 37,38,39 추가
+                - Step 5) Estimated Price Local Data 생성 로직 보완
+            2025.11.05 Step4) Price 값 생성 시 Measure : Estimated Price Color 추가
+            2025.11.05 Script Parameter Data 변경에 따른 로직 변경
+                - salesItemLocation
+                - measureLv
+            2025.11.07 FCST 비교 로직 추가
+                - Input 23,24,25 추가
+                - Step 1 에서 "기존에 해당 FCST의 값이 measurelv 에 맞는 Data가 존재하는 경우 (0이상인경우) 제외" 로직 추가
+
+
+    Script Parameter
+
+        (Input 1) Sales, Item, Location 정보(추가_251105)
+            - 참고
+                우리는 salesItemLocation 의 값을 아래의 값으로 가정한다.
+                    "400001:RF29BB8600QLAA^400002:RF29BB8600QLAA"
+
+            - salesItemLocation
+                ex) "400001:RF29BB8600QLAA^400002:RF29BB8600QLAA"
+                ex) "400001:RF29BB8600QLAA:S001^400002:RF29BB8600QLAA:S001"
+            - Location이 없는 경우, 있는 경우 에 대해서 처리 필요
+
+        (Input 2) 생성할 measure Lv 정보    (추가_251105)
+            - measureLv
+            ex) ap2
+
+
+    Input Tables (*)
+
+
+        (Input 1) df_in_sin_fcst_dummy. S/In FCST(GI) Dummy 정보
+            - query
+                Select ( [Sales Domain].[Ship To] * [Item].[Item] * [Location].[Location] * [Time].[Partial Week] ) on row,
+                ({
+                    Measure.[S/In FCST(GI) Dummy_AP1], Measure.[S/In FCST(GI) Dummy_AP2], Measure.[S/In FCST(GI) Dummy_GC], Measure.[S/In FCST(GI) Dummy_Local]
+                }) on column
+                where {[Version].[Version Name] };
+            - data
+                Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI) Dummy_AP1,S/In FCST(GI) Dummy_AP2,S/In FCST(GI) Dummy_GC,S/In FCST(GI) Dummy_Local
+                5000002,RF29BB8600QLAA,S001,202522A,1,,,
+                5000002,RF29BB8600QLAA,S001,202522B,1,,,
+                5000003,RF29BB8600QLAA,S001,202522A,1,,,
+                5000003,RF29BB8600QLAA,S001,202522B,1,,,
+                400002,RF29BB8600QLAA,S001,202522A,,1,,
+                400002,RF29BB8600QLAA,S001,202522B,,1,,
+                400003,RF29BB8600QLAA,S001,202522A,,1,,
+                400003,RF29BB8600QLAA,S001,202522B,,1,,
+                300001,RF29BB8600QLAA,S001,202522A,,,1,
+                300001,RF29BB8600QLAA,S001,202522B,,,1,
+                1,RF29BB8600QLAA,S001,202522A,1,1,,
+                1,RF29BB8600QLAA,S001,202522B,1,1,,
+
+        (Input 2) df_in_sout_fcst_dummy. S/Out FCST Dummy 정보
+            - query
+                Select ( [Sales Domain].[Ship To] * [Item].[Item] * [Location].[Location] * [Time].[Partial Week] ) on row,
+                ({
+                    Measure.[S/Out FCST Dummy_AP1], Measure.[S/Out FCST Dummy_AP2], Measure.[S/Out FCST Dummy_GC], Measure.[S/Out FCST Dummy_Local]
+                }) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST Dummy_AP1,S/Out FCST Dummy_AP2,S/Out FCST Dummy_GC,S/Out FCST Dummy_Local
+                5000002,RF29BB8600QLAA,-,202522A,1,,,
+                5000002,RF29BB8600QLAA,-,202522B,1,,,
+                5000003,RF29BB8600QLAA,S001,202522A,1,,,
+                5000003,RF29BB8600QLAA,S001,202522B,1,,,
+                400002,RF29BB8600QLAA,-,202522A,,1,,
+                400002,RF29BB8600QLAA,-,202522B,,1,,
+                400003,RF29BB8600QLAA,S001,202522A,,1,,
+                400003,RF29BB8600QLAA,S001,202522B,,1,,
+                300001,RF29BB8600QLAA,-,202522A,,,1,
+                300001,RF29BB8600QLAA,-,202522B,,,1,
+                1,RF29BB8600QLAA,-,202522A,1,1,,
+                1,RF29BB8600QLAA,-,202522B,1,1,,
+
+        (Input 3) df_in_flooring_fcst_dummy. Flooring FCST Dummy 정보
+            - query
+                Select ( [Sales Domain].[Ship To] * [Item].[Item] * [Time].[Week] ) on row,
+                ({
+                    Measure.[Flooring FCST Dummy]
+                }) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Ship To],Item.[Item],Time.[Week],Flooring FCST Dummy
+                5000002,RF29BB8600QLAA,202522,1
+                5000003,RF29BB8600QLAA,202522,1
+
+        (Input 4) df_in_Sales_Domain_Dimension. Sales Domian Master 정보
+            - query
+                Select (
+                [Sales Domain].[Sales Std1]
+                * [Sales Domain].[Sales Std2]
+                * [Sales Domain].[Sales Std3]
+                * [Sales Domain].[Sales Std4]
+                * [Sales Domain].[Sales Std5]
+                * [Sales Domain].[Sales Std6]
+                * [Sales Domain].[Ship To] );
+
+            - data
+                Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Sales Domain.[Ship To]
+                201,201,201,201,201,201,201
+                201,300001,300001,300001,300001,300001,300001
+                201,300001,A300001,A300001,A300001,A300001,A300001
+                201,300001,A300001,400001,400001,400001,400001
+                201,300001,A300001,400002,400002,400002,400002
+                201,300001,A300001,400001,5000001,5000001,5000001
+                201,300001,A300001,400002,5000002,5000002,5000002
+                201,300001,A300001,400001,5000001,A5000001,A5000001
+                201,300001,A300001,400003,400003,400003,400003
+                201,300001,A300001,400003,500003,500003,500003
+
+        (Input 5) df_in_Time_pw. Time 정보 pw
+            - query
+                Select (
+                Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )    );
+
+            - data
+                Time.[Partial Week]
+                202522A
+                202522B
+                202523A
+                202524A
+                202525A
+                202526A
+                202527A
+                202527B
+                202528A
+                202529A
+                202530A
+                202531A
+                202531B
+                202532A
+                202533A
+                202534A
+                202535A
+                202536A
+                202537A
+                202538A
+                202539A
+                202540A
+                202540B
+                202541A
+                202542A
+                202543A
+                202544A
+                202544B
+                202545A
+                202546A
+                202547A
+                202548A
+                202549A
+                202550A
+                202551A
+                202552A
+                202601A
+                202601B
+                202602A
+                202603A
+                202604A
+                202605A
+                202605B
+                202606A
+                202607A
+                202608A
+                202609A
+                202609B
+                202610A
+                202611A
+                202612A
+                202613A
+                202614A
+                202614B
+                202615A
+                202616A
+                202617A
+                202618A
+                202618B
+                202619A
+                202620A
+                202621A
+                202622A
+
+        (Input 6) df_in_Time_w. Time 정보 w
+            - query
+                Select (
+                Time.[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )    );
+
+            - data
+                Time.[Week]
+                202522
+                202523
+                202524
+                202525
+                202526
+                202527
+                202528
+                202529
+                202530
+                202531
+                202532
+                202533
+                202534
+                202535
+                202536
+                202537
+                202538
+                202539
+                202540
+                202541
+                202542
+                202543
+                202544
+                202545
+                202546
+                202547
+                202548
+                202549
+                202550
+                202551
+                202552
+                202601
+                202602
+                202603
+                202604
+                202605
+                202606
+                202607
+                202608
+                202609
+                202610
+                202611
+                202612
+                202613
+                202614
+                202615
+                202616
+                202617
+                202618
+                202619
+                202620
+                202621
+                202622
+
+
+        (Input 7) df_in_Item_Master. MST_ITEM 정보
+            - query
+                Select (
+                [Item].[Item GBM]
+                * [Item].[Item Std1]
+                * [Item].[Item Std2]
+                * [Item].[Item Std3]
+                * [Item].[Item Std4]
+                * [Item].[Item]
+                );
+
+            - data
+                Item.[Item GBM],Item.[Item Std1],Item.[Item Std2],Item.[Item Std3],Item.[Item Std4],Item.[Item]
+                VD,REF,REF_FDR,REF_FDR_FDR,REF_FDR_FDR_,RF29BB8600QLAA
+
+        (Input 8) df_in_Sales_Domain_Estore. E-Store 정보
+            - query
+                Select (
+                [Sales Domain].[Ship To].filter(#.[eStore Account YN] == True) );
+
+            - data
+                Sales Domain.[Ship To]
+                400003
+                5000003
+
+
+        (Input 9) df_in_Estimated_Price. Estimated Price 정보
+            - query
+                Select (
+                [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key ) ) on row,
+                ({
+                    Measure.[Estimated Price Modify_Local],
+                    Measure.[Estimated Price_Local]
+                }) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Ship To],Item.[Item],Time.[Partial Week],Estimated Price Modify_Local,Estimated Price_Local
+                5000001,RF29BB8600QLAA,202522A,1,100
+                5000001,RF29BB8600QLAA,…,1,200
+                5000001,RF29BB8600QLAA,202622A,1,300
+                5000002,RF29BB8600QLAA,202522A,100,999
+                5000002,RF29BB8600QLAA,…,100,999
+                5000002,RF29BB8600QLAA,202622A,100,999
+                5000003,RF29BB8600QLAA,202522A,,100
+                5000003,RF29BB8600QLAA,…,,100
+                5000003,RF29BB8600QLAA,202622A,,100
+
+
+        (Input 10) df_in_Action_Plan_Price. Action Plan Price 정보
+            - query
+                Select (
+                [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Time].[Month].filter(#.Key >= &CurrentMonth.element(0).Key && #.Key <= &CurrentMonth.element(0).leadoffset(12).Key ) ) on row,
+                ({Measure.[Action Plan Price_USD]}) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Ship To],Item.[Item],Time.[Month],Action Plan Price_USD
+                5000001,RF29BB8600QLAA,202505,5
+                5000001,RF29BB8600QLAA,…,5
+                5000001,RF29BB8600QLAA,202605,5
+                5000003,RF29BB8600QLAA,202505,7
+                5000003,RF29BB8600QLAA,…,7
+                5000003,RF29BB8600QLAA,202605,7
+
+        (Input 11) df_in_Exchange_Rate_Local. Exchange Rate_Local 정보
+            - query
+                Select (
+                [Sales Domain].[Sales Std3]
+                * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key ) ) on row,
+                ({Measure.[Exchange Rate_Local]}) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Sales Std3],Time.[Partial Week],Exchange Rate_Local
+                A3000001,202506A,1000
+                A3000001,…,1000
+                A3000001,202606A,1000
+
+        (Input 12) df_in_Estimated_Price_Item_Std2_Local. Estimated Price Item Std2_Local 정보
+            - query
+                Select (
+                [Item].[Item Std2]
+                * [Sales Domain].[Ship To]
+                * [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                ) on row,
+                ({Measure.[Estimated Price Item Std2_Local]}) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Item.[Item Std2],Sales Domain.[Ship To],Time.[Partial Week],Estimated Price Item Std2_Local
+                REF_FDR,400002,202522A,1002
+                REF_FDR,400002,…,1002
+                REF_FDR,400002,202622A,1002
+
+        (Input 13) df_in_Estimated_Price_Item_Std3_Local. Estimated Price Item Std3_Local 정보
+            - query
+                Select (
+                [Item].[Item Std3]
+                * [Sales Domain].[Ship To]
+                * [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                ) on row,
+                ({Measure.[Estimated Price Item Std3_Local]}) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Item.[Item Std3],Sales Domain.[Ship To],Time.[Partial Week],Estimated Price Item Std3_Local
+                REF_FDR_FDR,400002,202522A,100000
+                REF_FDR_FDR,400002,…,100000
+                REF_FDR_FDR,400002,202622A,100000
+
+
+        (Input 14) df_in_Estimated_Price_Item_Std4_Local. Estimated Price Item Std4_Local 정보
+            - query
+                Select (
+                [Item].[Item Std4]
+                * [Sales Domain].[Ship To]
+                * [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                ) on row,
+                ({Measure.[Estimated Price Item Std4_Local]}) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Item.[Item Std4],Sales Domain.[Ship To],Time.[Partial Week],Estimated Price Item Std4_Local
+                REF_FDR_FDR_,400002,202522A,100000
+                REF_FDR_FDR_,400002,…,100000
+                REF_FDR_FDR_,400002,202622A,100000
+
+        (Input 15) df_in_Sell_In_FCST_GI_Split_Ratio_AP1. S/In FCST (GI) Split Ratio_AP1 정보
+            - query
+                Select (
+                [Sales Domain].[Sales Std2]
+                * [Item].[Item Std1]
+                * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                ) on row,
+                ({Measure.[S/In FCST(GI) Split Ratio_AP1] }) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/In FCST(GI) Split Ratio_AP1
+                300001,REF,202522A,0.1
+                300001,REF,…,0.1
+                300001,REF,202622A,0.1
+        (Input 16) df_in_Sell_In_FCST_GI_Split_Ratio_AP2. S/In FCST (GI) Split Ratio_AP2 정보
+            - query
+                Select (
+                [Sales Domain].[Sales Std2]
+                * [Item].[Item Std1]
+                * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                ) on row,
+                ({Measure.[S/In FCST(GI) Split Ratio_AP2] }) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/In FCST(GI) Split Ratio_AP2
+                300001,REF,202522A,0.1
+                300001,REF,…,0.1
+                300001,REF,202622A,0.1
+
+
+        (Input 17) df_in_Sell_In_FCST_GI_Split_Ratio_GC. S/In FCST (GI) Split Ratio_GC 정보
+            - query
+                Select (
+                [Sales Domain].[Sales Std2]
+                * [Item].[Item Std1]
+                * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                ) on row,
+                ({Measure.[S/In FCST(GI) Split Ratio_GC] }) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/In FCST(GI) Split Ratio_GC
+                300001,REF,202522A,0.1
+                300001,REF,…,0.1
+                300001,REF,202622A,0.1
+
+        (Input 18) df_in_Sell_In_FCST_GI_Split_Ratio_Local. S/In FCST (GI) Split Ratio_Local 정보
+            - query
+                Select (
+                [Sales Domain].[Sales Std2]
+                * [Item].[Item Std1]
+                * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                ) on row,
+                ({Measure.[S/In FCST(GI) Split Ratio_Local] }) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/In FCST(GI) Split Ratio_Local
+                300001,REF,202522A,0.1
+                300001,REF,…,0.1
+                300001,REF,202622A,0.1
+
+        (Input 19) df_in_Sell_Out_FCST_Split_Ratio_AP1. S/Out FCST Split Ratio_AP1 정보
+            - query
+                Select (
+                [Sales Domain].[Sales Std2]
+                * [Item].[Item Std1]
+                * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                ) on row,
+                ({Measure.[S/Out FCST Split Ratio_AP1] }) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/Out FCST Split Ratio_AP1
+                300001,REF,202522A,0.1
+                300001,REF,…,0.1
+                300001,REF,202622A,0.1
+
+        (Input 20) df_in_Sell_Out_FCST_Split_Ratio_AP2. S/Out FCST Split Ratio_AP2 정보
+            - query
+                Select (
+                [Sales Domain].[Sales Std2]
+                * [Item].[Item Std1]
+                * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                ) on row,
+                ({Measure.[S/Out FCST Split Ratio_AP2] }) on column;
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/Out FCST Split Ratio_AP2
+                300001,REF,202522A,0.1
+                300001,REF,…,0.1
+                300001,REF,202622A,0.1
+
+        (Input 21) df_in_Sell_Out_FCST_Split_Ratio_GC. S/Out FCST Split Ratio_GC 정보
+            - query
+                Select (
+                [Sales Domain].[Sales Std2]
+                * [Item].[Item Std1]
+                * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                ) on row,
+                ({Measure.[S/Out FCST Split Ratio_GC] }) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/Out FCST Split Ratio_GC
+                300001,REF,202522A,0.1
+                300001,REF,…,0.1
+                300001,REF,202622A,0.1
+
+        (Input 22) df_in_Sell_Out_FCST_Split_Ratio_Local. S/Out FCST Split Ratio_Local 정보
+            - query
+                Select (
+                [Sales Domain].[Sales Std2]
+                * [Item].[Item Std1]
+                * Time.[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                ) on row,
+                ({Measure.[S/Out FCST Split Ratio_Local] }) on column
+                where {[Version].[Version Name] };
+
+            - data
+                Sales Domain.[Sales Std2],Item.[Item Std1],Time.[Partial Week],S/Out FCST Split Ratio_Local
+                300001,REF,202522A,0.1
+                300001,REF,…,0.1
+                300001,REF,202622A,0.1
+
+        ========  2025.11.07 FCST 비교 로직 추가 ======
+
+        (Input 23) df_in_sin_fcst. S/In FCST(GI) 정보
+            - query
+                Select ( [Sales Domain].[Ship To] * [Item].[Item] * [Location].[Location]  ) on row,
+                ({
+                    Measure.[S/In FCST(GI)_AP1], Measure.[S/In FCST(GI)_AP2], Measure.[S/In FCST(GI)_GC], Measure.[S/In FCST(GI)_Local]
+                }) on column
+                where {[Version].[Version Name], [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )};
+
+            - data (Test 적용시 Data 넣는 경우, 값 생성 안되어야 함)
+                Sales Domain.[Ship To],Item.[Item],Location.[Location],S/In FCST(GI)_AP1,S/In FCST(GI)_AP2,S/In FCST(GI)_GC,S/In FCST(GI)_Local
+                5000002,RF29BB8600QLAA,S001,1,,,
+                5000003,RF29BB8600QLAA,S001,1,,,
+                400002,RF29BB8600QLAA,S001,,1,,
+                400003,RF29BB8600QLAA,S001,,1,,
+                300001,RF29BB8600QLAA,S001,,,1,
+
+        (Input 24) df_in_sout_fcst. S/Out FCST 정보
+            - query
+                Select ( [Sales Domain].[Ship To] * [Item].[Item] * [Location].[Location]  ) on row,
+                ({
+                    Measure.[S/Out FCST_AP1], Measure.[S/Out FCST_AP2], Measure.[S/Out FCST_GC], Measure.[S/Out FCST_Local]
+                }) on column
+                where {[Version].[Version Name], [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )};
+
+            - data
+                Sales Domain.[Ship To],Item.[Item],Location.[Location],S/Out FCST_AP1,S/Out FCST_AP2,S/Out FCST_GC,S/Out FCST_Local
+                5000002,RF29BB8600QLAA,-,1,,,
+                5000003,RF29BB8600QLAA,-,1,,,
+                400002,RF29BB8600QLAA,-,,1,,
+                400003,RF29BB8600QLAA,-,,1,,
+                300001,RF29BB8600QLAA,-,,,1,
+
+        (Input 25) df_in_floor_fcst. Flooring FCST 정보
+            - query
+                Select ( [Sales Domain].[Ship To] * [Item].[Item] * [Location].[Location]  ) on row,
+                ({
+                    Measure.[Flooring FCST]
+                }) on column
+                where {[Version].[Version Name], [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )};
+
+            - data
+                Sales Domain.[Ship To],Item.[Item],Location.[Location],Flooring FCST
+                5000002,RF29BB8600QLAA,S001,1
+                5000003,RF29BB8600QLAA,S001,1
+                400002,RF29BB8600QLAA,S001,
+                400003,RF29BB8600QLAA,S001,
+                300001,RF29BB8600QLAA,S001,
+
+
+
+    Output Tables (*)
+
+
+        1. (Output 1-2) Output_SIn_Dummy
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * [Time].[Partial Week]
+                ) on row,
+                ( { Measure.[S/In FCST(GI) Dummy_AP1], Measure.[S/In FCST(GI) Dummy_AP2], Measure.[S/In FCST(GI) Dummy_GC], Measure.[S/In FCST(GI) Dummy_Local] } ) on column;
+
+        2. (Output 1-4) Output_SOut_Dummy
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * [Time].[Partial Week]
+                ) on row,
+                ( { Measure.[S/Out FCST Dummy_AP1], Measure.[S/Out FCST Dummy_AP2], Measure.[S/Out FCST Dummy_GC], Measure.[S/Out FCST Dummy_Local] } ) on column ;
+
+        3. (Output 1-5) Output_Flooring_Dummy
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Time].[Week]
+                ) on row,
+                ( { Measure.[Flooring FCST Dummy] } ) on column ;
+
+        4. (Output 2-1) Output_SIn_Assortment
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]  ) on row,
+                ( { Measure.[S/In FCST(GI) Assortment_AP1], Measure.[S/In FCST(GI) Assortment_AP2], Measure.[S/In FCST(GI) Assortment_GC], Measure.[S/In FCST(GI) Assortment_Local] } ) on column;
+
+        5. (Output 2-2) Output_SOut_Assortment
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]) on row,
+                ( { Measure.[S/Out FCST Assortment_AP1], Measure.[S/Out FCST Assortment_AP2], Measure.[S/Out FCST Assortment_GC], Measure.[S/Out FCST Assortment_Local] } ) on column ;
+
+        6. (Output 2-3) Output_Flooring_Assortment
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                ) on row,
+                ( { Measure.[Flooring FCST Assortment] } ) on column ;
+
+
+        7. (Output 3-1) df_output_Sell_In_FCST_GI_AP1
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( {
+                    Measure.[S/In FCST(GI)_AP1],
+                    Measure.[S/In FCST(BL)_AP1],
+                    Measure.[S/In FCST(GI)_New Model]
+                } ) on column;
+
+        8. (Output 3-1) df_output_Sell_In_FCST_GI_AP2
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( {
+                    Measure.[S/In FCST(GI)_AP2],
+                    Measure.[S/In FCST(BL)_AP2]
+                } ) on column;
+
+        9. (Output 3-1) df_output_Sell_In_FCST_GI_GC
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( {
+                    Measure.[S/In FCST(GI)_GC],
+                    Measure.[S/In FCST(BL)_GC]
+                ) on column;
+
+        10. (Output 3-1) df_output_Sell_In_FCST_GI_Local
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( {
+                    Measure.[S/In FCST(GI)_Local],
+                    Measure.[S/In FCST(BL)_Local]
+                ) on column;
+
+        11. (Output 3-2) df_output_Sell_Out_FCST_AP1
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/Out FCST_AP1]
+                } ) on column;
+
+        12. (Output 3-2) df_output_Sell_Out_FCST_AP2
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/Out FCST_AP2]
+                } ) on column;
+
+        13. (Output 3-2) df_output_Sell_Out_FCST_GC
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/Out FCST_GC]
+                ) on column;
+
+        14. (Output 3-2) df_output_Sell_Out_FCST_Local
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/Out FCST_Local]
+                ) on column;
+
+
+        15. (Output 3-3) df_output_Flooring_FCST
+                Select (
+                [Version].[Version Name].[CWV_DP]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                ) on row,
+                ({Measure.[Flooring_FCST]}) on column;
+
+
+        16. (Output 3-4) df_output_BO_FCST
+
+
+
+        17. (Output 4) df_output_Estimated_Price_Local
+
+            Select ([Version].[Version Name]
+            * [Sales Domain].[Ship To]
+            * [Item].[Item]
+            * [Time].[Partial Week]  )  on row,
+            ( {
+                Measure.[Estimated Price_Local],
+                Measure.[Estimated Price Color]  // (추가_251105)
+            } ) on column;
+
+
+        18. (Output 5-1) df_output_Sell_In_FCST_GI_Split_Ratio_AP1
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/In FCST(GI) Split Ratio_AP1]
+                } ) on column;
+
+        19. (Output 5-2) df_output_Sell_In_FCST_GI_Split_Ratio_AP2
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/In FCST(GI) Split Ratio_AP2]
+                } ) on column;
+
+        20. (Output 5-3) df_output_Sell_In_FCST_GI_Split_Ratio_GC
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/In FCST(GI) Split Ratio_GC]
+                ) on column;
+
+        21. (Output 5-4) df_output_Sell_In_FCST_GI_Split_Ratio_Local
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/In FCST(GI) Split Ratio_Local]
+                ) on column;
+
+        22. (Output 5-5) df_output_Sell_Out_FCST_Split_Ratio_AP1
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/Out FCST Split Ratio_AP1]
+                } ) on column;
+
+        23. (Output 5-6) df_output_Sell_Out_FCST_Split_Ratio_AP2
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/Out FCST Split Ratio_AP2]
+                } ) on column;
+
+        24. (Output 5-7) df_output_Sell_Out_FCST_Split_Ratio_GC
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/Out FCST Split Ratio_GC]
+                ) on column;
+
+        25. (Output 5-8) df_output_Sell_Out_FCST_Split_Ratio_Local
+
+                Select ([Version].[Version Name]
+                * [Sales Domain].[Ship To]
+                * [Item].[Item]
+                * [Location].[Location]
+                * Time.[Partial Week] ) on row,
+                ( { Measure.[S/Out FCST Split Ratio_Local]
+                ) on column;
+
+    주요 로직 개요(*)
+
+        Step 1) 생성할 Dummy 선별
+            Step 1-1) S/In FCST(GI) Dummy 에서 생성할 Sales 선정
+            Step 1-2) S/In FCST(GI) Dummy Output 구성 (삭제용)
+            Step 1-3) S/Out FCST Dummy 에서 생성할 Sales 선정
+            Step 1-4) S/Out FCST Dummy Output 구성 (삭제용)
+            Step 1-5) Flooring FCST Dummy 에서 생성할 Sales 선정
+            Step 1-6) Flooring FCST Dummy Output 구성 (삭제용)
+
+        Step 2) Assortment 값 생성
+            Step 2-1) S/In FCST(GI) Dummy Output 으로 Assortment Output Data 구성
+            Step 2-2) S/Out FCST Dummy Output 으로 Assortment Output Data 구성
+            Step 2-3) Flooring FCST Dummy Output 으로 Assortment Output Data 구성 * Flooring FCST 는 Assortment가 없음. 생성. 권한. 등등 다 필요함.
+
+        Step 3) FCST 값 생성
+            Step 3-1) S/In FCST(GI) Dummy Output 으로 S/In FCST(GI) 와 S/In FCST(BL), S/In FCST(GI)_New_Model Output Data 구성
+            Step 3-2) S/Out FCST Dummy Output 으로  S/Out FCST Output Data 구성
+            Step 3-3) (VD) Flooring FCST Dummy Output 으로 Flooring FCST Output Data 구성
+
+        Step 4) Price 값 생성
+            Step 4-1) Estimated Price Local Data 생성
+            Step 4-2) Estimated Price Local Dummy 비교용 Data 생성
+            Step 4-3) Delta에 대한 Estimated Price Local Dummy Data 생성
+            Step 4-4) Estimated Price Local Output 생성
+
+        Step 5) Split Ratio 값 생성
+            Step 6-1) S/In FCST(GI) Split Ratio_AP1 Data 생성
+            Step 6-2) S/In FCST(GI) Split Ratio_AP2 Data 생성
+            Step 6-3) S/In FCST(GI) Split Ratio_GC Data 생성
+            Step 6-4) S/In FCST(GI) Split Ratio_Local Data 생성
+            Step 6-5) S/Out FCST Split Ratio_AP1 Data 생성
+            Step 6-6) S/Out FCST Split Ratio_AP2 Data 생성
+            Step 6-7) S/Out FCST Split Ratio_GC Data 생성
+            Step 6-8) S/Out FCST Split Ratio_Local Data 생성
+
+        Step 6) Output 정리
+    주요 로직 상세(*)
+
+
+
+        Step 1) 생성할 Dummy 선별
+            - 참고
+                - 아래에서 'Input이 없는 경우' 에서 input 은 salesItemLocation 을 말한다.
+                - 기존 버젼에서는 df_in_Sales_Domain_Dimension 을 그대로사용했지만, 여기서는 salesItemLocation 에 있는 ShipTo를 필터링 한후, generate 한다.
+                    - salesItemLocation 를 ShipTo 컬럼으로  df_in_Sales_Domain_Dimension 으로 필터링한다.
+
+                - Step 1-0 의 결과를 사용시 , 기존에는 ShipTo 만을 사용했는데 , 이제는 'Sales Domain.[Ship To]' 'Item.[Item]' 'Location.[Location]'(옵션) 을 사용한다.
+
+            Step 1-0) salesItemLocation 정보 가공
+                -  Input의 salesItemLocation를 기준으로 값 찾기
+
+                1) Location 정보가 없는 경우
+                    - result
+                        Sales Domain.[Ship To],Item.[Item]
+                        400001,RF29BB8600QLAA
+                        400002,RF29BB8600QLAA
+
+                    ex) "400001:RF29BB8600QLAA^400002:RF29BB8600QLAA"
+                    - eStore Account 인 값 삭제 ( df_in_Sales_Domain_Estore )
+
+
+                2) Location 정보가 있는 경우,
+                    - result
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location]
+                        400001,RF29BB8600QLAA,S001
+                        400002,RF29BB8600QLAA,S001
+
+                    ex) "400001:RF29BB8600QLAA:S001^400002:RF29BB8600QLAA:S001"
+                    - eStore Account 인 값 삭제 ( df_in_Sales_Domain_Estore )
+
+
+            Step 1-1) S/In FCST(GI) Dummy 에서 생성할 Sales 선정
+                - result data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI) Dummy_AP2
+                    400002,RF29BB8600QLAA,S001,202522A,1
+                    400002,RF29BB8600QLAA,S001,202522B,1
+
+                - process
+                    - Input이 없는 경우, Output용 빈 DF 생성
+                    - measureLv 정보에 맞는 Measure만 남김 (추가_251105)
+
+                    1) Location 정보가 없는 경우, Ship To * Item 조합이 일치하는 경우만 남긴다 (추가_251105)
+                    2) Location 정보가 있는 경우, Ship To * Item * Location 조합이 일치하는 경우만 남긴다. (추가_251105)
+                    - (25.11.06) 기존에 해당 FCST의 값이 measurelv 에 맞는 Data가 존재하는 경우 (0이상인경우) 제외,
+
+
+            Step 1-2) S/In FCST(GI) Dummy Output 구성 (삭제용)
+                - result data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI) Dummy_AP2
+                    400002,RF29BB8600QLAA,S001,202522A,
+                    400002,RF29BB8600QLAA,S001,202522B,
+
+                - process
+                    - Measure 값을 Null 처리 한다
+                    - return Output_SIn_Dummy
+
+            Step 1-3) S/Out FCST Dummy 에서 생성할 Sales 선정
+                - result data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST Dummy_AP2
+                    400002,RF29BB8600QLAA,-,202522A,1
+                    400002,RF29BB8600QLAA,-,202522B,1
+
+                - process
+                    - Input이 없는 경우, Output용 빈 DF 생성
+                    - measureLv 정보에 맞는 Measure만 남김 (추가_251105)
+                    1) Location 정보가 없는 경우, Ship To * Item 조합이 일치하는 경우만 남긴다 (추가_251105)
+                    2) Location 정보가 있는 경우, Ship To * Item * Location 조합이 일치하는 경우만 남긴다. (추가_251105)
+                    - (25.11.06) 기존에 해당 FCST의 값이 measurelv 에 맞는 Data가 존재하는 경우 (0이상인경우) 제외,
+
+
+            Step 1-4) S/Out FCST Dummy Output 구성 (삭제용)
+                - result data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI) Dummy_AP2
+                    400002,RF29BB8600QLAA,-,202522A,
+                    400002,RF29BB8600QLAA,-,202522B,
+
+
+                - process
+                    - Measure 값을 Null 처리 한다
+                    - return Output_SOut_Dummy
+
+            Step 1-5) Flooring FCST Dummy 에서 생성할 Sales 선정
+                - result
+                    Sales Domain.[Ship To],Item.[Item],Time.[Week],Flooring FCST Dummy
+                    5000002,RF29BB8600QLAA,202522,1
+
+                - result(나의생각) : 안나온다.
+                    Sales Domain.[Ship To],Item.[Item],Time.[Week],Flooring FCST Dummy
+
+                - process
+                    - Input이 없는 경우, Output용 빈 DF 생성
+                    1) Location 정보가 없는 경우, Ship To * Item 조합이 일치하는 경우만 남긴다
+                    2) Location 정보가 있는 경우, Ship To * Item * Location 조합이 일치하는 경우만 남긴다.
+                    - (25.11.06) 기존에 해당 FCST의 값이 measurelv 에 맞는 Data가 존재하는 경우 (0이상인경우) 제외,
+
+
+
+            Step 1-6) Flooring FCST Dummy Output 구성 (삭제용)
+                - result
+                    Sales Domain.[Ship To],Item.[Item],Time.[Week],Flooring FCST Dummy
+                    5000002,RF29BB8600QLAA,202522,
+
+                - process
+                    - Measure 값을 Null 처리 한다
+                    - return Output_Flooring_Dummy
+
+            Step 1-7) Step 1-2, 1-4, 1-6 모두 빈 Dataframe 인 경우, 종료
+                - 메세지: Fail to execute : There is no data (추가_251105)
+
+
+
+
+        Step 2) Assortment 값 생성
+            Step 2-1) S/In FCST(GI) Dummy Output 으로 Assortment Output Data 구성
+                - 데이타원본(S/In FCST(GI) Dummy Output. Step1-1)
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI) Dummy_AP2
+                    400002,RF29BB8600QLAA,S001,202522A,1
+                    400002,RF29BB8600QLAA,S001,202522B,1
+
+
+                - result
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],S/In FCST(GI) Assortment_AP2
+                    400002,RF29BB8600QLAA,S001,1
+
+
+                - process
+                    - Rename : Dummy -> Assortment
+                    - Time 삭제
+                    - return Output_SIn_Assortment
+
+            Step 2-2) S/Out FCST Dummy Output 으로 Assortment Output Data 구성
+                - 데이타원본(Step1-3)
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST Dummy_AP2
+                    400002,RF29BB8600QLAA,-,202522A,1
+                    400002,RF29BB8600QLAA,-,202522B,1
+
+                - result
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],S/Out FCST Assortment_AP2
+                    400002,RF29BB8600QLAA,-,1
+
+
+                - process
+                    - Rename : Dummy -> Assortment
+                    - Time 삭제
+                    - return Output_SOut_Assortment
+
+            Step 2-3) Flooring FCST Dummy Output 으로 Assortment Output Data 구성 * Flooring FCST 는 Assortment가 없음. 생성. 권한. 등등 다 필요함.
+                - source data
+                    Sales Domain.[Ship To],Item.[Item],Time.[Week],Flooring FCST Dummy
+                    5000002,RF29BB8600QLAA,202522,1
+
+                - result
+                    Sales Domain.[Ship To],Item.[Item],Flooring FCST Assortment
+                    5000002,RF29BB8600QLAA,1
+
+                - result(나의생각) : 안나온다.
+                    Sales Domain.[Ship To],Item.[Item],Flooring FCST Assortment
+
+                - process
+                    * Flooring FCST Assortment Measure 생성 필요함.
+                    - Rename : Dummy -> Assortment
+                    - Time 삭제
+                    - return Output_Flooring_Assortment
+
+        Step 3) FCST 값 생성
+            Step 3-1) S/In FCST(GI) Dummy Output(step 1-1) 으로 S/In FCST(GI) 와 S/In FCST(BL), S/In FCST(GI)_New_Model Output Data 구성
+                - 아래 Case에 경우 measureLv = ap2 이므로, AP2 Data만 생성하고, 나머지는 빈 DF로 생성(추가_251105)
+
+                Step 3-1-1) S/In FCST(GI)_AP1, S/In FCST(BL)_AP1, S/In FCST(GI)_New Model Data 생성
+                    - result (in case measureLv == ap1 , salesItemLocation include '5000002'  )
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI)_AP1,S/In FCST(BL)_AP1,S/In FCST(GI) New Model
+                        5000002,RF29BB8600QLAA,S001,202522A,0 ,0 ,0
+                        5000002,RF29BB8600QLAA,S001,…,0 ,0 ,0
+                        5000002,RF29BB8600QLAA,S001,202622A,0 ,0 ,0
+
+                    - process
+                        - S/In FCST(GI) Dummy_AP1 에 값이 있는 경우, Ship To * Item * Location을 Key 값으로 하여, Time.[Partial Week] 구성
+                        - S/In FCST(GI)_AP1, S/In FCST(BL)_AP1, S/In FCST(GI) New Model 을 값 0 으로 생성
+                        - return df_output_Sell_In_FCST_GI_AP1
+
+                Step 3-1-2) S/In FCST(GI)_AP2 Data 생성
+                    - result (in case measureLv == ap1 , salesItemLocation include '400002'  )
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI)_AP2,S/In FCST(BL)_AP2
+                        400002,RF29BB8600QLAA,S001,202522A,0 ,0
+                        400002,RF29BB8600QLAA,S001,…,0 ,0
+                        400002,RF29BB8600QLAA,S001,202622A,0 ,0
+
+                    - process
+                        - S/In FCST(GI) Dummy_AP2 에 값이 있는 경우, Ship To * Item * Location을 Key 값으로 하여, Time.[Partial Week] 구성
+                        - S/In FCST(GI)_AP2, S/In FCST(BL)_AP2 을 값 0으로 생성
+                        - return df_output_Sell_In_FCST_GI_AP2
+
+
+                Step 3-1-3) S/In FCST(GI)_GC Data 생성
+                    - result (in case measureLv == gc , salesItemLocation include '300001'  )
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI)_GC,S/In FCST(BL)_GC
+                        300001,RF29BB8600QLAA,S001,202522A,0 ,0
+                        300001,RF29BB8600QLAA,S001,…,0 ,0
+                        300001,RF29BB8600QLAA,S001,202622A,0 ,0
+
+                    - process
+                        - S/In FCST(GI) Dummy_GC 에 값이 있는 경우, Ship To * Item * Location을 Key 값으로 하여, Time.[Partial Week] 구성
+                        - S/In FCST(GI)_GC, S/In FCST(BL)_GC 을 값 0으로 생성
+                        - return df_output_Sell_In_FCST_GI_GC
+
+
+                Step 3-1-4) S/In FCST(GI)_Local Data 생성
+                    - result (in case measureLv == local)
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI)_Local,S/In FCST(BL)_Local
+
+
+                    - process
+                        - S/In FCST(GI) Dummy_Local 에 값이 있는 경우, Ship To * Item * Location을 Key 값으로 하여, Time.[Partial Week] 구성
+                        - S/In FCST(GI)_Local, S/In FCST(BL)_Local 을 값 0으로 생성
+                        - return df_output_Sell_In_FCST_GI_Local
+
+
+            Step 3-2) S/Out FCST Dummy Output 으로  S/Out FCST Output Data 구성
+                - 아래 Case에 경우 measureLv = ap2 이므로, AP2 Data만 생성하고, 나머지는 빈 DF로 생성(추가_251105)
+
+                Step 3-2-1) S/Out FCST_AP1 Data 생성
+                - result (in case measureLv == ap1 , salesItemLocation include '5000002'  )
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST_AP1
+                        5000002,RF29BB8600QLAA,-,202522A,0
+                        5000002,RF29BB8600QLAA,-,…,0
+                        5000002,RF29BB8600QLAA,-,202622A,0
+
+
+                    - process
+                        - S/Out FCST Dummy_AP1 에 값이 있는 경우, Ship To * Item * Location을 Key 값으로 하여, Time.[Partial Week] 구성
+                        - S/Out FCST_AP1 을 값 0으로 생성
+                        - return df_output_Sell_Out_FCST_AP1
+
+                Step 3-2-2) S/Out FCST_AP2 Data 생성
+                    - result (in case measureLv == ap2 , salesItemLocation include '400002'  )
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST_AP2
+                        400002,RF29BB8600QLAA,-,202522A,0
+                        400002,RF29BB8600QLAA,-,…,0
+                        400002,RF29BB8600QLAA,-,202622A,0
+
+
+                    - process
+                        - S/Out FCST Dummy_AP2 에 값이 있는 경우, Ship To * Item * Location을 Key 값으로 하여, Time.[Partial Week] 구성
+                        - S/Out FCST_AP2 을 값 0으로 생성
+                        - return df_output_Sell_Out_FCST_AP2
+
+                Step 3-2-3) S/Out FCST_GC Data 생성
+                    - result (in case measureLv == gc , salesItemLocation include '300001'  )
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST_GC
+                        300001,RF29BB8600QLAA,-,202522A,0
+                        300001,RF29BB8600QLAA,-,…,0
+                        300001,RF29BB8600QLAA,-,202622A,0
+
+
+                    - process
+                        - S/Out FCST Dummy_GC 에 값이 있는 경우, Ship To * Item * Location을 Key 값으로 하여, Time.[Partial Week] 구성
+                        - S/Out FCST_GC 을 값 0으로 생성
+                        - return df_output_Sell_Out_FCST_GC
+
+                Step 3-2-4) S/Out FCST_Local Data 생성
+                    - result (in case measureLv == local )
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST_Local
+
+
+                    - process
+                        - S/Out FCST Dummy_Local 에 값이 있는 경우, Ship To * Item * Location을 Key 값으로 하여, Time.[Partial Week] 구성
+                        - S/Out FCST_Local 을 값 0으로 생성
+                        - return df_output_Sell_Out_FCST_Local
+
+
+            Step 3-3) (VD) Flooring FCST Dummy Output(Output_Flooring_Dummy) 으로 Flooring FCST Output Data 구성
+
+                - result(in case , salesItemLocation include '5000002' )
+                    Sales Domain.[Ship To],Item.[Item],Time.[Week],Flooring FCST
+                    5000002,RF29BB8600QLAA,202522,0
+                    5000002,RF29BB8600QLAA,…,0
+                    5000002,RF29BB8600QLAA,202622,0
+
+
+                - process
+                    - Flooring FCST Dummy 에 값이 있는 경우, Ship To * Item 을 Key 값으로 하여, Time.[Week] 구성
+                    - Flooring FCST를 값 0으로 생성
+                    - return df_output_Flooring_FCST
+
+            Step 3-4) (VD) BO FCST Output Data 구성 (추후 추가)
+                스펙이 나올때까지 대기
+
+
+
+        Step 4) Estimated Price Local Data 생성
+            Step 4-0) Estimated Price 생성 Data 선정
+                - result (in case , salesItemLocation include '5000002','400002','300001' )
+                    Sales Domain.[Ship To],Item.[Item]
+                    5000002,RF29BB8600QLAA
+                    400002,RF29BB8600QLAA
+                    300001,RF29BB8600QLAA
+
+                - result(in case , salesItemLocation include '400002' )
+                    Sales Domain.[Ship To],Item.[Item]
+                    400002,RF29BB8600QLAA
+
+                - process
+                    - Step 1-1) S/In FCST(GI) Dummy 와 Step 1-3) S/Out FCST Dummy 를 각각 Ship To * Item 으로 Group By 진행
+                    - 위의 두 DataFrame의 교집합 데이터만 추출
+
+            Step 4-1) Estimated Price Local Data 생성
+                - result
+                    Sales Domain.[Ship To],Item.[Item],Time.[Partial Week],Estimated Price_Local,Estimated Price Color
+                    400002,RF29BB8600QLAA,202522A,100000,1
+                    400002,RF29BB8600QLAA,…,100000,1
+                    400002,RF29BB8600QLAA,202622A,100000,1
+
+                - process
+                    - Time.[Partial Week] 추가
+                    - Estimated Price_Local 값 생성로직(25.11.05) Estimated Price Color Column 추가(추가_251105)
+                        - df_in_Estimated_Price 에서 Ship To, Item, Partial Week 단위
+                    * Ship To 는 2,3,4,5,6,7 Lv Data 모두 존재함.
+
+                    - 아래 값을 순차적으로 확인하며 값 적용
+                        1) Estimated Price Modify_Local
+                        2) Estimated Price_Local
+                        3) Estimated Price Item Std4_Local (25.11.05) 3) ~ 6) 의 값을 반영할 경우 Estimated Price Color = 1 값 사용 (추가_251105)
+                            - Ship To, Item Std4, Partial Week 값
+                        4) Estimated Price Item Std3_Local
+                            - Ship To, Item Std3, Partial Week 값
+                        5) Estimated Price Item Std2_Local
+                            - Ship To, Item Std2, Partial Week 값
+                        6) Action Plan Price_USD * Exchange Rate_Local
+                            - df_in_Action_Plan_Price 에서 Ship To, Item, Month 값 * df_in_Exchange Rate_Local 에서 Sales Std3, Partial Week 의 값 적용, 값이 없는 경우 처리 X
+
+            Step 4-2) Estimated Price_Local 값이 없는 경우 처리
+                - result
+                    Sales Domain.[Ship To],Item.[Item],Time.[Partial Week],Estimated Price_Local,Estimated Price Color
+                    400002,RF29BB8600QLAA,202522A,100000,1
+                    400002,RF29BB8600QLAA,…,100000,1
+                    400002,RF29BB8600QLAA,202622A,100000,1
+
+                - process
+                    - 생성되지 않은 값이 있는 경우, 하위 Lv Sales에 값이 생성되었다면, AVG 값 적용한  Dummy Data 생성.
+                        ex) 400003 에 값이 생성되지 않은 경우 하위 Lv 인 5000003 의 값을 가져옴
+                        ex) 300001 에 값이 생성되지 않은 경우 하위 Lv 인 400002, 400003 의 값을 가져옴
+
+        Step 5) Split Ratio Data 생성
+            - 아래 Case에 경우 measureLv = ap2 이므로, AP2 Data만 생성하고, 나머지는 빈 DF로 생성 (추가_251105)
+
+            Step 5-1) S/In FCST(GI) Split Ratio_AP1 Data 생성
+                - result (in case measureLv == ap1 , salesItemLocation include '5000002'  )
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI) Split Ratio_AP1
+                    5000002,RF29BB8600QLAA,S001,202522A,0.1
+                    5000002,RF29BB8600QLAA,S001,…,0.1
+                    5000002,RF29BB8600QLAA,S001,202622A,0.1
+
+
+                - process
+                    - Step 3-1 을 기준으로 진행
+                    - S/In FCST(GI) Split Ratio_AP1 생성 및 그 외 Measure 삭제
+                    - df_in_Sell_In_FCST_GI_Split_Ratio_AP1 에서 Sales Std2, Item Std1, Partial Week 의 값 적용, 값이 없는 경우 생성 X
+
+
+            Step 5-2) S/In FCST(GI) Split Ratio_AP2 Data 생성
+                - result (in case measureLv == ap1 , salesItemLocation include '5000002'  )
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI) Split Ratio_AP2
+                    400002,RF29BB8600QLAA,S001,202522A,0.1
+                    400002,RF29BB8600QLAA,S001,…,0.1
+                    400002,RF29BB8600QLAA,S001,202622A,0.1
+
+
+                - process
+                    Step 5-1 참조
+
+
+            Step 5-3) S/In FCST(GI) Split Ratio_GC Data 생성
+                - result
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI) Split Ratio_GC
+                    300001,RF29BB8600QLAA,S001,202522A,0.1
+                    300001,RF29BB8600QLAA,S001,…,0.1
+                    300001,RF29BB8600QLAA,S001,202622A,0.1
+
+
+                - process
+                    Step 5-1 참조
+
+            Step 5-4) S/In FCST(GI) Split Ratio_Local Data 생성
+                - result
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/In FCST(GI) Split Ratio_Local
+
+                - process
+                    Step 5-1 참조
+
+            Step 5-5) S/Out FCST Split Ratio_AP1 Data 생성
+                - result (in case measureLv == ap1 , salesItemLocation include '5000002'  )
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST Split Ratio_AP1
+                    5000002,RF29BB8600QLAA,-,202522A,0.1
+                    5000002,RF29BB8600QLAA,-,…,0.1
+                    5000002,RF29BB8600QLAA,-,202622A,0.1
+
+                - process
+                    - Step 3-2 을 기준으로 진행
+                    - Ship To, Item, Location 조합에 대해서 Partial Week 및 S/Out FCST Split Ratio_AP1 추가
+                    - df_in_Sell_Out_FCST_Split_Ratio_AP1 에서 Sales Std2, Item Std1, Partial Week 의 값 적용, 값이 없는 경우 생성 X (삭제)
+                    - Version.[Version Name] = 'CWV_DP' 추가
+
+            Step 5-6) S/Out FCST Split Ratio_AP2 Data 생성
+                - result (in case measureLv == ap2 , salesItemLocation include '400002'  )
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST Split Ratio_AP2
+                    400002,RF29BB8600QLAA,-,202522A,0.1
+                    400002,RF29BB8600QLAA,-,…,0.1
+                    400002,RF29BB8600QLAA,-,202622A,0.1
+
+                - process
+                    Step 5-5 참조
+
+            Step 5-7) S/Out FCST Split Ratio_GC Data 생성
+                - result
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST Split Ratio_GC
+                    300001,RF29BB8600QLAA,-,202522A,0.1
+                    300001,RF29BB8600QLAA,-,…,0.1
+                    300001,RF29BB8600QLAA,-,202622A,0.1
+
+                - process
+                    Step 5-5 참조
+
+            Step 5-8) S/Out FCST Split Ratio_Local Data 생성
+                - result (in case measureLv == gc , salesItemLocation include '300001'  )
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST Split Ratio_Local
+
+
+                - process
+                    Step 5-5 참조
+
+        Step 6) Output 정리
+            - Output에 맞게 Grain 정리 (Version.[Version Name] = "CWV_DP" 추가)
+
+
+
+    호출 (*)
+        * Sales Std2 로 조건이 최대
+        EXEC plugin instance [PYSalesProductASNDeltaB2C]
+            for measures {
+                Measure.[S/In FCST(GI) Dummy_AP1],
+                Measure.[S/In FCST(GI) Dummy_AP2],
+                Measure.[S/In FCST(GI) Dummy_GC],
+                Measure.[S/In FCST(GI) Dummy_Local],
+
+                Measure.[S/Out FCST Dummy_AP1],
+                Measure.[S/Out FCST Dummy_AP2],
+                Measure.[S/Out FCST Dummy_GC],
+                Measure.[S/Out FCST Dummy_Local],
+
+                Measure.[Flooring FCST Dummy],
+
+                Measure.[S/In FCST(GI) Assortment_AP1],
+                Measure.[S/In FCST(GI) Assortment_AP2],
+                Measure.[S/In FCST(GI) Assortment_GC],
+                Measure.[S/In FCST(GI) Assortment_Local],
+
+                Measure.[S/Out FCST Assortment_AP1],
+                Measure.[S/Out FCST Assortment_AP2],
+                Measure.[S/Out FCST Assortment_GC],
+                Measure.[S/Out FCST Assortment_Local],
+
+                Measure.[Flooring FCST Assortment],
+
+                Measure.[S/In FCST(GI)_AP1],
+                Measure.[S/In FCST(BL)_AP1],
+                Measure.[S/In FCST(GI) New Model],
+
+                Measure.[S/In FCST(GI)_AP2],
+                Measure.[S/In FCST(BL)_AP2],
+
+                Measure.[S/In FCST(GI)_GC],
+                Measure.[S/In FCST(BL)_GC],
+
+                Measure.[S/In FCST(GI)_Local],
+                Measure.[S/In FCST(BL)_Local],
+
+                Measure.[S/Out FCST_AP1],
+                Measure.[S/Out FCST_AP2],
+                Measure.[S/Out FCST_GC],
+                Measure.[S/Out FCST_Local],
+
+                Measure.[Flooring FCST],
+
+                Measure.[Estimated Price_Local],
+
+                Measure.[S/In FCST(GI) Split Ratio_AP1],
+                Measure.[S/In FCST(GI) Split Ratio_AP2],
+                Measure.[S/In FCST(GI) Split Ratio_GC],
+                Measure.[S/In FCST(GI) Split Ratio_Local],
+
+                Measure.[S/Out FCST Split Ratio_AP1],
+                Measure.[S/Out FCST Split Ratio_AP2],
+                Measure.[S/Out FCST Split Ratio_GC],
+                Measure.[S/Out FCST Split Ratio_Local]
+            }
+            using scope (
+            [Version].[Version Name].[CWV_DP]
+            * [Sales Domain].[Sales Std2]
+            * [Sales Domain].[Ship To]
+            * [Item].[Item]
+            * [Time].[Partial Week]
+            )
+            using arguments {
+            (ExecutionMode, "MediumWeight")
+            ,(IncludeNullrows, False)
+            };

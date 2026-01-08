@@ -41,7 +41,10 @@ COL_LOCATION                 = 'Location.[Location]'
 
 # 시간 (current version 기준)
 COL_PWEEK                    = 'Time.[Partial Week]'   # Step 3-1, 3-2, 3-3-2 모두 Partial Week 사용
+<<<<<<< HEAD
 COL_WEEK                     = 'Time.[Week]'
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 # 세일즈 도메인 층위
 COL_STD1                     = 'Sales Domain.[Sales Std1]'
@@ -52,6 +55,7 @@ COL_STD5                     = 'Sales Domain.[Sales Std5]'
 COL_STD6                     = 'Sales Domain.[Sales Std6]'
 
 # ASN
+<<<<<<< HEAD
 COL_SALES_PRODUCT_ASN             = 'Sales Product ASN'
 COL_SALES_PRODUCT_ASN_DELTA       = 'Sales Product ASN Delta'
 # 20251230 추가
@@ -59,6 +63,10 @@ COL_SALES_PRODUCT_ASN_DELTA_LEAF  = 'Sales Product ASN Delta Leaf Flag'
 
 # Step1.4 Output_Sales_Product_ASN 용. 25.12.16
 COL_SALES_PRODUCT_ASN_LEAF   = 'Sales Product ASN Leaf Flag'
+=======
+COL_SALES_PRODUCT_ASN        = 'Sales Product ASN'
+COL_SALES_PRODUCT_ASN_DELTA  = 'Sales Product ASN Delta'
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 # Assortment (S/In)
 COL_SIN_ASSORT_AP1           = 'S/In FCST(GI) Assortment_AP1'
@@ -107,7 +115,10 @@ COL_FRULE_ISVALID               = 'FORECAST_RULE ISVALID'
 # ======================================================
 DF_IN_SALES_DOMAIN_DIMENSION = 'df_in_Sales_Domain_Dimension'
 DF_IN_TIME                   = 'df_in_Time'                     # Partial Week만 포함 (current version)
+<<<<<<< HEAD
 DF_IN_TIME_ALL               = 'df_in_Time_all'                 # 10 월 10일 추가
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 DF_IN_SALES_DOMAIN_ESTORE    = 'df_in_Sales_Domain_Estore'
 DF_IN_FORECAST_RULE          = 'df_in_Forecast_Rule'
 DF_IN_SALES_PRODUCT_ASN_DELTA= 'df_in_Sales_Product_ASN_Delta'
@@ -407,7 +418,11 @@ def _fn_prepare_input_types(dict_dfs: dict) -> None:
         # 1) object 컬럼 : str → category
         obj_cols = df.select_dtypes(include=["object"]).columns
         for col in obj_cols:
+<<<<<<< HEAD
             df[col] = df[col].astype("string").astype("category")
+=======
+            df[col] = df[col].astype(str).astype("category")
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         # 2) numeric 컬럼 : fillna → int32
         num_cols = df.select_dtypes(
@@ -427,7 +442,11 @@ def _fn_prepare_input_type(df: pd.DataFrame) -> None:
     # 1) object 컬럼 : str → category
     obj_cols = df.select_dtypes(include=["object"]).columns
     for col in obj_cols:
+<<<<<<< HEAD
         df[col] = df[col].astype("string").astype("category")
+=======
+        df[col] = df[col].astype(str).astype("category")
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     # 2) numeric 컬럼 : fillna → int32
     num_cols = df.select_dtypes(
@@ -451,7 +470,11 @@ def fn_prepare_input_types(dict_dfs: dict) -> None:
         # 1) object → str → category
         obj_cols = df.select_dtypes(include=["object"]).columns
         for col in obj_cols:
+<<<<<<< HEAD
             df[col] = df[col].astype("string").astype("category")
+=======
+            df[col] = df[col].astype(str).astype("category")
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         # 2) 정수만 int32로, 실수는 유지
         int_cols = df.select_dtypes(include=["int64", "int32", "Int64", "Int32", "int"]).columns
@@ -487,8 +510,12 @@ def fn_process_in_df_mst():
             f'{DF_IN_SIN_ASSORTMENT         	}.csv' :    DF_IN_SIN_ASSORTMENT                    ,
             f'{DF_IN_SOUT_ASSORTMENT        	}.csv' :    DF_IN_SOUT_ASSORTMENT                   ,
             f'{DF_IN_SOUT_SIMUL_MASTER          }.csv' :    DF_IN_SOUT_SIMUL_MASTER                 ,
+<<<<<<< HEAD
             f'{DF_IN_ITEM_MASTER            	}.csv' :    DF_IN_ITEM_MASTER                       ,
             f'{DF_IN_TIME_ALL                   }.csv' :    DF_IN_TIME_ALL                                                   
+=======
+            f'{DF_IN_ITEM_MASTER            	}.csv' :    DF_IN_ITEM_MASTER                       
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
               
         }
 
@@ -527,8 +554,12 @@ def fn_process_in_df_mst():
         input_dataframes[DF_IN_SIN_ASSORTMENT           ] = df_in_SIn_Assortment                 	
         input_dataframes[DF_IN_SOUT_ASSORTMENT          ] = df_in_SOut_Assortment                	
         input_dataframes[DF_IN_SOUT_SIMUL_MASTER        ] = df_in_Sell_Out_Simul_Master 
+<<<<<<< HEAD
         input_dataframes[DF_IN_ITEM_MASTER              ] = df_in_item  
         input_dataframes[DF_IN_TIME_ALL                 ] = df_in_Time_all                  # 10월10일 추가   
+=======
+        input_dataframes[DF_IN_ITEM_MASTER              ] = df_in_item              
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 
     # type convert : str ==> category, int ==> int32
@@ -616,8 +647,11 @@ def sanitize_date_string(x: object) -> str:
 # 벡터라이즈 버전
 v_sanitize_date_string = np.vectorize(sanitize_date_string, otypes=[object])
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 # v_sanitize_date_string = np.vectorize(sanitize_date_string)
 
 # 2. Validate date
@@ -833,11 +867,17 @@ def ultra_fast_groupby_numpy_general(
             if np.issubdtype(col_sorted.dtype, np.bool_):
                 arr = col_sorted.view(np.int8)
             elif treat_YN_as_bool and _is_YN_array(col_sorted):
+<<<<<<< HEAD
                 # ✅ numpy(object + pd.NA) 비교가 scalar bool로 깨지는 문제 방지
                 yn = pd.Series(col_sorted, dtype="string").str.upper().fillna("N")
                 arr = yn.eq("Y").to_numpy(dtype=np.int8)   # True/False -> 1/0
                 restore_YN = (how_l in ('max', 'min'))
                 
+=======
+                arr = (col_sorted == 'Y').astype(np.int8, copy=False)
+                # 원래 동작 유지: 'max'/'min' 에 한해 Y/N 복구
+                restore_YN = (how_l in ('max', 'min'))
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             elif _is_numeric_dtype(col_sorted.dtype):
                 arr = col_sorted
             else:
@@ -905,11 +945,15 @@ def fn_step01_01_preprocess_sales_product_asn_delta(
     ----------------------------------------------------------
     • 입력 미존재 시 즉시 Exception 발생(프로그램 종료)
     • Version 컬럼(COL_VERSION) 제거
+<<<<<<< HEAD
     • Sales Product ASN Delta Leaf Flag 제거
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     • 'Sales Product ASN Delta' → 'Sales Product ASN' 컬럼명 변경
     • 반환 컬럼 순서 : [Ship To, Item, Location, Sales Product ASN]
     • dtype : 모두 category 로 캐스팅
     """    
+<<<<<<< HEAD
 
     out_cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN]
 
@@ -929,6 +973,18 @@ def fn_step01_01_preprocess_sales_product_asn_delta(
         COL_LOCATION,                       # 'Location.[Location]'
         COL_SALES_PRODUCT_ASN_DELTA,        # 'Sales Product ASN Delta'
         COL_SALES_PRODUCT_ASN_DELTA_LEAF    # 'Sales Product ASN Delta Leaf Flag' # 20251230 추가
+=======
+    # ── 0) 입력 방어 : 공백 데이터면 즉시 종료 ───────────────────────────────
+    if df_asn_delta is None or df_asn_delta.empty:
+        raise Exception('[Step 1-1] Input 6 (df_in_Sales_Product_ASN_Delta) is empty. Program terminated.')
+
+    # ── 1) 필요한 컬럼 존재 확인 ────────────────────────────────────────────
+    REQ_COLS = [
+        COL_SHIP_TO,         # 'Sales Domain.[Ship To]'
+        COL_ITEM,            # 'Item.[Item]'
+        COL_LOCATION,        # 'Location.[Location]'
+        COL_SALES_PRODUCT_ASN_DELTA  # 'Sales Product ASN Delta'
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     ]
     missing = [c for c in REQ_COLS if c not in df_asn_delta.columns]
     if missing:
@@ -942,6 +998,7 @@ def fn_step01_01_preprocess_sales_product_asn_delta(
     if COL_VERSION in df.columns:
         df.drop(columns=[COL_VERSION], inplace=True)
 
+<<<<<<< HEAD
     # ── 3) 'Sales Product ASN Delta Leaf Flag' 컬럼 제거 ────────────────────
     if COL_SALES_PRODUCT_ASN_DELTA_LEAF in df.columns:
         df.drop(columns=[COL_SALES_PRODUCT_ASN_DELTA_LEAF], inplace=True)
@@ -950,6 +1007,11 @@ def fn_step01_01_preprocess_sales_product_asn_delta(
     df.rename(columns={COL_SALES_PRODUCT_ASN_DELTA: COL_SALES_PRODUCT_ASN}, inplace=True)
     # ── 나중에 에러가 날 수 있으니 N 으로 바꾼다. ───────────────────────────────
     df[COL_SALES_PRODUCT_ASN] = df[COL_SALES_PRODUCT_ASN].astype("string").fillna('N')
+=======
+    # ── 4) 컬럼명 변경 : Delta → ASN ────────────────────────────────────────
+    df.rename(columns={COL_SALES_PRODUCT_ASN_DELTA: COL_SALES_PRODUCT_ASN}, inplace=True)
+
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     # ── 5) dtype 캐스팅 (메모리 절감) ───────────────────────────────────────
     #     전부 category 로 맞춰 대용량 처리 대비
     cast_cols = [COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN]
@@ -984,12 +1046,21 @@ def fn_step01_02_preprocess_sales_product_asn(
     • 모든 컬럼 dtype : category
     • for-loop 없이 벡터화, 대용량/메모리 고려
     """    
+<<<<<<< HEAD
     # # ── 0) 입력 방어 ────────────────────────────────────────────────────────
     # if df_asn_base is None or df_asn_base.empty:
     #     raise Exception('[Step 1-2] Input 7 (df_in_Sales_Product_ASN) is empty.')
     # if df_step01_01_delta is None or df_step01_01_delta.empty:
     #     # 1-1에서 이미 빈 값이면 종료하도록 했지만, 재확인
     #     raise Exception('[Step 1-2] Step 1-1 result is empty. Program terminated.')
+=======
+    # ── 0) 입력 방어 ────────────────────────────────────────────────────────
+    if df_asn_base is None or df_asn_base.empty:
+        raise Exception('[Step 1-2] Input 7 (df_in_Sales_Product_ASN) is empty.')
+    if df_step01_01_delta is None or df_step01_01_delta.empty:
+        # 1-1에서 이미 빈 값이면 종료하도록 했지만, 재확인
+        raise Exception('[Step 1-2] Step 1-1 result is empty. Program terminated.')
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     # ── 1) 필수 컬럼 확인 ───────────────────────────────────────────────────
     REQ_BASE = [COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN]
@@ -1014,11 +1085,19 @@ def fn_step01_02_preprocess_sales_product_asn(
     # 카테고리 간 카테고리-세트 불일치로 인한 merge 비용/오류를 피하기 위해
     # 문자열 키로 벡터화 비교(mask) 수행 (Delta 쪽 고유키 set만 생성 → 메모리 최소화)
     # left key
+<<<<<<< HEAD
     k2 = df_asn[COL_ITEM].astype('object').astype("string")
     key_left = k2
 
     # right unique key set
     r2 = df_step01_01_delta[COL_ITEM].astype('object').astype("string")
+=======
+    k2 = df_asn[COL_ITEM].astype('object').astype(str)
+    key_left = k2
+
+    # right unique key set
+    r2 = df_step01_01_delta[COL_ITEM].astype('object').astype(str)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     right_keys = (r2).unique()
     right_key_set = set(right_keys)   # Delta는 상대적으로 작다는 전제에서 set 사용
 
@@ -1031,6 +1110,7 @@ def fn_step01_02_preprocess_sales_product_asn(
     # 카테고리 간 카테고리-세트 불일치로 인한 merge 비용/오류를 피하기 위해
     # 문자열 키로 벡터화 비교(mask) 수행 (Delta 쪽 고유키 set만 생성 → 메모리 최소화)
     # left key
+<<<<<<< HEAD
     k1 = df_asn[COL_SHIP_TO].astype('object').astype("string")
     k2 = df_asn[COL_ITEM].astype('object').astype("string")
     k3 = df_asn[COL_LOCATION].astype('object').astype("string")
@@ -1040,6 +1120,17 @@ def fn_step01_02_preprocess_sales_product_asn(
     r1 = df_step01_01_delta[COL_SHIP_TO].astype('object').astype("string")
     r2 = df_step01_01_delta[COL_ITEM].astype('object').astype("string")
     r3 = df_step01_01_delta[COL_LOCATION].astype('object').astype("string")
+=======
+    k1 = df_asn[COL_SHIP_TO].astype('object').astype(str)
+    k2 = df_asn[COL_ITEM].astype('object').astype(str)
+    k3 = df_asn[COL_LOCATION].astype('object').astype(str)
+    key_left = k1 + '|' + k2 + '|' + k3
+
+    # right unique key set
+    r1 = df_step01_01_delta[COL_SHIP_TO].astype('object').astype(str)
+    r2 = df_step01_01_delta[COL_ITEM].astype('object').astype(str)
+    r3 = df_step01_01_delta[COL_LOCATION].astype('object').astype(str)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     right_keys = (r1 + '|' + r2 + '|' + r3).unique()
     right_key_set = set(right_keys)   # Delta는 상대적으로 작다는 전제에서 set 사용
 
@@ -1084,10 +1175,17 @@ def fn_step01_03_build_sales_product_asn(
         - concat 중 카테고리 범주가 다르면 일시적으로 object로 오를 수 있으므로, 마지막에 재-cast(category)
     """    
     
+<<<<<<< HEAD
     # # ── 0) 방어 코드 ───────────────────────────────────────────────────────
     # if df_step01_01_delta is None or df_step01_01_delta.empty:
     #     # 설계상 1-1에서 빈 경우 프로그램 종료이므로 여기서도 방어적으로 예외 처리
     #     raise Exception('[Step 1-3] Step 1-1 result (ASN Delta) is empty. Program terminated.')
+=======
+    # ── 0) 방어 코드 ───────────────────────────────────────────────────────
+    if df_step01_01_delta is None or df_step01_01_delta.empty:
+        # 설계상 1-1에서 빈 경우 프로그램 종료이므로 여기서도 방어적으로 예외 처리
+        raise Exception('[Step 1-3] Step 1-1 result (ASN Delta) is empty. Program terminated.')
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     # 1-2 결과는 비어 있어도 유니온의 의미상 문제 없음(전부 Delta로만 구성)
     if df_step01_02_base_filtered is None:
@@ -1119,7 +1217,11 @@ def fn_step01_03_build_sales_product_asn(
     # ── 4) 값 정규화 & dtype 캐스팅 ───────────────────────────────────────
     #  'Sales Product ASN' 값은 {Y,N}만 허용(스펙). 혹시 다른 값이 있으면 문자열로 변환 후 카테고리화.
     if df_union[COL_SALES_PRODUCT_ASN].dtype.name != 'category':
+<<<<<<< HEAD
         df_union[COL_SALES_PRODUCT_ASN] = df_union[COL_SALES_PRODUCT_ASN].astype('object').astype("string")
+=======
+        df_union[COL_SALES_PRODUCT_ASN] = df_union[COL_SALES_PRODUCT_ASN].astype('object').astype(str)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     # 최종 컬럼을 category로 캐스팅
     for c in USE_COLS:
         df_union[c] = df_union[c].astype('category')
@@ -1160,7 +1262,11 @@ def fn_step01_04_output_sales_product_asn(
         raise KeyError(f"[Step 1-6] Input 6 missing columns: {missing}")    
     
     if df_in_asn_delta.empty:
+<<<<<<< HEAD
         cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN, COL_SALES_PRODUCT_ASN_LEAF]
+=======
+        cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN]
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         return pd.DataFrame(columns=cols)
 
     # ── 1) 필요한 컬럼만 복사 ──────────────────────────────────────────────
@@ -1172,6 +1278,7 @@ def fn_step01_04_output_sales_product_asn(
     # ── 3) 값 변환 : 'Y' 유지, 나머지는 ''(빈값) ───────────────────────────
     norm = (
         df[COL_SALES_PRODUCT_ASN]
+<<<<<<< HEAD
         .astype('object').astype("string").str.strip().str.upper()
     )
     df[COL_SALES_PRODUCT_ASN_LEAF] = norm.where(norm.eq('Y'), '')
@@ -1182,6 +1289,18 @@ def fn_step01_04_output_sales_product_asn(
 
     # ── 5) dtype 정리 (메모리 절감: category) ─────────────────────────────
     for c in [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION,COL_SALES_PRODUCT_ASN, COL_SALES_PRODUCT_ASN_LEAF]:
+=======
+        .astype('object').astype(str).str.strip().str.upper()
+    )
+    df[COL_SALES_PRODUCT_ASN] = norm.where(norm.eq('Y'), '')
+
+    # ── 4) Version 덮어쓰기 & 출력 스키마 정렬 ─────────────────────────────
+    df[COL_VERSION] = version
+    df_out = df[[COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN]]
+
+    # ── 5) dtype 정리 (메모리 절감: category) ─────────────────────────────
+    for c in [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN]:
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         df_out[c] = df_out[c].astype('category')
 
     # ── 6) 메모리 정리 ────────────────────────────────────────────────────
@@ -1230,6 +1349,7 @@ def fn_step01_05_output_sales_product_asn_delta(
     # ── 2) 값 변환 : 전체 ''(빈값)으로 설정 ────────────────────────────────
     #  ※ 스펙 '전체 Null 적용'을 카테고리 호환을 위해 ''로 대체(이후 시스템에서 Null로 처리될 수 있음)
     df[COL_SALES_PRODUCT_ASN_DELTA] = ''
+<<<<<<< HEAD
     df[COL_SALES_PRODUCT_ASN_DELTA_LEAF] = ''
 
     # ── 3) Version 덮어쓰기 & 출력 스키마 정렬 ─────────────────────────────
@@ -1238,6 +1358,15 @@ def fn_step01_05_output_sales_product_asn_delta(
 
     # ── 4) dtype 정리 (메모리 절감: category) ─────────────────────────────
     for c in [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN_DELTA,COL_SALES_PRODUCT_ASN_DELTA_LEAF]:
+=======
+
+    # ── 3) Version 덮어쓰기 & 출력 스키마 정렬 ─────────────────────────────
+    df[COL_VERSION] = version
+    df_out = df[[COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN_DELTA]]
+
+    # ── 4) dtype 정리 (메모리 절감: category) ─────────────────────────────
+    for c in [COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN_DELTA]:
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         df_out[c] = df_out[c].astype('category')
 
     # ── 5) 메모리 정리 ────────────────────────────────────────────────────
@@ -1344,8 +1473,11 @@ COL_SIN_ASS_AP1    = COL_SIN_ASSORT_AP1
 COL_SIN_ASS_LOCAL  = COL_SIN_ASSORT_LOCAL
 
 # S/Out Assortment 컬럼
+<<<<<<< HEAD
 COL_SOUT_ASS_FLAG    = 'S/Out Assortment Flag'
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 COL_SOUT_ASS_GC    = COL_SOUT_ASSORT_GC
 COL_SOUT_ASS_AP2   = COL_SOUT_ASSORT_AP2
 COL_SOUT_ASS_AP1   = COL_SOUT_ASSORT_AP1
@@ -1420,7 +1552,11 @@ def fn_step02_02_build_assortments(
     # 1) ASN + PG 매핑 (Item.Std1 ↔ ForecastRule.PG)
     # ────────────────────────────────────────────────────────────────────────
     df_asn = df_step01_03_asn_all[need_asn_cols].copy(deep=False)
+<<<<<<< HEAD
     pg_map = df_in_Item_Master.set_index(COL_ITEM)[COL_ITEM_STD1].astype("string").to_dict()
+=======
+    pg_map = df_in_Item_Master.set_index(COL_ITEM)[COL_ITEM_STD1].astype(str).to_dict()
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df_asn[COL_PG] = df_asn[COL_ITEM].map(pg_map)
 
     # 유효 PG 만 남김
@@ -1434,7 +1570,11 @@ def fn_step02_02_build_assortments(
     # Rule 유효값만
     df_rule = df_in_Forecast_Rule.copy()
     if COL_FRULE_ISVALID in df_rule.columns:
+<<<<<<< HEAD
         df_rule = df_rule[df_rule[COL_FRULE_ISVALID].astype("string").str.upper().eq('Y')].copy()
+=======
+        df_rule = df_rule[df_rule[COL_FRULE_ISVALID].astype(str).str.upper().eq('Y')].copy()
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     for col in (COL_FRULE_GC_FCST, COL_FRULE_AP2_FCST, COL_FRULE_AP1_FCST, COL_FRULE_AP0_FCST):
         df_rule[col] = df_rule[col].fillna(0).astype('int8')
@@ -1442,8 +1582,13 @@ def fn_step02_02_build_assortments(
     RULE: dict[tuple[str, str], tuple[int, int, int, int]] = {
         (str(pg), str(ship)): (gc, ap2, ap1, ap0)
         for pg, ship, gc, ap2, ap1, ap0 in zip(
+<<<<<<< HEAD
             df_rule[COL_PG].astype("string"),
             df_rule[COL_SHIP_TO].astype("string"),
+=======
+            df_rule[COL_PG].astype(str),
+            df_rule[COL_SHIP_TO].astype(str),
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             df_rule[COL_FRULE_GC_FCST],
             df_rule[COL_FRULE_AP2_FCST],
             df_rule[COL_FRULE_AP1_FCST],
@@ -1454,19 +1599,28 @@ def fn_step02_02_build_assortments(
     dim = df_in_Sales_Domain_Dimension.copy()
     dim_idx = dim.set_index(COL_SHIP_TO)
     LV_MAP = {
+<<<<<<< HEAD
         lv: dim_idx[col].astype("string").to_dict()
+=======
+        lv: dim_idx[col].astype(str).to_dict()
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         for lv, col in enumerate([COL_STD1, COL_STD2, COL_STD3, COL_STD4, COL_STD5, COL_STD6], start=1)
     }
 
     # ship_level : Ship코드가 처음 등장한(가장 상위) 레벨 (Lv-2 … Lv-7 ↔ Std1 … Std6)
     ship_level: dict[str, int] = {}
     for lv, col in enumerate([COL_STD1, COL_STD2, COL_STD3, COL_STD4, COL_STD5, COL_STD6], start=2):
+<<<<<<< HEAD
         for code in dim[col].dropna().astype("string").unique():
+=======
+        for code in dim[col].dropna().astype(str).unique():
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             ship_level.setdefault(code, lv)
 
     def parent_of(arr: np.ndarray, lv: int) -> np.ndarray:
         return np.vectorize(LV_MAP[lv].get, otypes=[object])(arr)
 
+<<<<<<< HEAD
     # Estore mask 설정
     est_set = set(df_in_Sales_Domain_Estore[COL_SHIP_TO].astype("string"))
     if est_set:
@@ -1482,6 +1636,16 @@ def fn_step02_02_build_assortments(
     pg_np   = df_asn[COL_PG].astype("string").to_numpy()
     asn_np  = df_asn[COL_SALES_PRODUCT_ASN].astype('string').str.upper().to_numpy()
 
+=======
+    # ────────────────────────────────────────────────────────────────────────
+    # 3) Core: vectorised 룰 매칭 → 4개 Tag buffer 생성 (S/In용)
+    # ────────────────────────────────────────────────────────────────────────
+    ship_np = df_asn[COL_SHIP_TO].astype(str).to_numpy()
+    item_np = df_asn[COL_ITEM].to_numpy()
+    loc_np  = df_asn[COL_LOCATION].to_numpy()
+    pg_np   = df_asn[COL_PG].astype(str).to_numpy()
+    asn_np  = df_asn[COL_SALES_PRODUCT_ASN].astype(str).str.upper().to_numpy()
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     TAGS = ('GC', 'AP2', 'AP1', 'Local')
     tag_lvmat = {t: np.zeros_like(ship_np, dtype='int8') for t in TAGS}
@@ -1510,7 +1674,11 @@ def fn_step02_02_build_assortments(
         valid  = (lv_arr >= 2) & (lv_arr <= 7) & (lv_arr <= ship_lv_arr)
         if not valid.any():
             return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM, COL_LOCATION,
+<<<<<<< HEAD
                                          COL_SALES_PRODUCT_ASN, qty_col, COL_SOUT_ASS_FLAG])
+=======
+                                         COL_SALES_PRODUCT_ASN, qty_col])
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         tgt_ship = np.fromiter(
             (LV_MAP[l-1].get(s) if 2 <= l <= 7 else None
@@ -1520,31 +1688,47 @@ def fn_step02_02_build_assortments(
         ok = tgt_ship != None
         if not ok.any():
             return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM, COL_LOCATION,
+<<<<<<< HEAD
                                          COL_SALES_PRODUCT_ASN, qty_col, COL_SOUT_ASS_FLAG])
+=======
+                                         COL_SALES_PRODUCT_ASN, qty_col])
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         rows = {
             COL_SHIP_TO           : tgt_ship[ok],
             COL_ITEM              : item_np[valid][ok],
             COL_LOCATION          : loc_np [valid][ok],
             COL_SALES_PRODUCT_ASN : asn_np [valid][ok],
+<<<<<<< HEAD
             qty_col               : np.ones(ok.sum(), dtype='int8'),
             COL_SOUT_ASS_FLAG     : ~mask_es[valid][ok]
+=======
+            qty_col               : np.ones(ok.sum(), dtype='int8')
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         }
         df = pd.DataFrame(rows)
 
         df = ultra_fast_groupby_numpy_general(
             df=df,
             key_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION],
+<<<<<<< HEAD
             aggs={
                 COL_SALES_PRODUCT_ASN : 'max',
                 COL_SOUT_ASS_FLAG     : 'max'  
             }
+=======
+            aggs={COL_SALES_PRODUCT_ASN: 'max'}
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         )
         df = df.assign(**{qty_col: 1})
 
 
         # ASN='N' → measure NaN
+<<<<<<< HEAD
         df[qty_col] = np.where(df[COL_SALES_PRODUCT_ASN].astype('string').str.upper().eq('Y'), 1, np.nan)
+=======
+        df[qty_col] = np.where(df[COL_SALES_PRODUCT_ASN].astype(str).str.upper().eq('Y'), 1, np.nan)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         # dtype 최적화
         for c in (COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN):
@@ -1564,12 +1748,17 @@ def fn_step02_02_build_assortments(
     }
 
     # ────────────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
     # 3) Core: vectorised 룰 매칭 → 4개 Tag buffer 생성 (S/Out용)
+=======
+    # 4) Core: vectorised 룰 매칭 → 4개 Tag buffer 생성 (S/Out용)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     # ────────────────────────────────────────────────────────────────────────
     def _to_sout_base(df_in: pd.DataFrame, sin_col: str, sout_col: str) -> pd.DataFrame:
         if df_in.empty:
             return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM, COL_LOCATION,
                                         COL_SALES_PRODUCT_ASN, sout_col])    
+<<<<<<< HEAD
         # SOUT_ASS_FLAG == True 만 유지
         # ✅ 핵심: SOUT_ASS_FLAG를 "진짜 bool 마스크"로 강제
         mask = df_in[COL_SOUT_ASS_FLAG]
@@ -1585,6 +1774,12 @@ def fn_step02_02_build_assortments(
         df_tmp = df_tmp[[COL_SHIP_TO, COL_ITEM, COL_SALES_PRODUCT_ASN, sin_col]].copy()
         df_tmp['_asn_flag'] = (
             df_tmp[COL_SALES_PRODUCT_ASN].astype('string').str.upper().eq('Y')
+=======
+        # 보조 플래그: Y→1, 그 외→0
+        df_tmp = df_in[[COL_SHIP_TO, COL_ITEM, COL_SALES_PRODUCT_ASN, sin_col]].copy()
+        df_tmp['_asn_flag'] = (
+            df_tmp[COL_SALES_PRODUCT_ASN].astype(str).str.upper().eq('Y')
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         ).astype('int8')
 
         # ★ observed=True 로 '실제로 존재하는 그룹'만 집계 (카테고리 데카르트 곱 방지)
@@ -1601,7 +1796,11 @@ def fn_step02_02_build_assortments(
         df[sout_col] = 1
         df[COL_LOCATION] = '-'
         df[sout_col] = np.where(
+<<<<<<< HEAD
             df[COL_SALES_PRODUCT_ASN].astype('string').str.upper().eq('Y'), 1, np.nan
+=======
+            df[COL_SALES_PRODUCT_ASN].astype(str).str.upper().eq('Y'), 1, np.nan
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         )
 
         # dtype 정리
@@ -1610,13 +1809,17 @@ def fn_step02_02_build_assortments(
 
         return df[[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN, sout_col]]  
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     sout_base_gc    = _to_sout_base(sin_gc,    COL_SIN_ASS_GC,    COL_SOUT_ASS_GC)
     sout_base_ap2   = _to_sout_base(sin_ap2,   COL_SIN_ASS_AP2,   COL_SOUT_ASS_AP2)
     sout_base_ap1   = _to_sout_base(sin_ap1,   COL_SIN_ASS_AP1,   COL_SOUT_ASS_AP1)
     sout_base_local = _to_sout_base(sin_local, COL_SIN_ASS_LOCAL, COL_SOUT_ASS_LOCAL)
 
     # ────────────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
     # 4) S/Out – E-Store 상세(Location 유지) : df_asn 중 E-Store ShipTo만 재빌드
     # ────────────────────────────────────────────────────────────────────────
     # est_set = set(df_in_Sales_Domain_Estore[COL_SHIP_TO].astype(str))
@@ -1624,6 +1827,15 @@ def fn_step02_02_build_assortments(
     #     mask_es = df_asn[COL_SHIP_TO].astype(str).isin(est_set).to_numpy()
     # else:
     #     mask_es = np.zeros(len(df_asn), dtype=bool)
+=======
+    # 5) S/Out – E-Store 상세(Location 유지) : df_asn 중 E-Store ShipTo만 재빌드
+    # ────────────────────────────────────────────────────────────────────────
+    est_set = set(df_in_Sales_Domain_Estore[COL_SHIP_TO].astype(str))
+    if est_set:
+        mask_es = df_asn[COL_SHIP_TO].astype(str).isin(est_set).to_numpy()
+    else:
+        mask_es = np.zeros(len(df_asn), dtype=bool)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     def _build_sout_est(tag: str, qty_col: str) -> pd.DataFrame:
         if not mask_es.any():
@@ -1666,7 +1878,11 @@ def fn_step02_02_build_assortments(
         df = df.assign(**{qty_col: 1})
         
 
+<<<<<<< HEAD
         df[qty_col] = np.where(df[COL_SALES_PRODUCT_ASN].astype('string').str.upper().eq('Y'), 1, np.nan)
+=======
+        df[qty_col] = np.where(df[COL_SALES_PRODUCT_ASN].astype(str).str.upper().eq('Y'), 1, np.nan)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         for c in (COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN):
             df[c] = df[c].astype('category')
         return df
@@ -1687,7 +1903,11 @@ def fn_step02_02_build_assortments(
         df = pd.concat([base, est], ignore_index=True)
         df = df.drop_duplicates(subset=gcols, keep='first')
         # 보수적으로 다시 ASN 기준 NaN 적용
+<<<<<<< HEAD
         df[qty_col] = np.where(df[COL_SALES_PRODUCT_ASN].astype('string').str.upper().eq('Y'), 1, np.nan)
+=======
+        df[qty_col] = np.where(df[COL_SALES_PRODUCT_ASN].astype(str).str.upper().eq('Y'), 1, np.nan)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         for c in (COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN):
             df[c] = df[c].astype('category')
         return df
@@ -1788,14 +2008,24 @@ def fn_step02_03_compare_sin_assortments(
         df = df_in[need].copy(deep=False)
 
         # ASN 정상화 (object→str→upper)
+<<<<<<< HEAD
         asn_y = df[COL_SALES_PRODUCT_ASN].astype('string').str.upper().eq('Y')
+=======
+        asn_y = df[COL_SALES_PRODUCT_ASN].astype(str).str.upper().eq('Y')
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         # 기존 값 있는 키 집합
         keyset = exist_key_map.get(ass_col, set())
         if keyset:
+<<<<<<< HEAD
             keys = list(zip(df[COL_SHIP_TO].astype("string"),
                             df[COL_ITEM].astype("string"),
                             df[COL_LOCATION].astype("string")))
+=======
+            keys = list(zip(df[COL_SHIP_TO].astype(str),
+                            df[COL_ITEM].astype(str),
+                            df[COL_LOCATION].astype(str)))
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             has_old = pd.Series([k in keyset for k in keys], index=df.index)
 
             # ASN='Y' 이고 기존 값 존재 → 제거
@@ -1804,7 +2034,11 @@ def fn_step02_03_compare_sin_assortments(
                 df = df.loc[~drop_mask].copy()
 
         # ASN='N' → 해당 Assortment 컬럼 NaN 강제
+<<<<<<< HEAD
         asn_y = df[COL_SALES_PRODUCT_ASN].astype('string').str.upper().eq('Y')  # 재평가(필터 후)
+=======
+        asn_y = df[COL_SALES_PRODUCT_ASN].astype(str).str.upper().eq('Y')  # 재평가(필터 후)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         df[ass_col] = np.where(asn_y, 1, np.nan)
 
         # dtype 정리 (메모리 절감)
@@ -1834,8 +2068,12 @@ def fn_step02_03_compare_sin_assortments(
 @_decoration_
 def fn_step02_04_compare_sout_assortments(
         df_in_sout_assort: pd.DataFrame,            # Step 2-1 결과: S/Out Assortment 전처리본
+<<<<<<< HEAD
         sout_dict: dict[str, pd.DataFrame],         # Step 2-2 결과: {STR_DF_OUT_SOUT_xxx: df, ...}
         df_in_estore: pd.DataFrame = None           # 2025-12-05 추가: E-store 필터링용 (df_in_Sales_Domain_Estore)
+=======
+        sout_dict: dict[str, pd.DataFrame]          # Step 2-2 결과: {STR_DF_OUT_SOUT_xxx: df, ...}
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 ) -> dict[str, pd.DataFrame]:
     """
     Step 2-4) S/Out Assortment Measure (GC/AP2/AP1/Local) 비교
@@ -1854,6 +2092,7 @@ def fn_step02_04_compare_sout_assortments(
     if df_in_sout_assort is None:
         df_in_sout_assort = pd.DataFrame()
 
+<<<<<<< HEAD
     # ────────────────────────────────────────────────────────────────────────
     # 0) E-store Filtering (2025-12-05 추가)
     #     - df_in_Sales_Domain_Estore 기준으로 E-store ShipTo 만 남김
@@ -1880,6 +2119,8 @@ def fn_step02_04_compare_sout_assortments(
             sout_dict = new_sout_dict
 
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     TAGS_INFO = [
         (STR_DF_OUT_SOUT_GC,    COL_SOUT_ASSORT_GC),
         (STR_DF_OUT_SOUT_AP2,   COL_SOUT_ASSORT_AP2),
@@ -1922,14 +2163,24 @@ def fn_step02_04_compare_sout_assortments(
         df = df_in[need].copy(deep=False)
 
         # ASN='Y' 판단
+<<<<<<< HEAD
         asn_y = df[COL_SALES_PRODUCT_ASN].astype('string').str.upper().eq('Y')
+=======
+        asn_y = df[COL_SALES_PRODUCT_ASN].astype(str).str.upper().eq('Y')
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         # 기존 값 존재하는 키셋
         keyset = exist_key_map.get(ass_col, set())
         if keyset:
+<<<<<<< HEAD
             keys = list(zip(df[COL_SHIP_TO].astype("string"),
                             df[COL_ITEM].astype("string"),
                             df[COL_LOCATION].astype("string")))
+=======
+            keys = list(zip(df[COL_SHIP_TO].astype(str),
+                            df[COL_ITEM].astype(str),
+                            df[COL_LOCATION].astype(str)))
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             has_old = pd.Series([k in keyset for k in keys], index=df.index)
 
             # ASN='Y' & 기존값 존재 → drop
@@ -1938,7 +2189,11 @@ def fn_step02_04_compare_sout_assortments(
                 df = df.loc[~drop_mask].copy()
 
         # 남은 행들에 대해: ASN='N' → NaN, ASN='Y' → 1
+<<<<<<< HEAD
         asn_y = df[COL_SALES_PRODUCT_ASN].astype('string').str.upper().eq('Y')  # 재계산(필터 후)
+=======
+        asn_y = df[COL_SALES_PRODUCT_ASN].astype(str).str.upper().eq('Y')  # 재계산(필터 후)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         df[ass_col] = np.where(asn_y, 1, np.nan)
 
         # 메모리 절감: 카테고리 캐스팅 (마지막에만)
@@ -1976,7 +2231,10 @@ def fn_step02_05_format_assortment_outputs(
     Step 2-5) Assortment Measure Output 구성
     ----------------------------------------------------------
     • Version.[Version Name] = out_version 추가 (하드코딩 금지)
+<<<<<<< HEAD
     • (25.10.10) Assortment 가 Null인 경우만 남기고, 삭제
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     • Sales Product ASN 컬럼 제거
     • 8개 Output DF 반환 (o9 상위 호출 명세와 동일한 이름)
 
@@ -2039,9 +2297,12 @@ def fn_step02_05_format_assortment_outputs(
         # measure → float32 (1 또는 NaN)
         df[meas_col] = pd.to_numeric(df[meas_col], errors='coerce').astype('float32')
 
+<<<<<<< HEAD
         # ★ 25.10.10 스펙 반영: Assortment가 Null(NaN)인 행만 남긴다
         df = df[df[meas_col].isna()]
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         return df
 
     # 2) S/In 변환
@@ -2071,7 +2332,11 @@ def _get_current_partial_weeks(df_time: pd.DataFrame) -> list[str]:
     """
     if df_time is None or df_time.empty or (COL_PWEEK not in df_time.columns):
         return []
+<<<<<<< HEAD
     s = df_time[COL_PWEEK].astype("string")
+=======
+    s = df_time[COL_PWEEK].astype(str)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     base = s.iloc[0][:-1] if len(s.iloc[0]) >= 1 else s.iloc[0]
     # 현재 주차의 A/B 모두 포함
     cur = s[s.str[:-1] == base].tolist()
@@ -2079,6 +2344,7 @@ def _get_current_partial_weeks(df_time: pd.DataFrame) -> list[str]:
     cur.sort()
     return cur
 
+<<<<<<< HEAD
 def _get_current_week(df_in_Time: pd.DataFrame) -> str | None:
     """
     기존 _get_current_partial_weeks(df_in_Time) 를 재사용해
@@ -2090,12 +2356,19 @@ def _get_current_week(df_in_Time: pd.DataFrame) -> str | None:
     s = str(pws[0])
     return s[:-1] if s and s[-1] in ('A', 'B') else s
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 ########################################################################################################################
 # Step 3-공통) Y/N → 1/NaN 변환
 ########################################################################################################################
 def _yn_to_dummy(series_asn: pd.Series) -> np.ndarray:
+<<<<<<< HEAD
     asn = series_asn.astype("string").str.upper().to_numpy()
     return np.where(asn == 'Y', 0.0, np.nan)
+=======
+    asn = series_asn.astype(str).str.upper().to_numpy()
+    return np.where(asn == 'Y', 1.0, np.nan)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 ########################################################################################################################
 # Step 3-공통) 행 복제하여 Partial Week 붙이기 (벡터화)
@@ -2195,6 +2468,7 @@ def fn_step03_01_build_sin_dummy_current_pw(
 
 ########################################################################################################################
 # Step 3-2) S/Out Assortment → Dummy (현재 Partial Week로 확장, groupby 없음)
+<<<<<<< HEAD
 #   - 입력:
 #       df_step02_04_sout_dict : Step 2-4 결과 dict (S/Out 비교 후)
 #       df_in_Time             : Time 마스터 (당주 Partial Week 추출용)
@@ -2217,6 +2491,22 @@ def fn_step03_02_build_sout_dummy_current_pw(
     sin_dummy_dict        : dict[str, pd.DataFrame] | None = None  # 25.11.22 추가
 ) -> dict[str, pd.DataFrame]:
 
+=======
+########################################################################################################################
+@_decoration_
+def fn_step03_02_build_sout_dummy_current_pw(
+    df_step02_04_sout_dict: dict[str, pd.DataFrame], # Step 2-4 결과 dict (S/Out 비교 후)
+    df_in_Time: pd.DataFrame
+) -> dict[str, pd.DataFrame]:
+    """
+    반환: {
+      OUT_SOUT_DUMMY_GC, OUT_SOUT_DUMMY_AP2, OUT_SOUT_DUMMY_AP1, OUT_SOUT_DUMMY_LOCAL
+    }
+    • Sales Product ASN: Y→1, N→NaN
+    • 각 행에 현재 주차 Partial Week(A/B 존재 시 둘 다) 부착
+    • groupby(집계) 없음
+    """
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     partial_weeks = _get_current_partial_weeks(df_in_Time)
 
     TAGS = [
@@ -2226,6 +2516,7 @@ def fn_step03_02_build_sout_dummy_current_pw(
         (STR_DF_OUT_SOUT_LOCAL, COL_SOUT_DUMMY_LOCAL),
     ]
 
+<<<<<<< HEAD
     # 25.11.22 추가: S/Out Dummy ↔ S/In Dummy 매핑 테이블
     MAP_SOUT2SIN: dict[str, tuple[str, str]] = {
         COL_SOUT_DUMMY_GC:    (OUT_SIN_DUMMY_GC,    COL_SIN_DUMMY_GC),
@@ -2238,6 +2529,28 @@ def fn_step03_02_build_sout_dummy_current_pw(
 
     for base_key, dummy_col in TAGS:
         df_base = df_step02_04_sout_dict.get(base_key, pd.DataFrame())
+=======
+    out: dict[str, pd.DataFrame] = {}
+    for base_key, dummy_col in TAGS:
+        df_base = df_step02_04_sout_dict.get(base_key, pd.DataFrame())
+        if df_base is None or df_base.empty:
+            out_name = {
+                COL_SOUT_DUMMY_GC:    OUT_SOUT_DUMMY_GC,
+                COL_SOUT_DUMMY_AP2:   OUT_SOUT_DUMMY_AP2,
+                COL_SOUT_DUMMY_AP1:   OUT_SOUT_DUMMY_AP1,
+                COL_SOUT_DUMMY_LOCAL: OUT_SOUT_DUMMY_LOCAL,
+            }[dummy_col]
+            out[out_name] = pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_PWEEK, dummy_col])
+            continue
+
+        # Y/N → Dummy
+        df_tmp = df_base[[COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN]].copy(deep=False)
+        df_tmp[dummy_col] = _yn_to_dummy(df_tmp[COL_SALES_PRODUCT_ASN])
+        df_tmp.drop(columns=[COL_SALES_PRODUCT_ASN], inplace=True)
+
+        # Partial Week 확장
+        df_out = _expand_with_partial_weeks(df_tmp, partial_weeks, dummy_col)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
         out_name = {
             COL_SOUT_DUMMY_GC:    OUT_SOUT_DUMMY_GC,
@@ -2245,6 +2558,7 @@ def fn_step03_02_build_sout_dummy_current_pw(
             COL_SOUT_DUMMY_AP1:   OUT_SOUT_DUMMY_AP1,
             COL_SOUT_DUMMY_LOCAL: OUT_SOUT_DUMMY_LOCAL,
         }[dummy_col]
+<<<<<<< HEAD
 
         if df_base is None or df_base.empty:
             out[out_name] = pd.DataFrame(
@@ -2322,6 +2636,8 @@ def fn_step03_02_build_sout_dummy_current_pw(
         # ---------------------------------------------------------------------
         df_out = _expand_with_partial_weeks(df_tmp, partial_weeks, dummy_col)
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         out[out_name] = df_out
 
     return out
@@ -2366,21 +2682,33 @@ def fn_step03_03_01_flooring_population(
 
     # ── 1) Delta 중 VD Item만
     vd_items = set(
+<<<<<<< HEAD
         df_in_item.loc[df_in_item[COL_ITEM_GBM].astype("string").str.upper().eq('VD'), COL_ITEM].astype("string")
+=======
+        df_in_item.loc[df_in_item[COL_ITEM_GBM].astype(str).str.upper().eq('VD'), COL_ITEM].astype(str)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     )
     if not vd_items:
         return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM, COL_SALES_PRODUCT_ASN])
 
     df_delta = df_step01_01_asn_delta.loc[
+<<<<<<< HEAD
         df_step01_01_asn_delta[COL_ITEM].astype("string").isin(vd_items),
         need_asn
     ].copy(deep=False)
 
     df_delta[COL_SALES_PRODUCT_ASN] = df_delta[COL_SALES_PRODUCT_ASN].astype("string").fillna('')
+=======
+        df_step01_01_asn_delta[COL_ITEM].astype(str).isin(vd_items),
+        need_asn
+    ].copy(deep=False)
+
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     if df_delta.empty:
         return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM, COL_SALES_PRODUCT_ASN])
 
     # ── 2) Delta에서 ASN All 과 완전 일치하는 행 제거 (안티조인: ShipTo+Item+Loc+ASN)
+<<<<<<< HEAD
     key_all   = (df_asn_base[COL_SHIP_TO].astype("string") + '|' +
                  df_asn_base[COL_ITEM].astype("string")    + '|' +
                  df_asn_base[COL_LOCATION].astype("string")+ '|' +
@@ -2391,14 +2719,31 @@ def fn_step03_03_01_flooring_population(
                  df_delta[COL_ITEM].astype("string")    + '|' +
                  df_delta[COL_LOCATION].astype("string")+ '|' +
                  df_delta[COL_SALES_PRODUCT_ASN].astype('string'))
+=======
+    key_all   = (df_asn_base[COL_SHIP_TO].astype(str) + '|' +
+                 df_asn_base[COL_ITEM].astype(str)    + '|' +
+                 df_asn_base[COL_LOCATION].astype(str)+ '|' +
+                 df_asn_base[COL_SALES_PRODUCT_ASN].astype(str)).unique()
+    dup_set = set(key_all)
+
+    key_delta = (df_delta[COL_SHIP_TO].astype(str) + '|' +
+                 df_delta[COL_ITEM].astype(str)    + '|' +
+                 df_delta[COL_LOCATION].astype(str)+ '|' +
+                 df_delta[COL_SALES_PRODUCT_ASN].astype(str))
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df_delta = df_delta.loc[~key_delta.isin(dup_set)].copy(deep=False)
 
     if df_delta.empty:
         return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM, COL_SALES_PRODUCT_ASN])
 
     # ── 3) ShipTo → Std5 매핑
+<<<<<<< HEAD
     std5_map = df_in_Sales_Domain_Dimension.set_index(COL_SHIP_TO)[COL_STD5].astype("string").to_dict()
     df_delta[COL_SHIP_TO] = df_delta[COL_SHIP_TO].astype("string").map(std5_map)
+=======
+    std5_map = df_in_Sales_Domain_Dimension.set_index(COL_SHIP_TO)[COL_STD5].astype(str).to_dict()
+    df_delta[COL_SHIP_TO] = df_delta[COL_SHIP_TO].astype(str).map(std5_map)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df_delta = df_delta[~df_delta[COL_SHIP_TO].isna()].copy()
     if df_delta.empty:
         return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM, COL_SALES_PRODUCT_ASN])
@@ -2407,7 +2752,11 @@ def fn_step03_03_01_flooring_population(
     #     ultra_fast_groupby_numpy_general 사용 (Y/N → 0/1 → max → 0/1 → Y/N 복원)
     tmp = df_delta[[COL_SHIP_TO, COL_ITEM, COL_SALES_PRODUCT_ASN]].copy(deep=False)
     # 안전 처리: Y/N → bool(1/0)로 임시 치환
+<<<<<<< HEAD
     tmp['_yn'] = tmp[COL_SALES_PRODUCT_ASN].astype('string').str.upper().eq('Y').astype(np.int8)
+=======
+    tmp['_yn'] = tmp[COL_SALES_PRODUCT_ASN].astype(str).str.upper().eq('Y').astype(np.int8)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     gb = ultra_fast_groupby_numpy_general(
         df=tmp,
@@ -2424,14 +2773,22 @@ def fn_step03_03_01_flooring_population(
     return gb[[COL_SHIP_TO, COL_ITEM, COL_SALES_PRODUCT_ASN]]
 
 ########################################################################################################################
+<<<<<<< HEAD
 # Step 3-3-2) Flooring FCST Dummy 생성 (현재 Week 부여 - A/B 확장 없음)
 ########################################################################################################################
 @_decoration_
 def fn_step03_03_02_flooring_dummy_expand_pw(   # ← 기존 이름 유지 (호출부 수정 불필요)
+=======
+# Step 3-3-2) Flooring FCST Dummy 생성 (현재 Partial Week 확장)
+########################################################################################################################
+@_decoration_
+def fn_step03_03_02_flooring_dummy_expand_pw(
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     df_flooring_pop: pd.DataFrame,   # Step 3-3-1 결과: [Std5(as ShipTo), Item, Sales Product ASN]
     df_in_Time: pd.DataFrame
 ) -> pd.DataFrame:
     """
+<<<<<<< HEAD
     반환: [Sales Domain.[Ship To], Item.[Item], Time.[Week], Flooring FCST Dummy]
     • Rename: Sales Product ASN → Flooring FCST Dummy
     • 값 변환: Y→1, N→NaN
@@ -2462,6 +2819,26 @@ def fn_step03_03_02_flooring_dummy_expand_pw(   # ← 기존 이름 유지 (호�
     df[COL_FLOORING_DUMMY] = pd.to_numeric(df[COL_FLOORING_DUMMY], errors='coerce').astype('float32')
 
     return df
+=======
+    반환: [ShipTo(=Std5), Item, Time.[Partial Week], Flooring FCST Dummy]
+    • Y→1, N→NaN
+    • 현재 주차 Partial Week(A/B)로 확장
+    """
+    partial_weeks = _get_current_partial_weeks(df_in_Time)
+    if df_flooring_pop is None or df_flooring_pop.empty or not partial_weeks:
+        return pd.DataFrame(columns=[COL_SHIP_TO, COL_ITEM, COL_PWEEK, COL_FLOORING_DUMMY])
+
+    df_tmp = df_flooring_pop[[COL_SHIP_TO, COL_ITEM, COL_SALES_PRODUCT_ASN]].copy(deep=False)
+    df_tmp[COL_FLOORING_DUMMY] = _yn_to_dummy(df_tmp[COL_SALES_PRODUCT_ASN])
+    df_tmp.drop(columns=[COL_SALES_PRODUCT_ASN], inplace=True)
+
+    # Flooring 은 Location 차원이 없음 → 내부에서 '-' 로 부여 후 삭제
+    df_tmp[COL_LOCATION] = '-'
+    df_out = _expand_with_partial_weeks(df_tmp, partial_weeks, COL_FLOORING_DUMMY)
+    df_out.drop(columns=[COL_LOCATION], inplace=True)
+
+    return df_out[[COL_SHIP_TO, COL_ITEM, COL_PWEEK, COL_FLOORING_DUMMY]]
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
 ########################################################################################################################
 # Step 3-4) FCST Dummy Output 정리 (Version 주입, 컬럼 정렬)
@@ -2479,6 +2856,7 @@ def fn_step03_04_format_dummy_outputs(
       Output_SOut_Dummy_GC / _AP2 / _AP1 / _Local
       Output_Flooring_Dummy
     """
+<<<<<<< HEAD
     def _fmt(df_in: pd.DataFrame, meas_col: str, with_loc: bool = True, *, time_col: str = COL_PWEEK) -> pd.DataFrame:
         # 스키마 정리 + Version 주입
         if df_in is None or df_in.empty:
@@ -2530,10 +2908,33 @@ def fn_step03_04_format_dummy_outputs(
 
         # 컬럼 순서
         cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM] + ([COL_LOCATION] if with_loc else []) + [time_col, meas_col]
+=======
+    def _fmt(df_in: pd.DataFrame, meas_col: str, with_loc: bool = True) -> pd.DataFrame:
+        # 스키마 정리 + Version 주입
+        if df_in is None or df_in.empty:
+            cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM] + ([COL_LOCATION] if with_loc else []) + [COL_PWEEK, meas_col]
+            df = pd.DataFrame(columns=cols)
+        else:
+            df = df_in.copy(deep=False)
+            for c in (COL_SHIP_TO, COL_ITEM):
+                if c in df.columns and df[c].dtype.name != 'category':
+                    df[c] = df[c].astype('category')
+            if with_loc:
+                if COL_LOCATION not in df.columns:
+                    df[COL_LOCATION] = '-'
+                else:
+                    df[COL_LOCATION] = df[COL_LOCATION].astype('category')
+            df[COL_PWEEK] = df[COL_PWEEK].astype('category')
+            df[meas_col] = pd.to_numeric(df[meas_col], errors='coerce').astype('float32')
+        if not COL_VERSION in df.columns:
+            df.insert(0, COL_VERSION, out_version)
+        cols = [COL_VERSION, COL_SHIP_TO, COL_ITEM] + ([COL_LOCATION] if with_loc else []) + [COL_PWEEK, meas_col]
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
         return df[cols]
 
     out: dict[str, pd.DataFrame] = {}
 
+<<<<<<< HEAD
     # S/In (Partial Week)
     out[OUT_SIN_DUMMY_GC]    = _fmt(sin_dummy_dict.get(OUT_SIN_DUMMY_GC),    COL_SIN_DUMMY_GC,    with_loc=True,  time_col=COL_PWEEK)
     out[OUT_SIN_DUMMY_AP2]   = _fmt(sin_dummy_dict.get(OUT_SIN_DUMMY_AP2),   COL_SIN_DUMMY_AP2,   with_loc=True,  time_col=COL_PWEEK)
@@ -2550,6 +2951,24 @@ def fn_step03_04_format_dummy_outputs(
     if df_flooring_dummy is None:
         df_flooring_dummy = pd.DataFrame()
     out[OUT_FLOORING_DUMMY] = _fmt(df_flooring_dummy, COL_FLOORING_DUMMY, with_loc=False, time_col=COL_WEEK)
+=======
+    # S/In
+    out[OUT_SIN_DUMMY_GC]    = _fmt(sin_dummy_dict.get(OUT_SIN_DUMMY_GC),    COL_SIN_DUMMY_GC,    with_loc=True)
+    out[OUT_SIN_DUMMY_AP2]   = _fmt(sin_dummy_dict.get(OUT_SIN_DUMMY_AP2),   COL_SIN_DUMMY_AP2,   with_loc=True)
+    out[OUT_SIN_DUMMY_AP1]   = _fmt(sin_dummy_dict.get(OUT_SIN_DUMMY_AP1),   COL_SIN_DUMMY_AP1,   with_loc=True)
+    out[OUT_SIN_DUMMY_LOCAL] = _fmt(sin_dummy_dict.get(OUT_SIN_DUMMY_LOCAL), COL_SIN_DUMMY_LOCAL, with_loc=True)
+
+    # S/Out
+    out[OUT_SOUT_DUMMY_GC]    = _fmt(sout_dummy_dict.get(OUT_SOUT_DUMMY_GC),    COL_SOUT_DUMMY_GC,    with_loc=True)
+    out[OUT_SOUT_DUMMY_AP2]   = _fmt(sout_dummy_dict.get(OUT_SOUT_DUMMY_AP2),   COL_SOUT_DUMMY_AP2,   with_loc=True)
+    out[OUT_SOUT_DUMMY_AP1]   = _fmt(sout_dummy_dict.get(OUT_SOUT_DUMMY_AP1),   COL_SOUT_DUMMY_AP1,   with_loc=True)
+    out[OUT_SOUT_DUMMY_LOCAL] = _fmt(sout_dummy_dict.get(OUT_SOUT_DUMMY_LOCAL), COL_SOUT_DUMMY_LOCAL, with_loc=True)
+
+    # Flooring (Location 없음)
+    if df_flooring_dummy is None:
+        df_flooring_dummy = pd.DataFrame()
+    out[OUT_FLOORING_DUMMY] = _fmt(df_flooring_dummy, COL_FLOORING_DUMMY, with_loc=False)
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 
     return out
 
@@ -2574,6 +2993,7 @@ def fn_step03_build_fcst_dummy_all(
     sin_dummy_dict = fn_step03_01_build_sin_dummy_current_pw(
         df_step02_03_sin_dict, df_in_Time
     )
+<<<<<<< HEAD
 
     # 3-2  ← 여기 sin_dummy_dict 추가 전달
     sout_dummy_dict = fn_step03_02_build_sout_dummy_current_pw(
@@ -2583,6 +3003,12 @@ def fn_step03_build_fcst_dummy_all(
     )
 
 
+=======
+    # 3-2
+    sout_dummy_dict = fn_step03_02_build_sout_dummy_current_pw(
+        df_step02_04_sout_dict, df_in_Time
+    )
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     # 3-3-1
     df_flooring_pop = fn_step03_03_01_flooring_population(
         df_step01_01_asn_delta,
@@ -2600,6 +3026,7 @@ def fn_step03_build_fcst_dummy_all(
     )
     return out_dict
 
+<<<<<<< HEAD
 # ─────────────────────────────────────────────────────────────────────────────
 # Step 4) Split Ratio Output 구성
 #   • Step 2-5 결과(Assortment NULL만 남긴 DF)에서 키(ShipTo, Item, Loc)만 사용
@@ -3030,6 +3457,8 @@ def fn_step05_02_build_output_sales_product_asn(
     return out[[COL_VERSION, COL_SHIP_TO, COL_ITEM, COL_LOCATION, COL_SALES_PRODUCT_ASN, COL_SALES_PRODUCT_ASN_LEAF]]
 
 
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
 ####################################
 ############ Start Main  ###########
 ####################################
@@ -3055,8 +3484,13 @@ if __name__ == '__main__':
             input_folder_name  = "PYSalesProductASNDelta"           
             output_folder_name = str_instance
             
+<<<<<<< HEAD
             str_input_dir = f'Input/{input_folder_name}/PYSalesProductASNDeltaBatch/batch_1230'
             # str_input_dir = f'Input/{input_folder_name}/PYSalesProductASNDeltaBatch/batch_1230_delta_empty'
+=======
+            # ------
+            str_input_dir = f'Input/{input_folder_name}/batch_0925_v2'
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             # ------
             str_output_dir = f'Output/{output_folder_name}'
             current_time = datetime.datetime.now()
@@ -3265,7 +3699,10 @@ if __name__ == '__main__':
         df_step02_04_sout_dict = fn_step02_04_compare_sout_assortments(
             df_step02_01_sout_assort,   # ← fn_step02_01_preprocess_assortment 반환 2번째 (S/Out)
             sout_dict,                  # ← fn_step02_02_build_assortments 반환 dict 중 S/Out dict
+<<<<<<< HEAD
             input_dataframes.get(DF_IN_SALES_DOMAIN_ESTORE, pd.DataFrame()),  # 2025-12-05 추가
+=======
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
             **dict_log
         )
 
@@ -3337,6 +3774,7 @@ if __name__ == '__main__':
         for name, df_out in df_step03_dummy_dict.items():
             fn_log_dataframe(df_out, f'step03_{name}')
 
+<<<<<<< HEAD
         ################################################################################################################
         # Step 4) Split Ratio Output 구성 (25.10.10)
         ################################################################################################################
@@ -3404,6 +3842,9 @@ if __name__ == '__main__':
         Output_Sales_Product_ASN = df_step05_02_out_asn
 
 
+=======
+    
+>>>>>>> 26577bcdda1f7272c95d56e782df299b0976dee0
     except Exception as e:
         trace_msg = traceback.format_exc()
         logger.Note(p_note=trace_msg, p_log_level=LOG_LEVEL.debug())
