@@ -1,0 +1,1179 @@
+    Python 개발요청서 : PYDPDummyPrice.py
+
+        개요 (*)
+
+            * 프로그램명
+                PYDPDummyPrice
+
+
+            * 목적
+                Sales의 상위Hierarchy에서  FCST 값을 입력(AP1 혹은 AP2) 했을 경우, 하위 Ship to 기준으로 Estimated Price_USD 산출하는 로직
+                주차별로 돌아가며 당월의 당주차 ~ 부터만 반영한다. Procedure 로 Python 실행 시 Time 옵션 제공
+                    ex) Time.[Partial Week].filter (#.Key >= &CurrentPartialWeek && #.Key <= &CurrentMonth.element(0).leadoffset(1).key)
+                S/In Fcst GI AP1 을 기준으로 Dummy Price를 계산
+                Forecast 값이 없는 경우 빈 주차 Data가 들어올 수 있지만, 0으로 채우기 때문에, 주차 Data는 반드시 존재함.
+
+            * 프로그램 가이드
+                - 메모리절약
+                    - 사용되는 데이타가 1억건 이상을 가정하기 때문에 메모리를 최소화 한다.
+                    - Vectorize 사용.
+                        - 데이타용량이 엄청 많은관계로 for 문을 사용하면 안된다.
+                    - category datatype 사용.
+                        object 대신 category 를 사용한다.
+                    - 이후 process 에서 더이상 사용하지 않는 object 들은 즉시 삭제한다.
+                        del df
+                        gc.collect()
+
+
+
+            * 변경이력
+                2025.04.04: 전창민 최초 작성
+                2025.07.18: Price 값이 있는 경우에만 생성, FCST값 0인 경우 Price가 0이 될떄 예외로직 추가
+                25.07.21
+                    Step 3-1) 에서 Step2-1) 을 기준으로 outer join이 아니라 left outer join 적용
+                    - Estimated Price_USD 를 기준으로  로직 진행
+                    - Null 값인 경우 0 적용
+                    * Estimated Price_USD = 0 이고, FCST = 1 인 경우 발생하는 로직 문제 제거
+
+
+                    Step 3-3-2) 에서 아래 로직 추가
+                    FCST가 0이라서 Estimated Price_USD를 계산할 수 없는 경우 기존 Estimated Price_USD 값 사용
+
+                2025.07.28: 소수점 로직 추가 "셋째자리에서 올림처리 " ex)  1.522xxxxx -> 1.53
+                2025.09.08: 최종 Output Estiamted_Price_Local로 변경 ( Input4 추가, Step8 추가 )
+                2025.09.16:
+                    Estimated Price Modify_Local 비교 로직 추가 ( Input 5, Step9 추가  )
+
+
+
+
+        Script Parameter
+
+                Version
+                - CWV_DP
+
+
+====    Input Tables (*)	===================
+
+
+            (Input 1) df_in_Sin_GI_AP1
+                - query
+                    (
+                        Select (
+                        [Version].[Version Name].[CWV_DP]   // 당주주차 ~ 당월주차
+                        * [Sales Domain].[Sales Std5]
+                        * [Item].[Item]                     // USD가 6Lv로 들어오니, FCST 값도 6Lv 들어와서 계산
+                        * [Time].[Partial Week].filter (#.Key >= &CurrentPartialWeek.element(0).Key && #.Key < &CurrentPartialWeek.element(0).leadoffset(53).Key)
+                        ) on row,
+                        (
+                            {Measure.[S/In FCST(GI)_AP1]}
+                        ) on column
+                    ).filter(
+                        Measure.[S/In FCST(GI)_AP1] > 0
+                    )
+
+                - data ( 20250718)
+                    Version.[Version Name]	Item.[Item]	Time.[Partial Week]	Sales Domain.[Sales Std5]	S/In FCST(GI)_AP1
+                    CWV_DP	SKU 6	202443A	6000001	50	6Lv 로직 적용 Case
+                    CWV_DP	SKU 6	202444A	6000001	100
+                    CWV_DP	SKU 6	202445A	6000001	150
+                    CWV_DP	SKU 6	202445B	6000001	200
+                    CWV_DP	SKU 6	202446A	6000001	250
+                    CWV_DP	SKU 6	202447A	6000001	300
+                    CWV_DP	SKU 6	202443A	6000002	25	6Lv 로직 적용 Case
+                    CWV_DP	SKU 6	202444A	6000002	50
+                    CWV_DP	SKU 6	202445A	6000002	75
+                    CWV_DP	SKU 6	202445B	6000002	100
+                    CWV_DP	SKU 6	202446A	6000002	125
+                    CWV_DP	SKU 6	202447A	6000002	150
+                    CWV_DP	SKU 6	202443A	6000003	25	6Lv 로직 적용 Case
+                    CWV_DP	SKU 6	202444A	6000003	50
+                    CWV_DP	SKU 6	202445A	6000003	75
+                    CWV_DP	SKU 6	202445B	6000003	100
+                    CWV_DP	SKU 6	202446A	6000003	125
+                    CWV_DP	SKU 6	202447A	6000003	150
+                    CWV_DP	SKU 5	202443A	5000001	100	5Lv 로직 적용 Case
+                    CWV_DP	SKU 5	202444A	5000001	200
+                    CWV_DP	SKU 5	202445A	5000001	300
+                    CWV_DP	SKU 5	202445B	5000001	400
+                    CWV_DP	SKU 5	202446A	5000001	500
+                    CWV_DP	SKU 5	202447A	5000001	600
+                    CWV_DP	SKU 5	202443A	5000002	100	5Lv 로직 적용 Case
+                    CWV_DP	SKU 5	202444A	5000002	200
+                    CWV_DP	SKU 5	202445A	5000002	300
+                    CWV_DP	SKU 5	202445B	5000002	400
+                    CWV_DP	SKU 5	202446A	5000002	500
+                    CWV_DP	SKU 5	202447A	5000002	600
+                    CWV_DP	SKU 4	202443A	4000001	200	4Lv 로직 적용 Case
+                    CWV_DP	SKU 4	202444A	4000001	400
+                    CWV_DP	SKU 4	202445A	4000001	600
+                    CWV_DP	SKU 4	202445B	4000001	800
+                    CWV_DP	SKU 4	202446A	4000001	1000
+                    CWV_DP	SKU 4	202447A	4000001	1200
+                    CWV_DP	SKU 4	202443A	4000002	200	4Lv 로직 적용 Case
+                    CWV_DP	SKU 4	202444A	4000002	400
+                    CWV_DP	SKU 4	202445A	4000002	600
+                    CWV_DP	SKU 4	202445B	4000002	800
+                    CWV_DP	SKU 4	202446A	4000002	1000
+                    CWV_DP	SKU 4	202447A	4000002	1200
+                    CWV_DP	SKU 3	202443A	3000001	400	3Lv 로직 적용 Case
+                    CWV_DP	SKU 3	202444A	3000001	800
+                    CWV_DP	SKU 3	202445A	3000001	1200
+                    CWV_DP	SKU 3	202445B	3000001	1600
+                    CWV_DP	SKU 3	202446A	3000001	2000
+                    CWV_DP	SKU 3	202447A	3000001	2400
+                    CWV_DP	SKU 3	202443A	3000002	400	3Lv 로직 적용 Case
+                    CWV_DP	SKU 3	202444A	3000002	800
+                    CWV_DP	SKU 3	202445A	3000002	1200
+                    CWV_DP	SKU 3	202445B	3000002	1600
+                    CWV_DP	SKU 3	202446A	3000002	2000
+                    CWV_DP	SKU 3	202447A	3000002	2400
+
+                - data ( 20250725) : 6level 의 데이타만 들어온다. 하위데이타가 들어오는 걸로 설계했었지만 오류임.
+                    Version.[Version Name]	Item.[Item]	Time.[Partial Week]	Sales Domain.[Sales Std5]	S/In FCST(GI)_AP1
+                    CWV_DP	SKU 6	202443A	6000001	50	6Lv 로직 적용 Case
+                    CWV_DP	SKU 6	202444A	6000001	100
+                    CWV_DP	SKU 6	202445A	6000001	150
+                    CWV_DP	SKU 6	202445B	6000001	200
+                    CWV_DP	SKU 6	202446A	6000001	250
+                    CWV_DP	SKU 6	202447A	6000001	300
+                    CWV_DP	SKU 6	202443A	6000002	25	6Lv 로직 적용 Case
+                    CWV_DP	SKU 6	202444A	6000002	50
+                    CWV_DP	SKU 6	202445A	6000002	75
+                    CWV_DP	SKU 6	202445B	6000002	100
+                    CWV_DP	SKU 6	202446A	6000002	125
+                    CWV_DP	SKU 6	202447A	6000002	150
+                    CWV_DP	SKU 6	202443A	6000003	25	6Lv 로직 적용 Case
+
+            (Input 2) df_In_EstimatedPrice_USD  exchange rate 실적
+                - query
+                    Select (
+                    [Version].[Version Name].[CWV_DP]
+                    * [Item].[Item]
+                    * [Time].[Partial Week].filter(#.Key >= &CurrentPartialWeek.element(0).Key && #.Key < &CurrentMonth.element(0).leadoffset(53).Key)
+                    * [Sales Domain].[Ship To].filter(#.Name startswith([CH]) || #.Name startswith([SC]) )
+                    )
+                    on row,
+                    ({Measure.[Estimated Price_USD]})  on column;
+
+                - data
+                    Version.[Version Name]	Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated Price_USD
+                    CWV_DP	SKU 6	202443A	6000001	200
+                    CWV_DP	SKU 6	202444A	6000001	200
+                    CWV_DP	SKU 6	202445A	6000001	200
+                    CWV_DP	SKU 6	202445B	6000001	200
+                    CWV_DP	SKU 6	202446A	6000001	200
+                    CWV_DP	SKU 6	202447A	6000001	200
+                    CWV_DP	SKU 6	202443A	6000002	100
+                    CWV_DP	SKU 6	202444A	6000002	100
+                    CWV_DP	SKU 6	202445A	6000002	100
+                    CWV_DP	SKU 6	202445B	6000002	100
+                    CWV_DP	SKU 6	202446A	6000002	100
+                    CWV_DP	SKU 6	202447A	6000002	100
+                    CWV_DP	SKU 6	202443A	6000003	100
+                    CWV_DP	SKU 6	202444A	6000003	100
+                    CWV_DP	SKU 6	202445A	6000003	100
+                    CWV_DP	SKU 6	202445B	6000003	100
+                    CWV_DP	SKU 6	202446A	6000003	100
+                    CWV_DP	SKU 6	202447A	6000003	100
+                    CWV_DP	SKU 5	202443A	6000001	100
+                    CWV_DP	SKU 5	202444A	6000001	100
+                    CWV_DP	SKU 5	202445A	6000001	100
+                    CWV_DP	SKU 5	202445B	6000001	100
+                    CWV_DP	SKU 5	202446A	6000001	100
+                    CWV_DP	SKU 5	202447A	6000001	100
+                    CWV_DP	SKU 5	202443A	6000002	100
+                    CWV_DP	SKU 5	202444A	6000002	100
+                    CWV_DP	SKU 5	202445A	6000002	100
+                    CWV_DP	SKU 5	202445B	6000002	100
+                    CWV_DP	SKU 5	202446A	6000002	100
+                    CWV_DP	SKU 5	202447A	6000002	100
+                    CWV_DP	SKU 4	202443A	6000001	100
+                    CWV_DP	SKU 4	202444A	6000001	100
+                    CWV_DP	SKU 4	202445A	6000001	100
+                    CWV_DP	SKU 4	202445B	6000001	100
+                    CWV_DP	SKU 4	202446A	6000001	100
+                    CWV_DP	SKU 4	202447A	6000001	100
+                    CWV_DP	SKU 4	202443A	6000002	100
+                    CWV_DP	SKU 4	202444A	6000002	100
+                    CWV_DP	SKU 4	202445A	6000002	100
+                    CWV_DP	SKU 4	202445B	6000002	100
+                    CWV_DP	SKU 4	202446A	6000002	100
+                    CWV_DP	SKU 4	202447A	6000002	100
+                    CWV_DP	SKU 3	202443A	6000001	1000
+                    CWV_DP	SKU 3	202444A	6000001	1000
+                    CWV_DP	SKU 3	202445A	6000001	1000
+                    CWV_DP	SKU 3	202445B	6000001	1000
+                    CWV_DP	SKU 3	202446A	6000001	1000
+                    CWV_DP	SKU 3	202447A	6000001	1000
+                    CWV_DP	SKU 3	202443A	6000002	1000
+                    CWV_DP	SKU 3	202444A	6000002	1000
+                    CWV_DP	SKU 3	202445A	6000002	1000
+                    CWV_DP	SKU 3	202445B	6000002	1000
+                    CWV_DP	SKU 3	202446A	6000002	1000
+                    CWV_DP	SKU 3	202447A	6000002	1000
+                    CWV_DP	SKU 3	202443A	6000003	1000
+                    CWV_DP	SKU 3	202444A	6000003	1000
+                    CWV_DP	SKU 3	202445A	6000003	1000
+                    CWV_DP	SKU 3	202445B	6000003	1000
+                    CWV_DP	SKU 3	202446A	6000003	1000
+                    CWV_DP	SKU 3	202447A	6000003	1000
+                    CWV_DP	SKU 3	202443A	6000009	1000
+                    CWV_DP	SKU 3	202444A	6000009	1000
+                    CWV_DP	SKU 3	202445A	6000009	1000
+                    CWV_DP	SKU 3	202445B	6000009	1000
+                    CWV_DP	SKU 3	202446A	6000009	1000
+                    CWV_DP	SKU 3	202447A	6000009	1000
+
+
+            (Input 3) df_in_Sales_Domain_Dimension
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std1]
+                    * [Sales Domain].[Sales Std2]
+                    * [Sales Domain].[Sales Std3]
+                    * [Sales Domain].[Sales Std4]
+                    * [Sales Domain].[Sales Std5]
+                    * [Sales Domain].[Sales Std6]
+                    * [Sales Domain].[Ship To] );
+
+                - data
+                    Sales Domain.[Sales Std1]	Sales Domain.[Sales Std2]	Sales Domain.[Sales Std3]	Sales Domain.[Sales Std4]	Sales Domain.[Sales Std5]	Sales Domain.[Sales Std6]	Sales Domain.[Ship To]
+                    201	201	201	201	201	201	201
+                    201	3000001	3000001	3000001	3000001	3000001	3000001
+                    201	3000001	4000001	4000001	4000001	4000001	4000001
+                    201	3000001	4000001	5000001	5000001	5000001	5000001
+                    201	3000001	4000001	5000001	6000001	6000001	6000001
+                    201	3000001	4000001	5000001	6000001	6000001	6000001
+                    201	3000001	4000002	4000002	4000002	4000002	4000002
+                    201	3000001	4000002	5000002	5000002	5000002	5000002
+                    201	3000001	4000002	5000002	6000002	6000002	6000002
+                    201	3000001	4000002	5000002	6000002	7000002	7000002
+                    201	3000001	4000002	5000002	6000003	6000003	6000003
+                    201	3000001	4000002	5000002	6000003	7000003	7000003
+                    201	3000001	4000002	5000002	6000003	7000004	7000004
+                    201	3000002	3000002	3000002	3000002	3000002	3000002
+                    201	3000002	4000009	4000009	4000009	4000009	4000009
+                    201	3000002	4000009	5000009	5000009	5000009	5000009
+                    201	3000002	4000009	5000009	6000009	6000009	6000009
+                    201	3000002	4000009	5000009	6000009	7000009	7000009
+
+			(Input 4)  df_in_Exchange_Rate_Local (Exchange Rate_Local 정보. 추가됨(250908) )
+                - query
+                    Select (
+                    [Version].[Version Name]
+                    * [Sales Domain].[Sales Std3]
+                    * [Time].[Partial Week].filter (#.Key >= &CurrentPartialWeek.element(0).Key && #.Key < &CurrentMonth.element(0).leadoffset(53).Key)
+                    ) on row,
+                    ({
+                    Measure.[Exchange Rate_Local] // 데이타탑입 float64
+                    }) on column;
+
+                - data
+                    Version.[Version Name]	Sales Domain.[Sales Std3]	Time.[Partial Week]	Exchange Rate_Local
+                    CWV_DP	4000001	202443A	1
+                    CWV_DP	4000001	202444A	1
+                    CWV_DP	4000001	202445A	1
+                    CWV_DP	4000001	202445B	1
+                    CWV_DP	4000001	202446A	0.33333333
+                    CWV_DP	4000001	202447A	0.33333333
+                    CWV_DP	4000002	202443A	2
+                    CWV_DP	4000002	202444A	2
+                    CWV_DP	4000002	202445A	2
+                    CWV_DP	4000002	202445B	2
+                    CWV_DP	4000002	202446A	2
+                    CWV_DP	4000002	202447A	2
+                    CWV_DP	4000009	202443A	3
+                    CWV_DP	4000009	202444A	3
+                    CWV_DP	4000009	202445A	3
+                    CWV_DP	4000009	202445B	3
+                    CWV_DP	4000009	202446A	3
+                    CWV_DP	4000009	202447A	3
+
+            (Input 5) EstimatedPrice Modify Local 값으로, 해당 값이 있는 경우에는 Local 값 보존	(( 250916 추가됨)	)
+                - query
+                    df_in_EstimatedPrice_Modify_Local
+                        Select (
+                        [Version].[Version Name].[CWV_DP]
+                        * [Item].[Item]
+                        * [Time].[Partial Week].filter (#.Key >= &CurrentPartialWeek.element(0).Key && #.Key < &CurrentMonth.element(0).leadoffset(53).Key)
+                        * [Sales Domain].[Ship To] ) on row,
+                        ({Measure.[Estimated Price Modify_Local]})
+                        on column;
+
+                - data
+                    Version.[Version Name]	Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated Price Modify_Local
+                    CWV_DP	SKU 6	202447A	5000001	500
+
+
+
+====    Output Tables (*)   =========
+
+            (Output 1)  df_output_Dummy_EstimatedPrice_Local (changed from df_output_Dummy_EstimatedPrice_USD )
+                - query
+                    Select ([Version].[Version Name]
+                    * [Item].[Item]
+                    * [Time].[Partial Week]
+                    * [Sales Domain].[Ship To] on row,
+                    ({Measure.[Estimated Price_Local] }) on column;
+
+
+
+
+
+====	주요 로직 (*)	=============
+
+            Step 1) S/In FCST(GI)_AP1 전처리
+                Step 1-1) Version.[Version Name] 삭제
+                    - 결과데이타
+                        Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	S/In FCST(GI)_AP1
+                        SKU 6	202443A	6000001	50
+                        SKU 6	202444A	6000001	100
+                        SKU 6	202445A	6000001	150
+                        SKU 6	202445B	6000001	200
+                        SKU 6	202446A	6000001	250
+                        SKU 6	202447A	6000001	300
+
+
+                    - Process
+                        - load df_in_Sin_GI_AP1
+                        - Version.[Version Name] 삭제
+                        - rename : Sales Domain.[Sales Std5] -> Sales Domain.[Ship To]
+
+
+                Step 1-2) Lv 별 분리
+                    - 3Lv
+                        Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	S/In FCST(GI)_AP1
+                        SKU 3	202443A	3000001	400
+                        SKU 3	202444A	3000001	800
+                        SKU 3	202445A	3000001	1200
+                        SKU 3	202445B	3000001	1600
+                        SKU 3	202446A	3000001	2000
+                        SKU 3	202447A	3000001	2400
+                        SKU 3	202443A	3000002	400
+                        SKU 3	202444A	3000002	800
+                        SKU 3	202445A	3000002	1200
+                        SKU 3	202445B	3000002	1600
+                        SKU 3	202446A	3000002	2000
+                        SKU 3	202447A	3000002	2400
+
+                    - 4Lv
+                        Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	S/In FCST(GI)_AP1
+                        SKU 4	202443A	4000001	200
+                        SKU 4	202444A	4000001	400
+                        SKU 4	202445A	4000001	600
+                        SKU 4	202445B	4000001	800
+                        SKU 4	202446A	4000001	1000
+                        SKU 4	202447A	4000001	1200
+                        SKU 4	202443A	4000002	200
+                        SKU 4	202444A	4000002	400
+                        SKU 4	202445A	4000002	600
+                        SKU 4	202445B	4000002	800
+                        SKU 4	202446A	4000002	1000
+                        SKU 4	202447A	4000002	1200
+
+                    - 5Lv
+                        Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	S/In FCST(GI)_AP1
+                        SKU 5	202443A	5000001	100
+                        SKU 5	202444A	5000001	200
+                        SKU 5	202445A	5000001	300
+                        SKU 5	202445B	5000001	400
+                        SKU 5	202446A	5000001	500
+                        SKU 5	202447A	5000001	600
+                        SKU 5	202443A	5000002	100
+                        SKU 5	202444A	5000002	200
+                        SKU 5	202445A	5000002	300
+                        SKU 5	202445B	5000002	400
+                        SKU 5	202446A	5000002	500
+                        SKU 5	202447A	5000002	600
+
+
+                    - 6Lv
+                        Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	S/In FCST(GI)_AP1
+                        SKU 6	202443A	6000001	50
+                        SKU 6	202444A	6000001	100
+                        SKU 6	202445A	6000001	150
+                        SKU 6	202445B	6000001	200
+                        SKU 6	202446A	6000001	250
+                        SKU 6	202447A	6000001	300
+                        SKU 6	202443A	6000002	25
+                        SKU 6	202444A	6000002	50
+                        SKU 6	202445A	6000002	75
+                        SKU 6	202445B	6000002	100
+                        SKU 6	202446A	6000002	125
+                        SKU 6	202447A	6000002	150
+                        SKU 6	202443A	6000003	25
+                        SKU 6	202444A	6000003	50
+                        SKU 6	202445A	6000003	75
+                        SKU 6	202445B	6000003	100
+                        SKU 6	202446A	6000003	125
+                        SKU 6	202447A	6000003	150
+
+                    - level 별로 분리할 수 없다. (20250725)
+                        - 개요
+                            - 설계상 처음계획은 6레벨 이하의 데이타가 들어오기로 했지만 이는 설계상의 오류임.
+                            - 6 Level 상위인  3,4,5 Level 의 데이타를 만들어 줘야 한다.
+                        - 6 Level 로 3,4,5 Level 만들기
+                            - 3lv을 만들어준다.
+                                - add COL_STD2 by using COL_SHIP_TO
+                                - groupby COL_ITEM * COL_TIME_PW * COL_STD2
+                                    - agg
+                                        - COL_SIN_FCST_AP1 : sum
+                                - set value to COL_SHIP_TO with COL_STD2
+                                - drop column COL_SHIP_TO
+
+                            - 4lv을 만들어준다.
+                                - add COL_STD3 by using COL_SHIP_TO
+                                - groupby COL_ITEM * COL_TIME_PW * COL_STD3
+                                    - agg
+                                        - COL_SIN_FCST_AP1 : sum
+                                - set value to COL_SHIP_TO with COL_STD3
+                                - drop column COL_SHIP_TO
+                            - 5lv을 만들어준다.
+                                - add COL_STD4 by using COL_SHIP_TO
+                                - groupby COL_ITEM * COL_TIME_PW * COL_STD4
+                                    - agg
+                                        - COL_SIN_FCST_AP1 : sum
+                                - set value to COL_SHIP_TO with COL_STD4
+                                - drop column COL_SHIP_TO
+
+            Step 2) Estimated Price_USD 하위 Data 생성
+                Step 2-1) Version.[Version Name] 삭제
+                    - 결과데이타
+                        Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated Price_USD
+                        SKU 6	202443A	6000001	200
+                        SKU 6	202444A	6000001	200
+                        SKU 6	202445A	6000001	200
+                        SKU 6	202445B	6000001	200
+                        SKU 6	202446A	6000001	200
+                        SKU 6	202447A	6000001	200
+                        SKU 6	202443A	6000002	100
+                        SKU 6	202444A	6000002	100
+                        SKU 6	202445A	6000002	100
+                        SKU 6	202445B	6000002	100
+                        SKU 6	202446A	6000002	100
+                        SKU 6	202447A	6000002	100
+                        SKU 6	202443A	6000003	100
+                        SKU 6	202444A	6000003	100
+                        SKU 6	202445A	6000003	100
+                        SKU 6	202445B	6000003	100
+                        SKU 6	202446A	6000003	100
+                        SKU 6	202447A	6000003	100
+                        SKU 5	202443A	6000001	100
+                        SKU 5	202444A	6000001	100
+                        SKU 5	202445A	6000001	100
+                        SKU 5	202445B	6000001	100
+                        SKU 5	202446A	6000001	100
+                        SKU 5	202447A	6000001	100
+                        SKU 5	202443A	6000002	100
+                        SKU 5	202444A	6000002	100
+                        SKU 5	202445A	6000002	100
+                        SKU 5	202445B	6000002	100
+                        SKU 5	202446A	6000002	100
+                        SKU 5	202447A	6000002	100
+                        SKU 4	202443A	6000001	100
+                        SKU 4	202444A	6000001	100
+                        SKU 4	202445A	6000001	100
+                        SKU 4	202445B	6000001	100
+                        SKU 4	202446A	6000001	100
+                        SKU 4	202447A	6000001	100
+                        SKU 4	202443A	6000002	100
+                        SKU 4	202444A	6000002	100
+                        SKU 4	202445A	6000002	100
+                        SKU 4	202445B	6000002	100
+                        SKU 4	202446A	6000002	100
+                        SKU 4	202447A	6000002	100
+                        SKU 3	202443A	6000001	1000
+                        SKU 3	202444A	6000001	1000
+                        SKU 3	202445A	6000001	1000
+                        SKU 3	202445B	6000001	1000
+                        SKU 3	202446A	6000001	1000
+                        SKU 3	202447A	6000001	1000
+                        SKU 3	202443A	6000002	1000
+                        SKU 3	202444A	6000002	1000
+                        SKU 3	202445A	6000002	1000
+                        SKU 3	202445B	6000002	1000
+                        SKU 3	202446A	6000002	1000
+                        SKU 3	202447A	6000002	1000
+                        SKU 3	202443A	6000003	1000
+                        SKU 3	202444A	6000003	1000
+                        SKU 3	202445A	6000003	1000
+                        SKU 3	202445B	6000003	1000
+                        SKU 3	202446A	6000003	1000
+                        SKU 3	202447A	6000003	1000
+                        SKU 3	202443A	6000009	1000
+                        SKU 3	202444A	6000009	1000
+                        SKU 3	202445A	6000009	1000
+                        SKU 3	202445B	6000009	1000
+                        SKU 3	202446A	6000009	1000
+                        SKU 3	202447A	6000009	1000
+                    - Process
+                        - load df_In_EstimatedPrice_USD
+                        - Version.[Version Name] 삭제
+                        - return df_fn_EstPrice_USD
+
+                Step 2-2) 7Lv(Std6) Dummy Data 생성
+                    - 결과데이타
+                        Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Sales Domain.[Sales Std6]	Estimated Price_USD
+                        SKU 6	202443A	6000001		200
+                        SKU 6	202444A	6000001		200
+                        SKU 6	202445A	6000001		200
+                        SKU 6	202445B	6000001		200
+                        SKU 6	202446A	6000001		200
+                        SKU 6	202447A	6000001		200
+                        SKU 6	202443A	6000002	7000002	100
+                        SKU 6	202444A	6000002	7000002	100
+                        SKU 6	202445A	6000002	7000002	100
+                        SKU 6	202445B	6000002	7000002	100
+                        SKU 6	202446A	6000002	7000002	100
+                        SKU 6	202447A	6000002	7000002	100
+                        SKU 6	202443A	6000003	7000003	100
+                        SKU 6	202444A	6000003	7000003	100
+                        SKU 6	202445A	6000003	7000003	100
+                        SKU 6	202445B	6000003	7000003	100
+                        SKU 6	202446A	6000003	7000003	100
+                        SKU 6	202447A	6000003	7000003	100
+                        SKU 6	202443A	6000003	7000004	100
+                        SKU 6	202444A	6000003	7000004	100
+                        SKU 6	202445A	6000003	7000004	100
+                        SKU 6	202445B	6000003	7000004	100
+                        SKU 6	202446A	6000003	7000004	100
+                        SKU 6	202447A	6000003	7000004	100
+                        SKU 5	202443A	6000001		100
+                        SKU 5	202444A	6000001		100
+                        SKU 5	202445A	6000001		100
+                        SKU 5	202445B	6000001		100
+                        SKU 5	202446A	6000001		100
+                        SKU 5	202447A	6000001		100
+                        SKU 5	202443A	6000002	7000002	100
+                        SKU 5	202444A	6000002	7000002	100
+                        SKU 5	202445A	6000002	7000002	100
+                        SKU 5	202445B	6000002	7000002	100
+                        SKU 5	202446A	6000002	7000002	100
+                        SKU 5	202447A	6000002	7000002	100
+                        SKU 4	202443A	6000001		100
+                        SKU 4	202444A	6000001		100
+                        SKU 4	202445A	6000001		100
+                        SKU 4	202445B	6000001		100
+                        SKU 4	202446A	6000001		100
+                        SKU 4	202447A	6000001		100
+                        SKU 4	202443A	6000002	7000002	100
+                        SKU 4	202444A	6000002	7000002	100
+                        SKU 4	202445A	6000002	7000002	100
+                        SKU 4	202445B	6000002	7000002	100
+                        SKU 4	202446A	6000002	7000002	100
+                        SKU 4	202447A	6000002	7000002	100
+                        SKU 3	202443A	6000001		100
+                        SKU 3	202444A	6000001		100
+                        SKU 3	202445A	6000001		100
+                        SKU 3	202445B	6000001		100
+                        SKU 3	202446A	6000001		100
+                        SKU 3	202447A	6000001		100
+                        SKU 3	202443A	6000002	7000002	1000
+                        SKU 3	202444A	6000002	7000002	1000
+                        SKU 3	202445A	6000002	7000002	1000
+                        SKU 3	202445B	6000002	7000002	1000
+                        SKU 3	202446A	6000002	7000002	1000
+                        SKU 3	202447A	6000002	7000002	1000
+                        SKU 3	202443A	6000003	7000003	1000
+                        SKU 3	202444A	6000003	7000003	1000
+                        SKU 3	202445A	6000003	7000003	1000
+                        SKU 3	202445B	6000003	7000003	1000
+                        SKU 3	202446A	6000003	7000003	1000
+                        SKU 3	202447A	6000003	7000003	1000
+                        SKU 6	202443A	6000003	7000004	1000
+                        SKU 6	202444A	6000003	7000004	1000
+                        SKU 6	202445A	6000003	7000004	1000
+                        SKU 6	202445B	6000003	7000004	1000
+                        SKU 6	202446A	6000003	7000004	1000
+                        SKU 6	202447A	6000003	7000004	1000
+                        SKU 3	202443A	6000009	7000009	1000
+                        SKU 3	202444A	6000009	7000009	1000
+                        SKU 3	202445A	6000009	7000009	1000
+                        SKU 3	202445B	6000009	7000009	1000
+                        SKU 3	202446A	6000009	7000009	1000
+                        SKU 3	202447A	6000009	7000009	1000
+                    - 개요
+                        - df_in_Sales_Domain_Dimension에서 Sales Domain.[Ship To]의 값이 '7' 경우만 추출하여 사용
+                    - Process
+                        - load df_fn_EstPrice_USD
+                        - Step 2-1(df_fn_EstPrice_USD) 의 Sales Domain.[Ship To] 와 df_in_Sales_Domain_Dimension의 Sales Domain.[Sales Std5] 를 비교하여, Sales Domain.[Sales Std6] Data 구성
+                            - 매칭되는 Lv7 Data가 없는 경우 삭제
+                            - 1:n 관계
+                        - return df_fn_Dummy_Lv7
+
+                Step 2-3) 7Lv Dummy Data 생성
+                    - 결과데이타
+                        Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated Price_USD
+                        SKU 6	202443A	7000002	100
+                        SKU 6	202444A	7000002	100
+                        SKU 6	202445A	7000002	100
+                        SKU 6	202445B	7000002	100
+                        SKU 6	202446A	7000002	100
+                        SKU 6	202447A	7000002	100
+                        SKU 6	202443A	7000003	100
+                        SKU 6	202444A	7000003	100
+                        SKU 6	202445A	7000003	100
+                        SKU 6	202445B	7000003	100
+                        SKU 6	202446A	7000003	100
+                        SKU 6	202447A	7000003	100
+                        SKU 6	202443A	7000004	100
+                        SKU 6	202444A	7000004	100
+                        SKU 6	202445A	7000004	100
+                        SKU 6	202445B	7000004	100
+                        SKU 6	202446A	7000004	100
+                        SKU 6	202447A	7000004	100
+                        SKU 5	202443A	7000002	100
+                        SKU 5	202444A	7000002	100
+                        SKU 5	202445A	7000002	100
+                        SKU 5	202445B	7000002	100
+                        SKU 5	202446A	7000002	100
+                        SKU 5	202447A	7000002	100
+                        SKU 4	202443A	7000002	100
+                        SKU 4	202444A	7000002	100
+                        SKU 4	202445A	7000002	100
+                        SKU 4	202445B	7000002	100
+                        SKU 4	202446A	7000002	100
+                        SKU 4	202447A	7000002	100
+                        SKU 3	202443A	7000002	1000
+                        SKU 3	202444A	7000002	1000
+                        SKU 3	202445A	7000002	1000
+                        SKU 3	202445B	7000002	1000
+                        SKU 3	202446A	7000002	1000
+                        SKU 3	202447A	7000002	1000
+                        SKU 3	202443A	7000003	1000
+                        SKU 3	202444A	7000003	1000
+                        SKU 3	202445A	7000003	1000
+                        SKU 3	202445B	7000003	1000
+                        SKU 3	202446A	7000003	1000
+                        SKU 3	202447A	7000003	1000
+                        SKU 6	202443A	7000004	1000
+                        SKU 6	202444A	7000004	1000
+                        SKU 6	202445A	7000004	1000
+                        SKU 6	202445B	7000004	1000
+                        SKU 6	202446A	7000004	1000
+                        SKU 6	202447A	7000004	1000
+                        SKU 3	202443A	7000009	1000
+                        SKU 3	202444A	7000009	1000
+                        SKU 3	202445A	7000009	1000
+                        SKU 3	202445B	7000009	1000
+                        SKU 3	202446A	7000009	1000
+                        SKU 3	202447A	7000009	1000
+
+                    - Process
+                        - load df_fn_Dummy_Lv7
+                        - Sales Domain.[Ship To] 삭제
+                        - rename : Sales Domain.[Sales Std6] -> Sales Domain.[Ship To]
+                        - return df_fn_Converted_Lv7
+
+            Step 3) 5Lv Dummy Data 생성 (물량가중 처리, 없는 경우 하위값 그대로 사용)
+                Step 3-1) Step 2-1) 의 Data 와 Step 1-2) Lv6 Data를 Merge
+                - 결과데이타
+                    Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated Price_USD	S/In FCST(GI)_AP1
+                    SKU 6	202443A	6000001	200	50
+                    SKU 6	202444A	6000001	200	100
+                    SKU 6	202445A	6000001	200	150
+                    SKU 6	202445B	6000001	200	200
+                    SKU 6	202446A	6000001	200	250
+                    SKU 6	202447A	6000001	200	300
+                    SKU 6	202443A	6000002	100	25
+                    SKU 6	202444A	6000002	100	50
+                    SKU 6	202445A	6000002	100	75
+                    SKU 6	202445B	6000002	100	100
+                    SKU 6	202446A	6000002	100	125
+                    SKU 6	202447A	6000002	100	150
+                    SKU 6	202443A	6000003	100	25
+                    SKU 6	202444A	6000003	100	50
+                    SKU 6	202445A	6000003	100	75
+                    SKU 6	202445B	6000003	100	100
+                    SKU 6	202446A	6000003	100	125
+                    SKU 6	202447A	6000003	100	150
+                    SKU 5	202443A	6000001	100	0
+                    SKU 5	202444A	6000001	100	0
+                    SKU 5	202445A	6000001	100	0
+                    SKU 5	202445B	6000001	100	0
+                    SKU 5	202446A	6000001	100	0
+                    SKU 5	202447A	6000001	100	0
+                    SKU 5	202443A	6000002	100	0
+                    SKU 5	202444A	6000002	100	0
+                    SKU 5	202445A	6000002	100	0
+                    SKU 5	202445B	6000002	100	0
+                    SKU 5	202446A	6000002	100	0
+                    SKU 5	202447A	6000002	100	0
+                    SKU 4	202443A	6000001	100	0
+                    SKU 4	202444A	6000001	100	0
+                    SKU 4	202445A	6000001	100	0
+                    SKU 4	202445B	6000001	100	0
+                    SKU 4	202446A	6000001	100	0
+                    SKU 4	202447A	6000001	100	0
+                    SKU 4	202443A	6000002	100	0
+                    SKU 4	202444A	6000002	100	0
+                    SKU 4	202445A	6000002	100	0
+                    SKU 4	202445B	6000002	100	0
+                    SKU 4	202446A	6000002	100	0
+                    SKU 4	202447A	6000002	100	0
+                    SKU 3	202443A	6000001	1000	0
+                    SKU 3	202444A	6000001	1000	0
+                    SKU 3	202445A	6000001	1000	0
+                    SKU 3	202445B	6000001	1000	0
+                    SKU 3	202446A	6000001	1000	0
+                    SKU 3	202447A	6000001	1000	0
+                    SKU 3	202443A	6000002	1000	0
+                    SKU 3	202444A	6000002	1000	0
+                    SKU 3	202445A	6000002	1000	0
+                    SKU 3	202445B	6000002	1000	0
+                    SKU 3	202446A	6000002	1000	0
+                    SKU 3	202447A	6000002	1000	0
+                    SKU 3	202443A	6000003	1000	0
+                    SKU 3	202444A	6000003	1000	0
+                    SKU 3	202445A	6000003	1000	0
+                    SKU 3	202445B	6000003	1000	0
+                    SKU 3	202446A	6000003	1000	0
+                    SKU 3	202447A	6000003	1000	0
+                    SKU 3	202443A	6000009	1000	0
+                    SKU 3	202444A	6000009	1000	0
+                    SKU 3	202445A	6000009	1000	0
+                    SKU 3	202445B	6000009	1000	0
+                    SKU 3	202446A	6000009	1000	0
+                    SKU 3	202447A	6000009	1000	0
+                - Process
+                    - load df_fn_EstPrice_USD( df_lv6_price ) (Step 2-1)
+                    - load df_lv6_fcst ( Step1-2 의 6Lv 데이타)
+                    - df_lv5_price 생성
+                        - Step 2-1(df_fn_EstPrice_USD) 을 기준으로 df_lv6_fcst 을 Left outer join (변동 기존에는 outer 였다.)
+                        - Null 값인 경우 0 적용	( 변동 : 기존에는 1 이었다.)
+
+                Step 3-2) Sales Domain 5Lv Data 구성
+                    - 결과데이타
+                        Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated Price_USD	S/In FCST(GI)_AP1	Sales Domain.[Sales Std4]
+                        SKU 6	202443A	6000001	200	50	5000001
+                        SKU 6	202444A	6000001	200	100	5000001
+                        SKU 6	202445A	6000001	200	150	5000001
+                        SKU 6	202445B	6000001	200	200	5000001
+                        SKU 6	202446A	6000001	200	250	5000001
+                        SKU 6	202447A	6000001	200	300	5000001
+                        SKU 6	202443A	6000002	100	25	5000002
+                        SKU 6	202444A	6000002	100	50	5000002
+                        SKU 6	202445A	6000002	100	75	5000002
+                        SKU 6	202445B	6000002	100	100	5000002
+                        SKU 6	202446A	6000002	100	125	5000002
+                        SKU 6	202447A	6000002	100	150	5000002
+                        SKU 6	202443A	6000003	100	25	5000002
+                        SKU 6	202444A	6000003	100	50	5000002
+                        SKU 6	202445A	6000003	100	75	5000002
+                        SKU 6	202445B	6000003	100	100	5000002
+                        SKU 6	202446A	6000003	100	125	5000002
+                        SKU 6	202447A	6000003	100	150	5000002
+                        SKU 5	202443A	6000001	100	0	5000001
+                        SKU 5	202444A	6000001	100	0	5000001
+                        SKU 5	202445A	6000001	100	0	5000001
+                        SKU 5	202445B	6000001	100	0	5000001
+                        SKU 5	202446A	6000001	100	0	5000001
+                        SKU 5	202447A	6000001	100	0	5000001
+                        SKU 5	202443A	6000002	100	0	5000002
+                        SKU 5	202444A	6000002	100	0	5000002
+                        SKU 5	202445A	6000002	100	0	5000002
+                        SKU 5	202445B	6000002	100	0	5000002
+                        SKU 5	202446A	6000002	100	0	5000002
+                        SKU 5	202447A	6000002	100	0	5000002
+                        SKU 4	202443A	6000001	100	0	5000001
+                        SKU 4	202444A	6000001	100	0	5000001
+                        SKU 4	202445A	6000001	100	0	5000001
+                        SKU 4	202445B	6000001	100	0	5000001
+                        SKU 4	202446A	6000001	100	0	5000001
+                        SKU 4	202447A	6000001	100	0	5000001
+                        SKU 4	202443A	6000002	100	0	5000002
+                        SKU 4	202444A	6000002	100	0	5000002
+                        SKU 4	202445A	6000002	100	0	5000002
+                        SKU 4	202445B	6000002	100	0	5000002
+                        SKU 4	202446A	6000002	100	0	5000002
+                        SKU 4	202447A	6000002	100	0	5000002
+                        SKU 3	202443A	6000001	1000	0	5000001
+                        SKU 3	202444A	6000001	1000	0	5000001
+                        SKU 3	202445A	6000001	1000	0	5000001
+                        SKU 3	202445B	6000001	1000	0	5000001
+                        SKU 3	202446A	6000001	1000	0	5000001
+                        SKU 3	202447A	6000001	1000	0	5000001
+                        SKU 3	202443A	6000002	1000	0	5000002
+                        SKU 3	202444A	6000002	1000	0	5000002
+                        SKU 3	202445A	6000002	1000	0	5000002
+                        SKU 3	202445B	6000002	1000	0	5000002
+                        SKU 3	202446A	6000002	1000	0	5000002
+                        SKU 3	202447A	6000002	1000	0	5000002
+                        SKU 3	202443A	6000003	1000	0	5000002
+                        SKU 3	202444A	6000003	1000	0	5000002
+                        SKU 3	202445A	6000003	1000	0	5000002
+                        SKU 3	202445B	6000003	1000	0	5000002
+                        SKU 3	202446A	6000003	1000	0	5000002
+                        SKU 3	202447A	6000003	1000	0	5000002
+                        SKU 3	202443A	6000009	1000	0	5000009
+                        SKU 3	202444A	6000009	1000	0	5000009
+                        SKU 3	202445A	6000009	1000	0	5000009
+                        SKU 3	202445B	6000009	1000	0	5000009
+                        SKU 3	202446A	6000009	1000	0	5000009
+                        SKU 3	202447A	6000009	1000	0	5000009
+
+                    - 개요
+                        - df_in_Sales_Domain_Dimension를 사용하여 Sales Std4(Lv5) Data 생성
+                    - Process
+                        - 컬럼추가 : Sales Domain.[Sales Std4]
+                            - Step 2-1 (df_fn_EstPrice_USD) 의 Sales Domain.[Ship To] 와 df_in_Sales_Domain_Dimension의 Sales Domain.[Ship To] 를 비교하여, Sales Domain.[Sales Std4] Data 구성
+                            - n:1 관계
+
+                Step 3-3) Item.[Item] * Time.[Partial Week] * Sales Domain.[Sales Std4] (lv5) 로 Groupby 적용
+                    Step 3-3-1) Estimated Amount 추가
+                        - 결과데이타
+                            Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated Price_USD	S/In FCST(GI)_AP1	Estimated Amount	Sales Domain.[Sales Std4]
+                            SKU 6	202443A	6000001	 200 	 50 	 10,000 	5000001
+                            SKU 6	202444A	6000001	 200 	 100 	 20,000 	5000001
+                            SKU 6	202445A	6000001	 200 	 150 	 30,000 	5000001
+                            SKU 6	202445B	6000001	 200 	 200 	 40,000 	5000001
+                            SKU 6	202446A	6000001	 200 	 250 	 50,000 	5000001
+                            SKU 6	202447A	6000001	 200 	 300 	 60,000 	5000001
+                            SKU 6	202443A	6000002	 100 	 25 	 2,500 	5000002
+                            SKU 6	202444A	6000002	 100 	 50 	 5,000 	5000002
+                            SKU 6	202445A	6000002	 100 	 75 	 7,500 	5000002
+                            SKU 6	202445B	6000002	 100 	 100 	 10,000 	5000002
+                            SKU 6	202446A	6000002	 100 	 125 	 12,500 	5000002
+                            SKU 6	202447A	6000002	 100 	 150 	 15,000 	5000002
+                            SKU 6	202443A	6000003	 100 	 25 	 2,500 	5000002
+                            SKU 6	202444A	6000003	 100 	 50 	 5,000 	5000002
+                            SKU 6	202445A	6000003	 100 	 75 	 7,500 	5000002
+                            SKU 6	202445B	6000003	 100 	 100 	 10,000 	5000002
+                            SKU 6	202446A	6000003	 100 	 125 	 12,500 	5000002
+                            SKU 6	202447A	6000003	 100 	 150 	 15,000 	5000002
+                            SKU 5	202443A	6000001	 100 	0 	0 	5000001
+                            SKU 5	202444A	6000001	 100 	0 	0 	5000001
+                            SKU 5	202445A	6000001	 100 	0 	0 	5000001
+                            SKU 5	202445B	6000001	 100 	0 	0 	5000001
+                            SKU 5	202446A	6000001	 100 	0 	0 	5000001
+                            SKU 5	202447A	6000001	 100 	0 	0 	5000001
+                            SKU 5	202443A	6000002	 100 	0 	0 	5000002
+                            SKU 5	202444A	6000002	 100 	0 	0 	5000002
+                            SKU 5	202445A	6000002	 100 	0 	0 	5000002
+                            SKU 5	202445B	6000002	 100 	0 	0 	5000002
+                            SKU 5	202446A	6000002	 100 	0 	0 	5000002
+                            SKU 5	202447A	6000002	 100 	0 	0 	5000002
+                            SKU 4	202443A	6000001	 100 	0 	0 	5000001
+                            SKU 4	202444A	6000001	 100 	0 	0 	5000001
+                            SKU 4	202445A	6000001	 100 	0 	0 	5000001
+                            SKU 4	202445B	6000001	 100 	0 	0 	5000001
+                            SKU 4	202446A	6000001	 100 	0 	0 	5000001
+                            SKU 4	202447A	6000001	 100 	0 	0 	5000001
+                            SKU 4	202443A	6000002	 100 	0 	0 	5000002
+                            SKU 4	202444A	6000002	 100 	0 	0 	5000002
+                            SKU 4	202445A	6000002	 100 	0 	0 	5000002
+                            SKU 4	202445B	6000002	 100 	0 	0 	5000002
+                            SKU 4	202446A	6000002	 100 	0 	0 	5000002
+                            SKU 4	202447A	6000002	 100 	0 	0 	5000002
+                            SKU 3	202443A	6000001	 1,000 	0 	0 	5000001
+                            SKU 3	202444A	6000001	 1,000 	0 	0 	5000001
+                            SKU 3	202445A	6000001	 1,000 	0 	0 	5000001
+                            SKU 3	202445B	6000001	 1,000 	0 	0 	5000001
+                            SKU 3	202446A	6000001	 1,000 	0 	0 	5000001
+                            SKU 3	202447A	6000001	 1,000 	0 	0 	5000001
+                            SKU 3	202443A	6000002	 2,000 	0 	0 	5000002
+                            SKU 3	202444A	6000002	 1,000 	0 	0 	5000002
+                            SKU 3	202445A	6000002	 1,000 	0 	0 	5000002
+                            SKU 3	202445B	6000002	 1,000 	0 	0 	5000002
+                            SKU 3	202446A	6000002	 1,000 	0 	0 	5000002
+                            SKU 3	202447A	6000002	 1,000 	0 	0 	5000002
+                            SKU 3	202443A	6000003	 1,000 	0 	0 	5000002
+                            SKU 3	202444A	6000003	 1,000 	0 	0 	5000002
+                            SKU 3	202445A	6000003	 1,000 	0 	0 	5000002
+                            SKU 3	202445B	6000003	 1,000 	0 	0 	5000002
+                            SKU 3	202446A	6000003	 1,000 	0 	0 	5000002
+                            SKU 3	202447A	6000003	 1,000 	0 	0 	5000002
+                            SKU 3	202443A	6000009	 1,000 	0 	0 	5000009
+                            SKU 3	202444A	6000009	 1,000 	0 	0 	5000009
+                            SKU 3	202445A	6000009	 1,000 	0 	0 	5000009
+                            SKU 3	202445B	6000009	 1,000 	0 	0 	5000009
+                            SKU 3	202446A	6000009	 1,000 	0 	0 	5000009
+                            SKU 3	202447A	6000009	 1,000 	0 	0 	5000009
+                        - Process
+                            - 컬럼추가 : Estimated Amount
+                                - Estimated Amount = Estimated Price_USD * S/In FCST(GI)_AP1
+
+                Step 3-3-2) Item.[Item] * Time.[Partial Week] * Sales Domain.[Sales Std4] 로 Groupby 적용 및 물량가중 계산
+                    - 결과데이타
+                        Item.[Item]	Time.[Partial Week]	Estimated Price_USD	S/In FCST(GI)_AP1	Estimated Amount	Sales Domain.[Sales Std4]	Estimated  Price_USD
+                        SKU 6	202443A	 200 	 50 	 10,000 	5000001	 200
+                        SKU 6	202444A	 200 	 100 	 20,000 	5000001	 200
+                        SKU 6	202445A	 200 	 150 	 30,000 	5000001	 200
+                        SKU 6	202445B	 200 	 200 	 40,000 	5000001	 200
+                        SKU 6	202446A	 200 	 250 	 50,000 	5000001	 200
+                        SKU 6	202447A	 200 	 300 	 60,000 	5000001	 200
+                        SKU 6	202443A	 100 	 50 	 5,000 	5000002	 100
+                        SKU 6	202444A	 100 	 100 	 10,000 	5000002	 100
+                        SKU 6	202445A	 100 	 150 	 15,000 	5000002	 100
+                        SKU 6	202445B	 100 	 200 	 20,000 	5000002	 100
+                        SKU 6	202446A	 100 	 250 	 25,000 	5000002	 100
+                        SKU 6	202447A	 100 	 300 	 30,000 	5000002	 100
+                        SKU 5	202443A	 100 	0 	0 	5000001	 100
+                        SKU 5	202444A	 100 	0 	0 	5000001	 100
+                        SKU 5	202445A	 100 	0 	0 	5000001	 100
+                        SKU 5	202445B	 100 	0 	0 	5000001	 100
+                        SKU 5	202446A	 100 	0 	0 	5000001	 100
+                        SKU 5	202447A	 100 	0 	0 	5000001	 100
+                        SKU 5	202443A	 100 	0 	0 	5000002	 100
+                        SKU 5	202444A	 100 	0 	0 	5000002	 100
+                        SKU 5	202445A	 100 	0 	0 	5000002	 100
+                        SKU 5	202445B	 100 	0 	0 	5000002	 100
+                        SKU 5	202446A	 100 	0 	0 	5000002	 100
+                        SKU 5	202447A	 100 	0 	0 	5000002	 100
+                        SKU 4	202443A	 100 	0 	0 	5000001	 100
+                        SKU 4	202444A	 100 	0 	0 	5000001	 100
+                        SKU 4	202445A	 100 	0 	0 	5000001	 100
+                        SKU 4	202445B	 100 	0 	0 	5000001	 100
+                        SKU 4	202446A	 100 	0 	0 	5000001	 100
+                        SKU 4	202447A	 100 	0 	0 	5000001	 100
+                        SKU 4	202443A	 100 	0 	0 	5000002	 100
+                        SKU 4	202444A	 100 	0 	0 	5000002	 100
+                        SKU 4	202445A	 100 	0 	0 	5000002	 100
+                        SKU 4	202445B	 100 	0 	0 	5000002	 100
+                        SKU 4	202446A	 100 	0 	0 	5000002	 100
+                        SKU 4	202447A	 100 	0 	0 	5000002	 100
+                        SKU 3	202443A	 1,000 	0 	0 	5000001	 1,000
+                        SKU 3	202444A	 1,000 	0 	0 	5000001	 1,000
+                        SKU 3	202445A	 1,000 	0 	0 	5000001	 1,000
+                        SKU 3	202445B	 1,000 	0 	0 	5000001	 1,000
+                        SKU 3	202446A	 1,000 	0 	0 	5000001	 1,000
+                        SKU 3	202447A	 1,000 	0 	0 	5000001	 1,000
+                        SKU 3	202443A	 1,500 	0 	0 	5000002	 1,000
+                        SKU 3	202444A	 1,000 	0 	0 	5000002	 1,000
+                        SKU 3	202445A	 1,000 	0 	0 	5000002	 1,000
+                        SKU 3	202445B	 1,000 	0 	0 	5000002	 1,000
+                        SKU 3	202446A	 1,000 	0 	0 	5000002	 1,000
+                        SKU 3	202447A	 1,000 	0 	0 	5000002	 1,000
+                        SKU 3	202443A	 1,000 	0 	0 	5000009	 1,000
+                        SKU 3	202444A	 1,000 	0 	0 	5000009	 1,000
+                        SKU 3	202445A	 1,000 	0 	0 	5000009	 1,000
+                        SKU 3	202445B	 1,000 	0 	0 	5000009	 1,000
+                        SKU 3	202446A	 1,000 	0 	0 	5000009	 1,000
+                        SKU 3	202447A	 1,000 	0 	0 	5000009	 1,000
+
+                    - Process (변동)
+                        - Groupby (Item.[Item] * Time.[Partial Week] * Sales Domain.[Sales Std4])
+                            - S/In FCST(GI)_AP1, Estimated Amount 에 대해서 Sum 적용
+                            - Estimated  Price_USD 에 대해서는 AVG 적용 (25.07.21 변동)  => COL_AVG_PRICE
+                                - FCST 값이 Aggr 이후 0인 경우를 생각하여 AVG 적용
+                                - 컬럼의 중복을 피해서 컬럼명을 AVG_PRICE 라고 한다.
+                                    - COL_AVG_PRICE = 'AVG_PRICE'
+
+                        - 신규 Column  Estimated  Price_USD  생성 및 계산
+                            - Estimated  Price_USD  =  Estimated Amount / S/In FCST(GI)_AP1
+                                - 여기서 Estimated Amount 및 S/In FCST(GI)_AP1 은 Groupby Sum 된 값이다.
+                            - (25.07.21) 신규 Column 인 Estimated Price_USD 값 계산 시, FCST(S/In FCST(GI)_AP1) = 0 인 경우, 기존의 Estimated Price_USD 값 사용
+                                - 여기서 '기존의 Estimated Price_USD' 이란 Avg(Estimated  Price_USD) 이다.
+
+                Step 3-3-3) Column 정리
+                    - 결과데이타
+                        Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated  Price_USD
+                        SKU 6	202443A	5000001	200
+                        SKU 6	202444A	5000001	200
+                        SKU 6	202445A	5000001	200
+                        SKU 6	202445B	5000001	200
+                        SKU 6	202446A	5000001	200
+                        SKU 6	202447A	5000001	200
+                        SKU 6	202443A	5000002	100
+                        SKU 6	202444A	5000002	100
+                        SKU 6	202445A	5000002	100
+                        SKU 6	202445B	5000002	100
+                        SKU 6	202446A	5000002	100
+                        SKU 6	202447A	5000002	100
+                    - Process
+                        - rename : Sales Domain.[Sales Std4] -> Sales Domain.[Ship To]
+
+            Step 4) 4Lv Dummy Data 생성 (물량가중 처리, 없는 경우 하위값 그대로 사용) (Step 3와 방식은 동일하며, 기준 Column만 변화)
+                Step 4-1) Step 3-3-3) 의 Data 와 Step 1-2) Lv5 Data를 Merge
+                Step 4-2) Sales Domain 4Lv Data 구성
+                Step 4-3) Item.[Item] * Time.[Partial Week] * Sales Domain.[Sales Std3] 로 Groupby 적용
+                Step 4-3-1) Estimated Amount 추가
+                Step 4-3-2) Item.[Item] * Time.[Partial Week] * Sales Domain.[Sales Std3] 로 Groupby 적용 및 물량가중 계산
+                Step 4-3-3) Column 정리
+
+            Step 5) 3Lv Dummy Data 생성 (물량가중 처리, 없는 경우 하위값 그대로 사용) (Step 3와 방식은 동일하며, 기준 Column만 변화)
+            Step 6) 2Lv Dummy Data 생성 (물량가중 처리, 없는 경우 하위값 그대로 사용) (Step 3와 방식은 동일하며, 기준 Column만 변화)
+
+
+            Step 7) 최종 Output 구성
+                - 결과데이타
+                    Version.[Version Name]	Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated  Price_USD
+                    CWV_DP	SKU 6	202443A	5000001	200
+                    CWV_DP	SKU 6	202444A	5000001	200
+                    CWV_DP	SKU 6	202445A	5000001	200
+                    CWV_DP	SKU 6	202445B	5000001	200
+                    CWV_DP	SKU 6	202446A	5000001	200
+                    CWV_DP	SKU 6	202447A	5000001	200
+                - Process
+                    - Concat : Step 2-1) 과 Step 2-3) 과 Step 3-3-3) 과 Step 4), Step5), Step6)
+                        Step 2-1 	: 6Lv (Std5) 원본파일
+                        Step 2-3 	: 7Lv (Std6)
+                        Step 3-3-3 	: 5Lv (Std4)
+                        Step 4		: 4Lv (Std3)
+                        Step 5 		: 3Lv (Std2)
+                        Step 6		: 2Lv (Std1)
+                    - Version.[Version Name] = 'CWV_DP' 추가
+
+			Step 8) USD -> Local 변환
+                - 결과데이타
+                    Version.[Version Name]	Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated  Price_Local
+                    CWV_DP	SKU 6	202443A	5000001	200
+                    CWV_DP	SKU 6	202444A	5000001	200
+                    CWV_DP	SKU 6	202445A	5000001	200
+                    CWV_DP	SKU 6	202445B	5000001	200
+                    CWV_DP	SKU 6	202446A	5000001	66.67
+                    CWV_DP	SKU 6	202447A	5000001	66.67
+
+                - Process
+                    - load data
+                        - load df_output_Dummy_EstimatedPrice_USD
+                        - load df_in_Exchange_Rate_Local
+
+                    - df_in_Exchange_Rate_Local 의 Exchange Rate_Local 를 곱해서 Estimated  Price_Local 계산. Estimated  Price_Local =  Estimated  Price_USD * Exchange Rate_Local
+                    - Exchange Rate_Local 이 Sales Std3로 정의됨. 하위 Lv에는 동일 값을 Copy 하고, 상위 값은 AVG Aggregation 적용
+                    - Estimated  Price_Local 소수점 처리 ( "셋째자리에서 올림처리 "  ex)  1.522xxxxx -> 1.53 ) ( 기존 Step 3-3-2 의 소수점 처리 로직 삭제 )
+                        - Step 3-3-2 의 소수점 처리 로직 삭제
+                        - 여기서는 셋째자리에서 올림처리함.
+
+                    - return df_output_Dummy_EstimatedPrice_USD
+
+                - 참고 Exchange Rate_Local Data
+					Sales Domain.[Sales Std3]	Time.[Partial Week]	Exchange Rate_Local
+					4000001	202443A	1
+					4000001	202444A	1
+					4000001	202445A	1
+					4000001	202445B	1
+					4000001	202446A	0.33333333
+					4000001	202447A	0.33333333
+					4000002	202443A	2
+					4000002	202444A	2
+					4000002	202445A	2
+					4000002	202445B	2
+					4000002	202446A	2
+					4000002	202447A	2
+					4000009	202443A	3
+					4000009	202444A	3
+					4000009	202445A	3
+					4000009	202445B	3
+					4000009	202446A	3
+					4000009	202447A	3
+
+
+            Step 9) Estimated Price Modify_Local 값 update	( 250916 추가됨)
+                - 결과데이타
+                    Version.[Version Name]	Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated  Price_Local
+                    CWV_DP	SKU 6	202443A	5000001	200
+                    CWV_DP	SKU 6	202444A	5000001	200
+                    CWV_DP	SKU 6	202445A	5000001	200
+                    CWV_DP	SKU 6	202445B	5000001	200
+                    CWV_DP	SKU 6	202446A	5000001	66.67
+                    CWV_DP	SKU 6	202447A	5000001	500
+                - 개요
+                    - Estimated Price Modify_Local 값이 있는 경우 Update
+
+                - 참고  df_in_EstimatedPrice_Modify_Local
+                    Item.[Item]	Time.[Partial Week]	Sales Domain.[Ship To]	Estimated Price Modify_Local
+                    SKU 6	202447A	5000001	500
+
+				- process
+                    - load data
+                        - load df_output_Dummy_EstimatedPrice_USD
+                        - load df_in_EstimatedPrice_Modify_Local
+                    - Estimated Price Modify_Local 값이 있는 경우 Update
+                        - 비교컬럼
+                            - Item.[Item]
+                            - Time.[Partial Week]
+                            - Sales Domain.[Ship To]
+
+호출 (*)
+
+    EXEC plugin instance [PYDPDummyPrice]
+    for measures { Measure.[Estimated  Price_USD] }
+    using scope (
+        [Version].[Version Name].[CWV_DP]
+        * [Sales Domain].[Ship To]
+        * [Item].[Item]
+        *  Time.[Partial Week].filter (#.Key >= &CurrentPartialWeek && #.Key < &CurrentMonth.element(0).leadoffset(53).key) )
+    using arguments {
+        (ExecutionMode, "MediumWeight")
+        ,(IncludeNullrows, False)
+    }
+    ;
+
+
+==============  디버그 ======================
+
+- 0725 : 데이타가 맞지 않는다는 내용
+    - 이찬주 부장님 Dummy Price 로직  Data가 맞지 않는 것 같습니다.
+
+            Version.[Version Name]	Item.[Item]	Sales Domain.[Ship To]	Time.[Partial Week]	Estimated Price_USD	S/In FCST(GI)_AP2	AMT
+            CWV_DP	HW-QS700F/ZA	401738	202521A	260	0	0
+            CWV_DP	HW-QS700F/ZA	401735	202521A	260	2158	561080
+            CWV_DP	HW-QS700F/ZA	401737	202521A	260	38	9880
+            CWV_DP	HW-QS700F/ZA	404706	202521A	260	0	0
+            CWV_DP	HW-QS700F/ZA	408351	202521A	401	8	3208
+            CWV_DP	HW-QS700F/ZA	407881	202521A	260	0	0
+            260.5117967	2204	574168
+            CWV_DP	HW-QS700F/ZA	401738	202522A	260	1293	336180
+            CWV_DP	HW-QS700F/ZA	401735	202522A	260	3	780
+            CWV_DP	HW-QS700F/ZA	401737	202522A	260	0	0
+            CWV_DP	HW-QS700F/ZA	404706	202522A	260	25	6500
+            CWV_DP	HW-QS700F/ZA	408351	202522A	401	37	14837
+            CWV_DP	HW-QS700F/ZA	407881	202522A	260	0	0
+            263.8416789	1358	358297
+            Output
+            Version.[Version Name]	Item.[Item]	Sales Domain.[Ship To]	Time.[Partial Week]	Estimated Price_USD
+            CWV_DP	HW-QS700F/ZA	300114	202521A	283
+            CWV_DP	HW-QS700F/ZA	300114	202522A	283
+
+        - HW-QS700F/ZA 의 300114 하위에 대해서 확인했을 때, 300114 Lv에서 283이 나옵니다.
+            제 계산으로는 위와 같이 나올 것 같은데,  로직에서 제가 놓친부분이 있을까요 ?
+    - 디버깅이 필요함.
+        - 실행문
+            EXEC plugin instance [PYDPDummyPrice]
+            for measures { Measure.[Estimated Price_USD] }
+            using scope (
+            [Version].[Version Name].[CWV_DP]
+            * [Sales Domain].[Ship To]
+            * [Item].[Item].[HW-QS700F/ZA]
+            * [Time].[Partial Week].filter (#.Key >= &CurrentPartialWeek.element(0).Key && #.Key < &CurrentMonth.element(0).leadoffset(1).Key) )
+            using arguments {
+            (ExecutionMode, "MediumWeight")
+            ,(IncludeNullrows, False)
+            }
+            ;
+
+            (Input 1) df_in_Sin_GI_AP1
+                - query
+                    Select (
+                    [Version].[Version Name].[CWV_DP]		// 당주주차 ~ 당월주차
+                        * [Item].[Item].[HW-QS700F/ZA]	        // USD가 6Lv로 들어오니, FCST 값도 6Lv 들어와서 계산
+                        * [Time].[Partial Week].filter (#.Key >= &CurrentPartialWeek.element(0).Key && #.Key <= &CurrentMonth.element(0).leadoffset(1).Key)
+                        * [Sales Domain].[Sales Std5]
+                    ) on row,
+                    ({Measure.[S/In FCST(GI)_AP1]}) on column;
+
+            (Input 2) df_In_EstimatedPrice_USD  exchange rate 실적
+                - query
+                    Select (
+                    [Version].[Version Name].[CWV_DP]
+                    * [Item].[Item].[HW-QS700F/ZA]
+                    * [Time].[Partial Week].filter (#.Key >= &CurrentPartialWeek.element(0).Key && #.Key <= &CurrentMonth.element(0).leadoffset(1).Key)
+                    * [Sales Domain].[Ship To].filter(#.Name startswith([5]))
+                    ) on row,
+                    ({Measure.[Estimated Price_USD]})
+                    on column;
+
+            (Input 3) df_in_Sales_Domain_Dimension
+                - query
+                    Select (
+                    [Sales Domain].[Sales Std1]
+                    * [Sales Domain].[Sales Std2]
+                    * [Sales Domain].[Sales Std3]
+                    * [Sales Domain].[Sales Std4]
+                    * [Sales Domain].[Sales Std5]
+                    * [Sales Domain].[Sales Std6]
+                    * [Sales Domain].[Ship To] );
+
+

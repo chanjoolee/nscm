@@ -1,0 +1,1239 @@
+* 프로그램명	
+	PYDPMakeActualAndInventoryForecastLevel
+
+
+* 목적		
+	- FCST Rule(입력 레벨)을 고려한 실적 및 재고 생성 로직 개발	
+	- Actual 	
+	- S/In(GI) GC AP2 AP1	
+	- S/In(BL) GC AP2 AP1	
+	- S/Out GC AP2 AP1	
+	- 구성시 고려점	
+        - S/In 은 전주 실적까지 존재
+		- S/Out은 MX는 전주, CE는 전전주 실적까지 존재
+		- 처음에는 1년 Data 생성
+		- 이후에는 8주 Data에 대해서 매주 Batch로 작업
+
+
+    - 재고		
+        - 사용 Measure	
+            - Channel Inv
+            - (Sum) Channl Inv_Inc floor
+            - 재고는 6Lv(Account) 로 들어옴
+        - 생성 Measure	
+            - (Simul). Channel Inv GC AP2 AP1
+            - (Simul). Channel Inv_Inc floor GC AP2 AP1
+        - 구성시 고려점	
+            - 전주 재고 값을 가져와서 당주 재고 값을 계산한다.
+            - 처음에는 1년 Data 생성
+            - 이후에는 Data에 대해서 매주 Batch로 작업
+
+Input Tables (*)				
+				
+				
+	(Input 1) S/In Actual(GI) 값			
+		df_in_Sell_In_Actual_GI		
+			Select ([Version].[Version Name] 	
+			* [Sales Domain].[Ship To] 	
+			* [Item].[Item] 	
+			* [Location].[Location] 	
+			* Time.[Partial Week]	// Grain 은 Day 이지만, Partial Week 단위로 상위 값 생성, PY 실행에서 Time의 영역 설정, 8주 Default, 전주 실적까지 존재, 202451주차 기준으로 50주차 까지 실적 존재
+			) on row, 	
+			({Measure.[S/In Actual(GI)]}) on column;	
+
+            - data
+                Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	S/In Actual(GI)
+                CWV_DP	A5000001	SKU 7	S001	202449A	101
+                CWV_DP	A5000001	SKU 7	S001	202450A	101
+                CWV_DP	A5000001	SKU 7	S001	202451A	101
+                CWV_DP	A5000001	SKU 7	S001	202452A	101
+                CWV_DP	A5000001	SKU 7	S001	202501A	51
+                CWV_DP	A5000001	SKU 7	S001	202501B	50
+                CWV_DP	A5000001	SKU 7	S001	202502A	101
+                CWV_DP	A5000001	SKU 7	S001	202503A	101
+                CWV_DP	A5000001	SKU 7	S001	202504A	101
+                CWV_DP	A5000001	SKU 7	S001	202505A	51
+                CWV_DP	A5000001	SKU 7	S001	202505B	50
+                CWV_DP	A5000002	SKU 7	S001	202449A	101
+                CWV_DP	A5000002	SKU 7	S001	202450A	101
+                CWV_DP	A5000002	SKU 7	S001	202451A	101
+                CWV_DP	A5000002	SKU 7	S001	202452A	101
+                CWV_DP	A5000002	SKU 7	S001	202501A	51
+                CWV_DP	A5000002	SKU 7	S001	202501B	50
+                CWV_DP	A5000002	SKU 7	S001	202502A	101
+                CWV_DP	A5000002	SKU 7	S001	202503A	101
+                CWV_DP	A5000002	SKU 7	S001	202504A	101
+                CWV_DP	A5000002	SKU 7	S001	202505A	51
+                CWV_DP	A5000002	SKU 7	S001	202505B	50
+                CWV_DP	A5000003	SKU 7	S001	202449A	101
+                CWV_DP	A5000003	SKU 7	S001	202450A	101
+                CWV_DP	A5000003	SKU 7	S001	202451A	101
+                CWV_DP	A5000003	SKU 7	S001	202452A	101
+                CWV_DP	A5000003	SKU 7	S001	202501A	51
+                CWV_DP	A5000003	SKU 7	S001	202501B	50
+                CWV_DP	A5000003	SKU 7	S001	202502A	101
+                CWV_DP	A5000003	SKU 7	S001	202503A	101
+                CWV_DP	A5000003	SKU 7	S001	202504A	101
+                CWV_DP	A5000003	SKU 7	S001	202505A	51
+                CWV_DP	A5000003	SKU 7	S001	202505B	50
+                CWV_DP	5000004	SKU 6	S001	202449A	101
+                CWV_DP	5000004	SKU 6	S001	202450A	101
+                CWV_DP	5000004	SKU 6	S001	202451A	101
+                CWV_DP	5000004	SKU 6	S001	202452A	101
+                CWV_DP	5000004	SKU 6	S001	202501A	51
+                CWV_DP	5000004	SKU 6	S001	202501B	50
+                CWV_DP	5000004	SKU 6	S001	202502A	101
+                CWV_DP	5000004	SKU 6	S001	202503A	101
+                CWV_DP	5000004	SKU 6	S001	202504A	101
+                CWV_DP	5000004	SKU 6	S001	202505A	51
+                CWV_DP	5000004	SKU 6	S001	202505B	50
+                CWV_DP	5000007	SKU 6	S001	202449A	101
+                CWV_DP	5000007	SKU 6	S001	202450A	101
+                CWV_DP	5000007	SKU 6	S001	202451A	101
+                CWV_DP	5000007	SKU 6	S001	202452A	101
+                CWV_DP	5000007	SKU 6	S001	202501A	51
+                CWV_DP	5000007	SKU 6	S001	202501B	50
+                CWV_DP	5000007	SKU 6	S001	202502A	101
+                CWV_DP	5000007	SKU 6	S001	202503A	101
+                CWV_DP	5000007	SKU 6	S001	202504A	101
+                CWV_DP	5000007	SKU 6	S001	202505A	51
+                CWV_DP	5000007	SKU 6	S001	202505B	50
+                CWV_DP	5000008	SKU 6	S001	202449A	101
+                CWV_DP	5000008	SKU 6	S001	202450A	101
+                CWV_DP	5000008	SKU 6	S001	202451A	101
+                CWV_DP	5000008	SKU 6	S001	202452A	101
+                CWV_DP	5000008	SKU 6	S001	202501A	51
+                CWV_DP	5000008	SKU 6	S001	202501B	50
+                CWV_DP	5000008	SKU 6	S001	202502A	101
+                CWV_DP	5000008	SKU 6	S001	202503A	101
+                CWV_DP	5000008	SKU 6	S001	202504A	101
+                CWV_DP	5000008	SKU 6	S001	202505A	51
+                CWV_DP	5000008	SKU 6	S001	202505B	50
+                CWV_DP	5000009	SKU 6	S001	202449A	101
+                CWV_DP	5000009	SKU 6	S001	202450A	101
+                CWV_DP	5000009	SKU 6	S001	202451A	101
+                CWV_DP	5000009	SKU 6	S001	202452A	101
+                CWV_DP	5000009	SKU 6	S001	202501A	51
+                CWV_DP	5000009	SKU 6	S001	202501B	50
+                CWV_DP	5000009	SKU 6	S001	202502A	101
+                CWV_DP	5000009	SKU 6	S001	202503A	101
+                CWV_DP	5000009	SKU 6	S001	202504A	101
+                CWV_DP	5000009	SKU 6	S001	202505A	51
+                CWV_DP	5000009	SKU 6	S001	202505B	50
+            - note
+                Sales_Domain_ShipTo : 7 level 6 level
+
+    (Input 2) S/In Actual(BL) 값		
+        df_in_Sell_In_Actual_BL	
+            Select ([Version].[Version Name] 
+            * [Sales Domain].[Ship To] 
+            * [Item].[Item] 
+            * [Location].[Location] 
+            * Time.[Partial Week]
+            ) on row, 
+            ({Measure.[S/In Actual(BL)]}) on column;
+
+            - data 
+                Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	S/In Actual(BL)
+                CWV_DP	A5000001	SKU 7	S001	202449A	101
+                CWV_DP	A5000001	SKU 7	S001	202450A	101
+                CWV_DP	A5000001	SKU 7	S001	202451A	101
+                CWV_DP	A5000001	SKU 7	S001	202452A	101
+                CWV_DP	A5000001	SKU 7	S001	202501A	51
+                CWV_DP	A5000001	SKU 7	S001	202501B	50
+                CWV_DP	A5000001	SKU 7	S001	202502A	101
+                CWV_DP	A5000001	SKU 7	S001	202503A	101
+                CWV_DP	A5000001	SKU 7	S001	202504A	101
+                CWV_DP	A5000001	SKU 7	S001	202505A	51
+                CWV_DP	A5000001	SKU 7	S001	202505B	50
+                CWV_DP	A5000002	SKU 7	S001	202449A	101
+                CWV_DP	A5000002	SKU 7	S001	202450A	101
+                CWV_DP	A5000002	SKU 7	S001	202451A	101
+                CWV_DP	A5000002	SKU 7	S001	202452A	101
+                CWV_DP	A5000002	SKU 7	S001	202501A	51
+                CWV_DP	A5000002	SKU 7	S001	202501B	50
+                CWV_DP	A5000002	SKU 7	S001	202502A	101
+                CWV_DP	A5000002	SKU 7	S001	202503A	101
+                CWV_DP	A5000002	SKU 7	S001	202504A	101
+                CWV_DP	A5000002	SKU 7	S001	202505A	51
+                CWV_DP	A5000002	SKU 7	S001	202505B	50
+                CWV_DP	A5000003	SKU 7	S001	202449A	101
+                CWV_DP	A5000003	SKU 7	S001	202450A	101
+                CWV_DP	A5000003	SKU 7	S001	202451A	101
+                CWV_DP	A5000003	SKU 7	S001	202452A	101
+                CWV_DP	A5000003	SKU 7	S001	202501A	51
+                CWV_DP	A5000003	SKU 7	S001	202501B	50
+                CWV_DP	A5000003	SKU 7	S001	202502A	101
+                CWV_DP	A5000003	SKU 7	S001	202503A	101
+                CWV_DP	A5000003	SKU 7	S001	202504A	101
+                CWV_DP	A5000003	SKU 7	S001	202505A	51
+                CWV_DP	A5000003	SKU 7	S001	202505B	50
+                CWV_DP	5000004	SKU 6	S001	202449A	101
+                CWV_DP	5000004	SKU 6	S001	202450A	101
+                CWV_DP	5000004	SKU 6	S001	202451A	101
+                CWV_DP	5000004	SKU 6	S001	202452A	101
+                CWV_DP	5000004	SKU 6	S001	202501A	51
+                CWV_DP	5000004	SKU 6	S001	202501B	50
+                CWV_DP	5000004	SKU 6	S001	202502A	101
+                CWV_DP	5000004	SKU 6	S001	202503A	101
+                CWV_DP	5000004	SKU 6	S001	202504A	101
+                CWV_DP	5000004	SKU 6	S001	202505A	51
+                CWV_DP	5000004	SKU 6	S001	202505B	50
+                CWV_DP	5000007	SKU 6	S001	202449A	101
+                CWV_DP	5000007	SKU 6	S001	202450A	101
+                CWV_DP	5000007	SKU 6	S001	202451A	101
+                CWV_DP	5000007	SKU 6	S001	202452A	101
+                CWV_DP	5000007	SKU 6	S001	202501A	51
+                CWV_DP	5000007	SKU 6	S001	202501B	50
+                CWV_DP	5000007	SKU 6	S001	202502A	101
+                CWV_DP	5000007	SKU 6	S001	202503A	101
+                CWV_DP	5000007	SKU 6	S001	202504A	101
+                CWV_DP	5000007	SKU 6	S001	202505A	51
+                CWV_DP	5000007	SKU 6	S001	202505B	50
+                CWV_DP	5000008	SKU 6	S001	202449A	101
+                CWV_DP	5000008	SKU 6	S001	202450A	101
+                CWV_DP	5000008	SKU 6	S001	202451A	101
+                CWV_DP	5000008	SKU 6	S001	202452A	101
+                CWV_DP	5000008	SKU 6	S001	202501A	51
+                CWV_DP	5000008	SKU 6	S001	202501B	50
+                CWV_DP	5000008	SKU 6	S001	202502A	101
+                CWV_DP	5000008	SKU 6	S001	202503A	101
+                CWV_DP	5000008	SKU 6	S001	202504A	101
+                CWV_DP	5000008	SKU 6	S001	202505A	51
+                CWV_DP	5000008	SKU 6	S001	202505B	50
+                CWV_DP	5000009	SKU 6	S001	202449A	101
+                CWV_DP	5000009	SKU 6	S001	202450A	101
+                CWV_DP	5000009	SKU 6	S001	202451A	101
+                CWV_DP	5000009	SKU 6	S001	202452A	101
+                CWV_DP	5000009	SKU 6	S001	202501A	51
+                CWV_DP	5000009	SKU 6	S001	202501B	50
+                CWV_DP	5000009	SKU 6	S001	202502A	101
+                CWV_DP	5000009	SKU 6	S001	202503A	101
+                CWV_DP	5000009	SKU 6	S001	202504A	101
+                CWV_DP	5000009	SKU 6	S001	202505A	51
+                CWV_DP	5000009	SKU 6	S001	202505B	50
+            - note
+                Sales_Domain_ShipTo : 7 level 6 level
+
+    
+    (Input 3) S/Out Actual 값			
+        df_in_Sell_Out_Actual_GI		
+            Select ([Version].[Version Name] 	
+            * [Sales Domain].[Ship To] 	
+            * [Item].[Item] 	
+            * [Location].[Location] 	
+            * Time.[Week]	// Week으로 생성하여, A주차 적용하여 로직 적용 필요. 202451주차 기준으로 MX는 50주차, CE는 49주차 까지 실적 존재. CE반영을 위해 -9 ~ -1 까지 받아옴, 값이 있는 경우에 대해서만 생성해주면 됨.
+            ) on row, 	
+            ({Measure.[S/Out Actual]}) on column;	
+        - data
+            Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Week]	S/Out Actual
+            CWV_DP	A5000001	SKU 7	-	202449	101
+            CWV_DP	A5000001	SKU 7	-	202450	101
+            CWV_DP	A5000001	SKU 7	-	202451	101
+            CWV_DP	A5000001	SKU 7	-	202452	101
+            CWV_DP	A5000001	SKU 7	-	202501	101
+            CWV_DP	A5000001	SKU 7	-	202502	101
+            CWV_DP	A5000001	SKU 7	-	202503	101
+            CWV_DP	A5000001	SKU 7	-	202504	101
+            CWV_DP	A5000001	SKU 7	-	202505	101
+            CWV_DP	A5000002	SKU 7	-	202449	101
+            CWV_DP	A5000002	SKU 7	-	202450	101
+            CWV_DP	A5000002	SKU 7	-	202451	101
+            CWV_DP	A5000002	SKU 7	-	202452	101
+            CWV_DP	A5000002	SKU 7	-	202501	101
+            CWV_DP	A5000002	SKU 7	-	202502	101
+            CWV_DP	A5000002	SKU 7	-	202503	101
+            CWV_DP	A5000002	SKU 7	-	202504	101
+            CWV_DP	A5000002	SKU 7	-	202505	101
+            CWV_DP	A5000003	SKU 7	-	202449	101
+            CWV_DP	A5000003	SKU 7	-	202450	101
+            CWV_DP	A5000003	SKU 7	-	202451	101
+            CWV_DP	A5000003	SKU 7	-	202452	101
+            CWV_DP	A5000003	SKU 7	-	202501	101
+            CWV_DP	A5000003	SKU 7	-	202502	101
+            CWV_DP	A5000003	SKU 7	-	202503	101
+            CWV_DP	A5000003	SKU 7	-	202504	101
+            CWV_DP	A5000003	SKU 7	-	202505	101
+            CWV_DP	5000004	SKU 6	-	202449	101
+            CWV_DP	5000004	SKU 6	-	202450	101
+            CWV_DP	5000004	SKU 6	-	202451	101
+            CWV_DP	5000004	SKU 6	-	202452	101
+            CWV_DP	5000004	SKU 6	-	202501	101
+            CWV_DP	5000004	SKU 6	-	202502	101
+            CWV_DP	5000004	SKU 6	-	202503	101
+            CWV_DP	5000004	SKU 6	-	202504	101
+            CWV_DP	5000004	SKU 6	-	202505	101
+            CWV_DP	5000007	SKU 6	-	202449	101
+            CWV_DP	5000007	SKU 6	-	202450	101
+            CWV_DP	5000007	SKU 6	-	202451	101
+            CWV_DP	5000007	SKU 6	-	202452	101
+            CWV_DP	5000007	SKU 6	-	202501	101
+            CWV_DP	5000007	SKU 6	-	202502	101
+            CWV_DP	5000007	SKU 6	-	202503	101
+            CWV_DP	5000007	SKU 6	-	202504	101
+            CWV_DP	5000007	SKU 6	-	202505	101
+            CWV_DP	5000008	SKU 6	-	202449	101
+            CWV_DP	5000008	SKU 6	-	202450	101
+            CWV_DP	5000008	SKU 6	-	202451	101
+            CWV_DP	5000008	SKU 6	-	202452	101
+            CWV_DP	5000008	SKU 6	-	202501	101
+            CWV_DP	5000008	SKU 6	-	202502	101
+            CWV_DP	5000008	SKU 6	-	202503	101
+            CWV_DP	5000008	SKU 6	-	202504	101
+            CWV_DP	5000008	SKU 6	-	202505	101
+            CWV_DP	5000009	SKU 6	-	202449	101
+            CWV_DP	5000009	SKU 6	-	202450	101
+            CWV_DP	5000009	SKU 6	-	202451	101
+            CWV_DP	5000009	SKU 6	-	202452	101
+            CWV_DP	5000009	SKU 6	-	202501	101
+            CWV_DP	5000009	SKU 6	-	202502	101
+            CWV_DP	5000009	SKU 6	-	202503	101
+            CWV_DP	5000009	SKU 6	-	202504	101
+            CWV_DP	5000009	SKU 6	-	202505	101
+
+
+    (Input 4) Channel Inv 정보		
+        df_in_Channel_Inv	
+            Select (
+            [Version].[Version Name] 
+            * [Sales Domain].[Ship To] 
+            * [Item].[Item] 
+            * [Time].[Week] 
+            )  on row, 
+            ( { Measure.[Channel Inv] } ) on column;
+        - data 
+            Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Time.[Week]	Channel Inv
+            CWV_DP	5000001	SKU 7	202449	1000
+            CWV_DP	5000001	SKU 7	202450	1000
+            CWV_DP	5000001	SKU 7	202451	1000
+            CWV_DP	5000001	SKU 7	202452	1000
+            CWV_DP	5000001	SKU 7	202501	1000
+            CWV_DP	5000001	SKU 7	202502	1000
+            CWV_DP	5000001	SKU 7	202503	1000
+            CWV_DP	5000001	SKU 7	202504	1000
+            CWV_DP	5000001	SKU 7	202505	1000
+            CWV_DP	5000002	SKU 7	202449	1000
+            CWV_DP	5000002	SKU 7	202450	1000
+            CWV_DP	5000002	SKU 7	202451	1000
+            CWV_DP	5000002	SKU 7	202452	1000
+            CWV_DP	5000002	SKU 7	202501	1000
+            CWV_DP	5000002	SKU 7	202502	1000
+            CWV_DP	5000002	SKU 7	202503	1000
+            CWV_DP	5000002	SKU 7	202504	1000
+            CWV_DP	5000002	SKU 7	202505	1000
+            CWV_DP	5000004	SKU 7	202449	1000
+            CWV_DP	5000004	SKU 7	202450	1000
+            CWV_DP	5000004	SKU 7	202451	1000
+            CWV_DP	5000004	SKU 7	202452	1000
+            CWV_DP	5000004	SKU 7	202501	1000
+            CWV_DP	5000004	SKU 7	202502	1000
+            CWV_DP	5000004	SKU 7	202503	1000
+            CWV_DP	5000004	SKU 7	202504	1000
+            CWV_DP	5000004	SKU 7	202505	1000
+            CWV_DP	5000007	SKU 6	202449	1000
+            CWV_DP	5000007	SKU 6	202450	1000
+            CWV_DP	5000007	SKU 6	202451	1000
+            CWV_DP	5000007	SKU 6	202452	1000
+            CWV_DP	5000007	SKU 6	202501	1000
+            CWV_DP	5000007	SKU 6	202502	1000
+            CWV_DP	5000007	SKU 6	202503	1000
+            CWV_DP	5000007	SKU 6	202504	1000
+            CWV_DP	5000007	SKU 6	202505	1000
+            CWV_DP	5000008	SKU 6	202449	1000
+            CWV_DP	5000008	SKU 6	202450	1000
+            CWV_DP	5000008	SKU 6	202451	1000
+            CWV_DP	5000008	SKU 6	202452	1000
+            CWV_DP	5000008	SKU 6	202501	1000
+            CWV_DP	5000008	SKU 6	202502	1000
+            CWV_DP	5000008	SKU 6	202503	1000
+            CWV_DP	5000008	SKU 6	202504	1000
+            CWV_DP	5000008	SKU 6	202505	1000
+            CWV_DP	5000009	SKU 6	202449	1000
+            CWV_DP	5000009	SKU 6	202450	1000
+            CWV_DP	5000009	SKU 6	202451	1000
+            CWV_DP	5000009	SKU 6	202452	1000
+            CWV_DP	5000009	SKU 6	202501	1000
+            CWV_DP	5000009	SKU 6	202502	1000
+            CWV_DP	5000009	SKU 6	202503	1000
+            CWV_DP	5000009	SKU 6	202504	1000
+            CWV_DP	5000009	SKU 6	202505	1000
+        - note 
+            - Location_Location 컬럼이 없음
+
+    (Input 5) (Sum)Channel Inv_Inc Floor 정보		
+        df_in_Channel_Inv_Inc_Floor 	
+            Select (
+            [Version].[Version Name] 
+            * [Sales Domain].[Ship To] 
+            * [Item].[Item] 
+            * [Time].[Week] 
+            )  on row, 
+            ( { Measure.[(Sum)Channel Inv_Inc Floor] } ) on column;
+
+
+        - data
+            Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Time.[Week]	(Sum)Channel Inv_Inc Floor
+            CWV_DP	5000001	SKU 7	202449	1100
+            CWV_DP	5000001	SKU 7	202450	1100
+            CWV_DP	5000001	SKU 7	202451	1100
+            CWV_DP	5000001	SKU 7	202452	1100
+            CWV_DP	5000001	SKU 7	202501	1100
+            CWV_DP	5000001	SKU 7	202502	1100
+            CWV_DP	5000001	SKU 7	202503	1100
+            CWV_DP	5000001	SKU 7	202504	1100
+            CWV_DP	5000001	SKU 7	202505	1100
+            CWV_DP	5000002	SKU 7	202449	1100
+            CWV_DP	5000002	SKU 7	202450	1100
+            CWV_DP	5000002	SKU 7	202451	1100
+            CWV_DP	5000002	SKU 7	202452	1100
+            CWV_DP	5000002	SKU 7	202501	1100
+            CWV_DP	5000002	SKU 7	202502	1100
+            CWV_DP	5000002	SKU 7	202503	1100
+            CWV_DP	5000002	SKU 7	202504	1100
+            CWV_DP	5000002	SKU 7	202505	1100
+            CWV_DP	5000004	SKU 7	202449	1100
+            CWV_DP	5000004	SKU 7	202450	1100
+            CWV_DP	5000004	SKU 7	202451	1100
+            CWV_DP	5000004	SKU 7	202452	1100
+            CWV_DP	5000004	SKU 7	202501	1100
+            CWV_DP	5000004	SKU 7	202502	1100
+            CWV_DP	5000004	SKU 7	202503	1100
+            CWV_DP	5000004	SKU 7	202504	1100
+            CWV_DP	5000004	SKU 7	202505	1100
+            CWV_DP	5000007	SKU 6	202449	1100
+            CWV_DP	5000007	SKU 6	202450	1100
+            CWV_DP	5000007	SKU 6	202451	1100
+            CWV_DP	5000007	SKU 6	202452	1100
+            CWV_DP	5000007	SKU 6	202501	1100
+            CWV_DP	5000007	SKU 6	202502	1100
+            CWV_DP	5000007	SKU 6	202503	1100
+            CWV_DP	5000007	SKU 6	202504	1100
+            CWV_DP	5000007	SKU 6	202505	1100
+            CWV_DP	5000008	SKU 6	202449	1100
+            CWV_DP	5000008	SKU 6	202450	1100
+            CWV_DP	5000008	SKU 6	202451	1100
+            CWV_DP	5000008	SKU 6	202452	1100
+            CWV_DP	5000008	SKU 6	202501	1100
+            CWV_DP	5000008	SKU 6	202502	1100
+            CWV_DP	5000008	SKU 6	202503	1100
+            CWV_DP	5000008	SKU 6	202504	1100
+            CWV_DP	5000008	SKU 6	202505	1100
+            CWV_DP	5000009	SKU 6	202449	1100
+            CWV_DP	5000009	SKU 6	202450	1100
+            CWV_DP	5000009	SKU 6	202451	1100
+            CWV_DP	5000009	SKU 6	202452	1100
+            CWV_DP	5000009	SKU 6	202501	1100
+            CWV_DP	5000009	SKU 6	202502	1100
+            CWV_DP	5000009	SKU 6	202503	1100
+            CWV_DP	5000009	SKU 6	202504	1100
+            CWV_DP	5000009	SKU 6	202505	1100
+
+
+    (Input 6) Sales Domain Dimension 정보		
+        df_in_Sales_Domain_Dimension	
+            Select (
+            * [Sales Domain].[Sales Std1]
+            * [Sales Domain].[Sales Std2] 
+            * [Sales Domain].[Sales Std3] 
+            * [Sales Domain].[Sales Std4] 
+            * [Sales Domain].[Sales Std5] 
+            * [Sales Domain].[Sales Std6] 
+            * [Sales Domain].[Ship To] )
+        - data
+            Sales Domain.[Sales Std1]	Sales Domain.[Sales Std2]	Sales Domain.[Sales Std3]	Sales Domain.[Sales Std4]	Sales Domain.[Sales Std5]	Sales Domain.[Sales Std6]	Sales Domain.[Ship To]
+            201	201	201	201	201	201	201
+            201	3000001	3000001	3000001	3000001	3000001	3000001
+            201	3000002	3000002	3000002	3000002	3000002	3000002
+            201	3000001	A3000001	A3000001	A3000001	A3000001	A3000001
+            201	3000002	A3000002	A3000002	A3000002	A3000002	A3000002
+            201	3000001	A3000001	4000001	4000001	4000001	4000001
+            201	3000002	A3000002	4000002	4000002	4000002	4000002
+            201	3000002	A3000002	4000003	4000003	4000003	4000003
+            201	3000001	A3000001	4000001	5000001	5000001	5000001
+            201	3000001	A3000001	4000001	5000002	5000002	5000002
+            201	3000001	A3000001	4000001	5000004	5000004	5000004
+            201	3000002	A3000002	4000002	5000007	5000007	5000007
+            201	3000002	A3000002	4000002	5000008	5000008	5000008
+            201	3000002	A3000002	4000003	5000009	5000009	5000009
+            201	3000001	A3000001	4000001	5000001	A5000001	A5000001
+            201	3000001	A3000001	4000001	5000002	A5000002	A5000002
+            201	3000001	A3000001	4000001	5000004	A5000003	A5000003
+
+    (Input 7) Forecast Rule 정보								
+        df_in_Forecast_Rule							
+            Select ([Version].[Version Name]						
+            * [Item].[Product Group] 						
+            * [Sales Domain].[Ship To] )  on row, 		2,3LV구성				
+            ( { 
+                Measure.[FORECAST_RULE GC FCST], 
+                Measure.[FORECAST_RULE AP2 FCST], 
+                Measure.[FORECAST_RULE AP1 FCST], 
+                Measure.[FORECAST_RULE CUST FCST],
+                Measure.[FORECAST_RULE ISVALID] 
+            } ) on column;						
+                                    
+        - data							
+            Version.[Version Name]	Item.[Product Group]	Sales Domain.[Ship To]	FORECAST_RULE GC FCST	FORECAST_RULE AP2 FCST	FORECAST_RULE AP1 FCST	FORECAST_RULE CUST FCST	FORECAST_RULE ISVALID
+            CWV_DP	PG 7	3000001	3	5	6		Y
+            CWV_DP	PG 6	3000002	3	5	6		Y
+            CWV_DP	PG 6	4000003		6			Y
+
+    (Input 8) MST_Item 정보			
+        df_in_Item_Master		
+            Select (	
+            * [Item].[Item GBM]	
+            * [Item].[Product Group]	
+            * [Item].[Item]	
+            );	
+        - data     
+            Item.[Item GBM]	Item.[Product Group]	Item.[Item]
+            MOBILE	PG 7	SKU 7
+            VD	PG 6	SKU 6
+
+Output Tables (*)			
+			
+			
+	- 주요컬럼
+		S/In FCST(GI)_AP1
+        S/In FCST(GI)_AP2
+        S/In FCST(GI)_GC
+        S/Out FCST_AP1
+        S/Out FCST_AP2
+        S/Out FCST_GC
+			
+	(Output 1)		
+		df_output_Sell_In_FCST_GI_AP1	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]
+			 * [Time].[Partial Week]) on row, 
+			({Measure.[S/In FCST(GI)_AP1] }) on column;
+			
+	(Output 2)		
+		df_output_Sell_In_FCST_GI_AP2	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]
+			 * [Time].[Partial Week]) on row, 
+			({Measure.[S/In FCST(GI)_AP2] }) on column;
+			
+	(Output 3)		
+		df_output_Sell_In_FCST_GI_GC	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]
+			 * [Time].[Partial Week]) on row, 
+			({Measure.[S/In FCST(GI)_GC] }) on column;
+			
+	(Output 4)		
+		df_output_Sell_In_FCST_BL_AP1	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]
+			 * [Time].[Partial Week]) on row, 
+			({Measure.[S/In FCST(BL)_AP1] }) on column;
+			
+	(Output 5)		
+		df_output_Sell_In_FCST_BL_AP2	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]
+			 * [Time].[Partial Week]) on row, 
+			({Measure.[S/In FCST(BL)_AP2] }) on column;
+			
+	(Output 6)		
+		df_output_Sell_In_FCST_BL_GC	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]
+			 * [Time].[Partial Week]) on row, 
+			({Measure.[S/In FCST(BL)_GC] }) on column;
+			
+	(Output 7)		
+		df_output_Sell_Out_FCST_AP1	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]
+			 * [Time].[Partial Week]) on row, 
+			({Measure.[S/Out FCST_AP1] }) on column;
+			
+	(Output 8)		
+		df_output_Sell_Out_FCST_AP2	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]
+			 * [Time].[Partial Week]) on row, 
+			({Measure.[S/Out FCST_AP2] }) on column;
+			
+	(Output 9)		
+		df_output_Sell_Out_FCST_GC	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]
+			 * [Time].[Partial Week]) on row, 
+			({Measure.[S/Out FCST_GC] }) on column;
+			
+	(Output 10)		
+		df_output_Channel_Inv_AP1	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Time].[Week]) on row, 
+			({Measure.[(Simul). Channel Inv AP1] }) on column;
+			
+	(Output 11)		
+		df_output_Channel_Inv_AP2	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Time].[Week]) on row, 
+			({Measure.[(Simul). Channel Inv AP2] }) on column;
+			
+			
+	(Output 12)		
+		df_output_Channel_Inv_GC	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Time].[Week]) on row, 
+			({Measure.[(Simul). Channel Inv GC] }) on column;
+			
+	(Output 13)		
+		df_output_Channel_Inv_floor_AP1	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Time].[Week]) on row, 
+			({Measure.[(Simul). Channel Inv_Inc floor AP1] }) on column;
+			
+			
+	(Output 14)		
+		df_output_Channel_Inv_floor_AP2	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Time].[Week]) on row, 
+			({Measure.[(Simul). Channel Inv_Inc floor AP2] }) on column;
+			
+	(Output 15)		
+		df_output_Channel_Inv_floor_GC	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Time].[Week]) on row, 
+			({Measure.[(Simul). Channel Inv_Inc floor GC] }) on column;
+
+
+
+- Process
+    
+    - Step 1) S/In Actual(GI) 와 S/In Actual(BL) 전처리	
+        - process 
+            - load data
+                - df_in_Sell_In_Actual_GI
+                - df_in_Sell_In_Actual_BL
+                - df_in_Item_Master
+
+            - Step 1-1) Version.[Version Name] 삭제
+                - 결과데이타
+                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Partial Week]	S/In Actual(GI)
+                    A5000001	SKU 7	S001	202449A	101
+                    A5000001	SKU 7	S001	202450A	101
+                    A5000001	SKU 7	S001	202451A	101
+                    A5000001	SKU 7	S001	202452A	101
+                    A5000001	SKU 7	S001	202501A	51
+                    A5000001	SKU 7	S001	202501B	50
+                    A5000001	SKU 7	S001	202502A	101
+                - process
+                    - df_in_Sell_In_Actual_GI 에 적용
+                    - df_in_Sell_In_Actual_BL에 적용
+
+
+            - Step 1-2) Item Master 정보 Merge
+                - 결과데이타
+                    Sales Domain.[Ship To]	Item.[Item GBM]	Item.[Product Group]	Item.[Item]	Location.[Location]	Time.[Partial Week]	S/In Actual(GI)
+                    A5000001	MOBILE	PG 7	SKU 7	S001	202449A	101
+                    A5000001	MOBILE	PG 7	SKU 7	S001	202450A	101
+                    A5000001	MOBILE	PG 7	SKU 7	S001	202451A	101
+                    A5000001	MOBILE	PG 7	SKU 7	S001	202452A	101
+                    A5000001	MOBILE	PG 7	SKU 7	S001	202501A	51
+                    A5000001	MOBILE	PG 7	SKU 7	S001	202501B	50
+                    A5000001	MOBILE	PG 7	SKU 7	S001	202502A	101
+                - process
+                    - merge df_in_Sell_In_Actual_GI and df_in_Sell_In_Actual_BL with df_in_Item_Master by Item
+                        - add column 'Item.[Item GBM]' and 'Item.[Product Group]'
+
+            - Step 1-3) Sales Master 정보 Merge (Skip)
+                - 결과데이타
+                    Sales Domain.[Sales Std1]	Sales Domain.[Sales Std2]	Sales Domain.[Sales Std3]	Sales Domain.[Sales Std4]	Sales Domain.[Sales Std5]	Sales Domain.[Sales Std6]	Sales Domain.[Ship To]	Item.[Item GBM]	Item.[Product Group]	Item.[Item]	Location.[Location]	Time.[Partial Week]	S/In Actual(GI)
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	S001	202449A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	S001	202450A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	S001	202451A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	S001	202452A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	S001	202501A	51
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	S001	202501B	50
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	S001	202502A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	S001	202503A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	S001	202504A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	S001	202505A	51
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	S001	202505B	50
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	S001	202449A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	S001	202450A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	S001	202451A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	S001	202452A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	S001	202501A	51
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	S001	202501B	50
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	S001	202502A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	S001	202503A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	S001	202504A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	S001	202505A	51
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	S001	202505B	50
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	S001	202449A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	S001	202450A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	S001	202451A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	S001	202452A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	S001	202501A	51
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	S001	202501B	50
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	S001	202502A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	S001	202503A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	S001	202504A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	S001	202505A	51
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	S001	202505B	50
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	S001	202449A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	S001	202450A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	S001	202451A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	S001	202452A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	S001	202501A	51
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	S001	202501B	50
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	S001	202502A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	S001	202503A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	S001	202504A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	S001	202505A	51
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	S001	202505B	50
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	S001	202449A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	S001	202450A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	S001	202451A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	S001	202452A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	S001	202501A	51
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	S001	202501B	50
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	S001	202502A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	S001	202503A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	S001	202504A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	S001	202505A	51
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	S001	202505B	50
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	S001	202449A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	S001	202450A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	S001	202451A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	S001	202452A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	S001	202501A	51
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	S001	202501B	50
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	S001	202502A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	S001	202503A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	S001	202504A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	S001	202505A	51
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	S001	202505B	50
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	S001	202449A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	S001	202450A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	S001	202451A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	S001	202452A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	S001	202501A	51
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	S001	202501B	50
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	S001	202502A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	S001	202503A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	S001	202504A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	S001	202505A	51
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	S001	202505B	50
+
+                - merge df_in_Sell_In_Actual_GI,df_in_Sell_In_Actual_BL with df_in_Sales_Domain_Dimension
+                - I thik this is not need. I will use lookup logic later. and skip this step.
+
+            - create data 
+                - df_fn_Sell_In_Actual_GI
+                    merged with df_in_Item_Master
+                - df_fn_Sell_In_Actual_BL
+                    merged with df_in_Item_Master
+
+
+    - Step 2) S/out Actual 전처리
+        - process 
+            - load data
+                - df_in_Sell_Out_Actual_GI
+                - df_in_Item_Master
+
+            - Step 2-1) Version.[Version Name] 삭제, Time : Week -> Partial Week
+                - 결과데이타
+                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Time.[Week]	S/Out Actual
+                    A5000001	SKU 7	-	202449A	101
+                    A5000001	SKU 7	-	202450A	101
+                    A5000001	SKU 7	-	202451A	101
+                    A5000001	SKU 7	-	202452A	101
+                    A5000001	SKU 7	-	202501A	101
+                    A5000001	SKU 7	-	202502A	101
+                    A5000001	SKU 7	-	202503A	101
+
+                - process
+                    - just add 'A' to surfix like below for Partial_Week
+                        202449 ==> 202449A
+            
+            - Step 2-2) Item Master 정보 Merge
+                - 결과데이타
+                    Sales Domain.[Ship To]	Item.[Item GBM]	Item.[Product Group]	Item.[Item]	Location.[Location]	Time.[Week]	S/Out Actual
+                    A5000001	MOBILE	PG 7	SKU 7	-	202449A	101
+                    A5000001	MOBILE	PG 7	SKU 7	-	202450A	101
+                    A5000001	MOBILE	PG 7	SKU 7	-	202451A	101
+                    A5000001	MOBILE	PG 7	SKU 7	-	202452A	101
+                    A5000001	MOBILE	PG 7	SKU 7	-	202501A	101
+                    A5000001	MOBILE	PG 7	SKU 7	-	202502A	101
+                    A5000001	MOBILE	PG 7	SKU 7	-	202503A	101
+                - process
+                    - merge df_in_Sell_Out_Actual_GI with df_in_Item_Master
+
+            - Step 2-3) Sales Master 정보 Merge( Skip )
+                - 결과데이타
+                    Sales Domain.[Sales Std1]	Sales Domain.[Sales Std2]	Sales Domain.[Sales Std3]	Sales Domain.[Sales Std4]	Sales Domain.[Sales Std5]	Sales Domain.[Sales Std6]	Sales Domain.[Ship To]	Item.[Item GBM]	Item.[Product Group]	Item.[Item]	Location.[Location]	Time.[Week]	S/Out Actual
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	-	202449A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	-	202450A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	-	202451A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	-	202452A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	-	202501A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	-	202502A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	-	202503A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	-	202504A	101
+                    201	3000001	A3000001	4000001	5000001	A5000001	A5000001	MOBILE	PG 7	SKU 7	-	202505A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	-	202449A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	-	202450A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	-	202451A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	-	202452A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	-	202501A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	-	202502A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	-	202503A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	-	202504A	101
+                    201	3000001	A3000001	4000001	5000002	A5000002	A5000002	MOBILE	PG 7	SKU 7	-	202505A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	-	202449A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	-	202450A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	-	202451A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	-	202452A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	-	202501A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	-	202502A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	-	202503A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	-	202504A	101
+                    201	3000001	A3000001	4000001	5000004	A5000003	A5000003	MOBILE	PG 7	SKU 7	-	202505A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	-	202449A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	-	202450A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	-	202451A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	-	202452A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	-	202501A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	-	202502A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	-	202503A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	-	202504A	101
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	VD	PG 6	SKU 6	-	202505A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	-	202449A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	-	202450A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	-	202451A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	-	202452A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	-	202501A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	-	202502A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	-	202503A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	-	202504A	101
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	-	202505A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	-	202449A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	-	202450A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	-	202451A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	-	202452A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	-	202501A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	-	202502A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	-	202503A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	-	202504A	101
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	-	202505A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	-	202449A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	-	202450A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	-	202451A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	-	202452A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	-	202501A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	-	202502A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	-	202503A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	-	202504A	101
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	-	202505A	101
+                
+                - process ( Skip )
+                    - merge df_in_Sell_Out_Actual_GI  with df_in_Sales_Domain_Dimension
+                    - I thik this is not need. I will use lookup logic later. and skip this step.
+
+
+    - Step 3) Channel Inv 전처리
+        - process    
+            - load data 
+                - df_in_Channel_Inv
+                - df_in_Item_Master
+
+            - Step 3-1) Version.[Version Name] 삭제
+                - 결과데이타 
+                    Sales Domain.[Ship To]	Item.[Item]	Time.[Week]	Channel Inv
+                    5000001	SKU 7	202449	1000
+                    5000001	SKU 7	202450	1000
+                    5000001	SKU 7	202451	1000
+                    5000001	SKU 7	202452	1000
+                    5000001	SKU 7	202501	1000
+                    5000001	SKU 7	202502	1000
+                    5000001	SKU 7	202503	1000
+                - process 
+                    - Version.[Version Name] 삭제
+                    - do not convert from Week to Partial_Week
+
+            - Step 3-2) Item Master 정보 Merge
+                - 결과데이타
+                    Sales Domain.[Ship To]	Item.[Item GBM]	Item.[Product Group]	Item.[Item]	Time.[Week]	Channel Inv
+                    5000001	MOBILE	PG 7	SKU 7	202449	1000
+                    5000001	MOBILE	PG 7	SKU 7	202450	1000
+                    5000001	MOBILE	PG 7	SKU 7	202451	1000
+                    5000001	MOBILE	PG 7	SKU 7	202452	1000
+                    5000001	MOBILE	PG 7	SKU 7	202501	1000
+                    5000001	MOBILE	PG 7	SKU 7	202502	1000
+                    5000001	MOBILE	PG 7	SKU 7	202503	1000
+
+                - process 
+                    - merge df_in_Channel_Inv with df_in_Item_Master
+
+            - Step 3-3) Sales Master 정보 Merge : Skip
+                - 결과데이타
+                    Sales Domain.[Sales Std1]	Sales Domain.[Sales Std2]	Sales Domain.[Sales Std3]	Sales Domain.[Sales Std4]	Sales Domain.[Sales Std5]	Sales Domain.[Sales Std6]	Sales Domain.[Ship To]	Item.[Item GBM]	Item.[Product Group]	Item.[Item]	Time.[Week]	Channel Inv
+                    201	3000001	A3000001	4000001	5000001	5000001	5000001	MOBILE	PG 7	SKU 7	202449	1000
+                    201	3000001	A3000001	4000001	5000001	5000001	5000001	MOBILE	PG 7	SKU 7	202450	1000
+                    201	3000001	A3000001	4000001	5000001	5000001	5000001	MOBILE	PG 7	SKU 7	202451	1000
+                    201	3000001	A3000001	4000001	5000001	5000001	5000001	MOBILE	PG 7	SKU 7	202452	1000
+                    201	3000001	A3000001	4000001	5000001	5000001	5000001	MOBILE	PG 7	SKU 7	202501	1000
+                    201	3000001	A3000001	4000001	5000001	5000001	5000001	MOBILE	PG 7	SKU 7	202502	1000
+                    201	3000001	A3000001	4000001	5000001	5000001	5000001	MOBILE	PG 7	SKU 7	202503	1000
+                    201	3000001	A3000001	4000001	5000001	5000001	5000001	MOBILE	PG 7	SKU 7	202504	1000
+                    201	3000001	A3000001	4000001	5000001	5000001	5000001	MOBILE	PG 7	SKU 7	202505	1000
+                    201	3000001	A3000001	4000001	5000002	5000002	5000002	MOBILE	PG 7	SKU 7	202449	1000
+                    201	3000001	A3000001	4000001	5000002	5000002	5000002	MOBILE	PG 7	SKU 7	202450	1000
+                    201	3000001	A3000001	4000001	5000002	5000002	5000002	MOBILE	PG 7	SKU 7	202451	1000
+                    201	3000001	A3000001	4000001	5000002	5000002	5000002	MOBILE	PG 7	SKU 7	202452	1000
+                    201	3000001	A3000001	4000001	5000002	5000002	5000002	MOBILE	PG 7	SKU 7	202501	1000
+                    201	3000001	A3000001	4000001	5000002	5000002	5000002	MOBILE	PG 7	SKU 7	202502	1000
+                    201	3000001	A3000001	4000001	5000002	5000002	5000002	MOBILE	PG 7	SKU 7	202503	1000
+                    201	3000001	A3000001	4000001	5000002	5000002	5000002	MOBILE	PG 7	SKU 7	202504	1000
+                    201	3000001	A3000001	4000001	5000002	5000002	5000002	MOBILE	PG 7	SKU 7	202505	1000
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	MOBILE	PG 7	SKU 7	202449	1000
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	MOBILE	PG 7	SKU 7	202450	1000
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	MOBILE	PG 7	SKU 7	202451	1000
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	MOBILE	PG 7	SKU 7	202452	1000
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	MOBILE	PG 7	SKU 7	202501	1000
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	MOBILE	PG 7	SKU 7	202502	1000
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	MOBILE	PG 7	SKU 7	202503	1000
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	MOBILE	PG 7	SKU 7	202504	1000
+                    201	3000001	A3000001	4000001	5000004	5000004	5000004	MOBILE	PG 7	SKU 7	202505	1000
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	202449	1000
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	202450	1000
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	202451	1000
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	202452	1000
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	202501	1000
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	202502	1000
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	202503	1000
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	202504	1000
+                    201	3000002	A3000002	4000002	5000007	5000007	5000007	VD	PG 6	SKU 6	202505	1000
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	202449	1000
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	202450	1000
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	202451	1000
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	202452	1000
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	202501	1000
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	202502	1000
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	202503	1000
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	202504	1000
+                    201	3000002	A3000002	4000002	5000008	5000008	5000008	VD	PG 6	SKU 6	202505	1000
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	202449	1000
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	202450	1000
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	202451	1000
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	202452	1000
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	202501	1000
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	202502	1000
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	202503	1000
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	202504	1000
+                    201	3000002	A3000002	4000003	5000009	5000009	5000009	VD	PG 6	SKU 6	202505	1000
+
+                - process
+                    - merge df_in_Channel_Inv  with df_in_Sales_Domain_Dimension
+                    - I thik this is not need. I will use lookup logic later. and skip this step.
+            - create data 
+                - df_fn_Channel_Inv
+                    merged with df_in_Item_Master
+
+    - Step 4) Channel Inv Floor 전처리
+        - process 
+            - load data 
+                - df_in_Channel_Inv_Inc_Floor
+                - df_in_Item_Master
+
+            - Step 4-1) Version.[Version Name] 삭제
+                - 결과데이타
+                    Sales Domain.[Ship To]	Item.[Item]	Time.[Week]	(Sum)Channel Inv_Inc Floor
+                    5000001	SKU 7	202449	1100
+                    5000001	SKU 7	202450	1100
+                    5000001	SKU 7	202451	1100
+                    5000001	SKU 7	202452	1100
+                    5000001	SKU 7	202501	1100
+                    5000001	SKU 7	202502	1100
+                    5000001	SKU 7	202503	1100
+
+                - process
+                    - Version.[Version Name] 삭제
+                    - do not convert from Week to Partial_Week
+            - Step 4-2) Item Master 정보 Merge
+                - 결과데이타 
+                    Sales Domain.[Ship To]	Item.[Item GBM]	Item.[Product Group]	Item.[Item]	Time.[Week]	(Sum)Channel Inv_Inc Floor
+                    5000001	MOBILE	PG 7	SKU 7	202449	1100
+                    5000001	MOBILE	PG 7	SKU 7	202450	1100
+                    5000001	MOBILE	PG 7	SKU 7	202451	1100
+                    5000001	MOBILE	PG 7	SKU 7	202452	1100
+                    5000001	MOBILE	PG 7	SKU 7	202501	1100
+                    5000001	MOBILE	PG 7	SKU 7	202502	1100
+                    5000001	MOBILE	PG 7	SKU 7	202503	1100
+
+                - process
+                    - merge df_in_Channel_Inv_Inc_Floor with df_in_Item_Master
+
+            - Step 4-3) Sales Master 정보 Merge : Skip
+                - merge df_in_Channel_Inv_Inc_Floor  with df_in_Sales_Domain_Dimension
+                - I thik this is not need. I will use lookup logic later. and skip this step.
+            - create data 
+                - df_fn_Channel_Inv_Inc_Floor
+                    merged with df_in_Item_Master
+
+
+    - Step 5)  Forecast Rule의 입력 Lv에 따른 실적 구성 서 S/In , S/Out AP1, AP2, GC 각각 구성 및 Inventory 구성. 
+        - process 
+            - load data
+                - df_fn_Sell_In_Actual_GI
+                - df_fn_Sell_In_Actual_BL
+                - df_fn_Sell_Out_Actual_GI
+                - df_fn_Channel_Inv
+                - df_fn_Channel_Inv_Inc_Floor
+    
+            - apply df_in_Forecast_Rule for loaded df to create like below
+                - declare source data and result data
+                    - df_fn_Sell_In_Actual_GI
+                        - to create
+                            - df_output_Sell_In_FCST_GI_AP1
+                            - df_output_Sell_In_FCST_GI_AP2
+                            - df_output_Sell_In_FCST_GI_GC
+                        - Question
+                            - all data is same except columns name?
+                    - df_fn_Sell_In_Actual_BL
+                        - to create
+                            - df_output_Sell_In_FCST_BL_AP1
+                            - df_output_Sell_In_FCST_BL_AP2
+                            - df_output_Sell_In_FCST_BL_GC
+
+                    - df_fn_Sell_Out_Actual_GI
+                        - to create
+                            - df_output_Sell_Out_FCST_AP1
+                            - df_output_Sell_Out_FCST_AP2
+                            - df_output_Sell_Out_FCST_GC
+                    - df_fn_Channel_Inv
+                        - to create
+                            - df_output_Channel_Inv_AP1
+                            - df_output_Channel_Inv_AP2
+                            - df_output_Channel_Inv_GC
+                    - df_fn_Channel_Inv_Inc_Floor
+                        - to create
+                            - df_output_Channel_Inv_floor_AP1
+                            - df_output_Channel_Inv_floor_AP2
+                            - df_output_Channel_Inv_floor_GC
+                - sum like SIn_FCST_AP1_BL, SIn_FCST_AP2_BL .. for result df group by below
+                    - Sales_Domain_ShipTo 
+                        - applied for df_in_Forecast_Rule
+                        
+                    - Item_Item
+                    - Product_Group
+                    - Location_Location 
+                        - apply if exists.
+                        - in df_fn_Channel_Inv and df_fn_Channel_Inv_Inc_Floor , there is none
+                    - Partial_Week or Week 
+                        - for Sell‑Out , 
+                            - df_in_Sell_Out_Actual_GI have Week, 
+                            - but df_fn_Sell_Out_Actual_GI have Partial_Week. 
+                            - and use Partial_Week
+                - note 
+                    - this process similar with step03_create_sellin_assortments in PYForecastCreateSellInAndSellOutAssortment
+                        - below is step03_create_sellin_assortments. please refer to below functions
+                            @_decoration_
+                            def step03_create_sellin_assortments(
+                                    df_asn        : pd.DataFrame,         # ← step-02 결과  (df_fn_Sales_Product_ASN)
+                                    df_rule       : pd.DataFrame,         # ← df_in_Forecast_Rule
+                                    df_ship_dim   : pd.DataFrame          # ← step-01 LUT : Ship-To ⇢ Std1-6 + LV_CODE
+                            ) -> dict[str, pd.DataFrame]:    
+                                """
+                                Build 4 assortment DataFrames (GC/AP2/AP1/Local) and return as a dict.
+
+                                Returns
+                                -------
+                                dict[str, pd.DataFrame]
+                                    {STR_DF_OUT_SIN_GC: …, STR_DF_OUT_SIN_AP2: …, …}
+                                """
+
+                                # ────────────────────────────────────────────────────────────────────────
+                                # 0) 빠른 lookup 딕셔너리 준비
+                                # ────────────────────────────────────────────────────────────────────────
+                                # 0-1) Forecast-Rule  ( (PG, ShipTo) → 4개 Rule값 tuple )
+                                for col in (COL_FR_GC, COL_FR_AP2, COL_FR_AP1, COL_FR_AP0):
+                                    df_rule[col] = df_rule[col].fillna(0).astype('int8')
+
+                                RULE: dict[tuple[str, str], tuple[int, int, int, int]] = {
+                                    (pg, ship): (gc_r, ap2_r, ap1_r, ap0_r)
+                                    for pg, ship, gc_r, ap2_r, ap1_r, ap0_r in zip(
+                                        df_rule[COL_PG].astype(str),
+                                        df_rule[COL_SHIP_TO].astype(str),
+                                        df_rule[COL_FR_GC],
+                                        df_rule[COL_FR_AP2],
+                                        df_rule[COL_FR_AP1],
+                                        df_rule[COL_FR_AP0],
+                                    )
+                                }
+                                # 0-2) Ship-To → StdN 매핑 dict (N = 1-6)
+                                dim_idx = df_ship_dim.set_index(COL_SHIP_TO)
+                                STD_MAP = {n: dim_idx[col].to_dict() for n, col in enumerate(
+                                    (COL_STD1, COL_STD2, COL_STD3, COL_STD4, COL_STD5, COL_STD6), start=1)}
+                                # 0-3) Ship-To → ancestor 집합  (상위 제거용)
+                                std_matrix = df_ship_dim[
+                                    [COL_STD1, COL_STD2, COL_STD3, COL_STD4, COL_STD5, COL_STD6]
+                                ].fillna('').to_numpy(dtype=str)
+                                leaves = df_ship_dim[COL_SHIP_TO].to_numpy(dtype=str)
+                                ANC: dict[str, set[str]] = {
+                                    leaf: {c for c in std_matrix[i] if c and c != leaf}
+                                    for i, leaf in enumerate(leaves)
+                                }    
+
+                                del std_matrix, leaves; gc.collect()
+
+                                # ────────────────────────────────────────────────────────────────────────
+                                # 1) ndarray 로 뽑아두기  (벡터화 loop)
+                                # ────────────────────────────────────────────────────────────────────────
+                                ship_np = df_asn[COL_SHIP_TO].astype(str).to_numpy()
+                                item_np = df_asn[COL_ITEM].to_numpy()
+                                loc_np  = df_asn[COL_LOC].to_numpy()
+                                pg_np   = df_asn[COL_PG].astype(str).to_numpy()
+                                asn_flag_np  = df_asn[COL_ASN_FLAG].to_numpy()
+                                sout_flag_np = df_asn[COL_SOUT_ASS_FLAG].to_numpy()
+
+                                # ────────────────────────────────────────────────────────────────────────
+                                # 2) Row-buffer 4 개
+                                # ────────────────────────────────────────────────────────────────────────
+                                buf_gc, buf_ap2, buf_ap1, buf_local = [], [], [], []
+
+                                # ────────────────────────────────────────────────────────────────────────
+                                # 3) (1‥6) Std level → RULE 매칭  (vectorised + tight Python loop)
+                                #    * lv = 1 → Std1 (=LV2) … lv = 6 → Std6 (=LV7)
+                                # ────────────────────────────────────────────────────────────────────────
+                                for lv in range(1, 7):
+                                    std_vec = np.vectorize(STD_MAP[lv].get)(ship_np)   # Ship-To → StdN
+                                    for i, std_code in enumerate(std_vec):
+                                        if not std_code:
+                                            continue
+
+                                        rule_key = (pg_np[i], std_code)
+                                        if rule_key not in RULE:
+                                            continue
+
+                                        r_gc, r_ap2, r_ap1, r_ap0 = RULE[rule_key]
+
+                                        base = {
+                                            COL_SHIP_TO      : ship_np[i],       # ♦ → 나중 ancestor 필터전 원본 ShipTo 보존
+                                            COL_ITEM         : item_np[i],
+                                            COL_LOC          : loc_np[i],
+                                            COL_ASN_FLAG     : asn_flag_np[i],
+                                            COL_SOUT_ASS_FLAG: sout_flag_np[i],
+                                        }
+
+                                        # ─ GC ──────────────────────────────────────────────────────────
+                                        if 2 <= r_gc <= 7:
+                                            trg = STD_MAP[r_gc - 1].get(ship_np[i])
+                                            if trg:
+                                                buf_gc.append(base | {COL_SHIP_TO: trg,
+                                                                    COL_SIN_ASS_GC: 1})
+                                        # ─ AP2 ─────────────────────────────────────────────────────────
+                                        if 2 <= r_ap2 <= 7:
+                                            trg = STD_MAP[r_ap2 - 1].get(ship_np[i])
+                                            if trg:
+                                                buf_ap2.append(base | {COL_SHIP_TO: trg,
+                                                                    COL_SIN_ASS_AP2: 1})
+                                        # ─ AP1 ─────────────────────────────────────────────────────────
+                                        if 2 <= r_ap1 <= 7:
+                                            trg = STD_MAP[r_ap1 - 1].get(ship_np[i])
+                                            if trg:
+                                                buf_ap1.append(base | {COL_SHIP_TO: trg,
+                                                                    COL_SIN_ASS_AP1: 1})
+                                        # ─ LOCAL(AP0) ─────────────────────────────────────────────────
+                                        if 2 <= r_ap0 <= 7:
+                                            trg = STD_MAP[r_ap0 - 1].get(ship_np[i])
+                                            if trg:
+                                                buf_local.append(base | {COL_SHIP_TO: trg,
+                                                                        COL_SIN_ASS_LOCAL: 1})
+
+                                # ────────────────────────────────────────────────────────────────────────
+                                # 4) Helper :  buffer → DF  (그룹집계 + 상위 ShipTo 제거)
+                                # ────────────────────────────────────────────────────────────────────────
+                                def flush(buf: list[dict], qty_col: str) -> pd.DataFrame:
+                                    if not buf:
+                                        return pd.DataFrame()
+
+                                    df = (pd.DataFrame(buf)
+                                            .groupby([COL_SHIP_TO, COL_ITEM, COL_LOC], as_index=False)
+                                            .agg({                                   # 집계 규칙 ⬇
+                                                qty_col          : 'sum',            # 여러 건이면 2→1 로 아래에서 재설정
+                                                COL_ASN_FLAG     : 'max',            # 'Y'>'N'
+                                                COL_SOUT_ASS_FLAG: 'max',            # True>False
+                                            })
+                                            .assign(**{qty_col: 1}))                 # 값은 항상 1
+
+                                    # ─ ancestor 필터 ────────────────────────────────────────────────
+                                    def _filter(block: pd.DataFrame) -> pd.DataFrame:
+                                        ships = block[COL_SHIP_TO].to_numpy()
+                                        anc_u  = set().union(*[ANC.get(s, set()) for s in ships])
+                                        return block.loc[~block[COL_SHIP_TO].isin(anc_u)]
+                                    
+                                    grp_cols = [
+                                        COL_ITEM
+                                        # ,COL_LOC 
+                                    ]
+                                    df = (df.groupby(grp_cols, group_keys=False, sort=False)
+                                            .apply(_filter)
+                                            .reset_index(drop=True))
+                                    return df
+
+                                out_gc    = flush(buf_gc,    COL_SIN_ASS_GC)
+                                out_ap2   = flush(buf_ap2,   COL_SIN_ASS_AP2)
+                                out_ap1   = flush(buf_ap1,   COL_SIN_ASS_AP1)
+                                out_local = flush(buf_local, COL_SIN_ASS_LOCAL)
+
+                                # ────────────────────────────────────────────────────────────────────────
+                                # 5) 반환 dict (built-in dict typing)
+                                # ────────────────────────────────────────────────────────────────────────
+                                return {
+                                    STR_DF_OUT_SIN_GC    : out_gc,
+                                    STR_DF_OUT_SIN_AP2   : out_ap2,
+                                    STR_DF_OUT_SIN_AP1   : out_ap1,
+                                    STR_DF_OUT_SIN_LOCAL : out_local,   # NEW
+                                }
+                        - diffrence
+                            - check if there is data before append 
+                                - in step03_create_sellin_assortments , we appended to rows and later delete drop_duplicates
+                                - but in this step , I will check if there is data 
+                                - if there is data , update columns for likes below columns
+                                    - SIn_FCST_AP1_GI
+                                    - SIn_FCST_AP2_GI
+                                    - SIn_FCST_GC_GI
+                                    - SIn_FCST_AP1_BL
+                                    - SIn_FCST_AP2_BL
+                                    - SIn_FCST_GC_BL
+                                    - ....
+                            - As I commented above , there is process of grouping by instead loop unlike step03_create_sellin_assortments

@@ -1,0 +1,97 @@
+	개요 (*)							
+								
+		* 프로그램명						
+			PYForecastSellOutFcstNotExist					
+								
+								
+		* 목적						
+			AP2 와 GC FCST가 없는 특정 Item 선별					
+								
+								
+								
+		* 변경이력						
+			2025.05.12 최초 작성					
+								
+								
+								
+	Script Parameter							
+			Version					
+			    - CWV_DP					
+								
+								
+								
+	Input Tables (*)							
+								
+		(Input 1) S/out FCST_AP2 값						
+			df_in_Sout					
+				Select (				
+				[Version].[Version Name].[CWV_DP]				
+				 * [Sales Domain].[Sales Std2].filter( ~(#.Name in {"300768","300340","300112"}) )				
+				 * [Item].[Item]				
+				) on row, 				
+				({Measure.[S/Out FCST_AP2],Measure.[S/Out FCST_GC]}) on column				
+				where { [Item].[Product Group].[MOBILE], [Time].[Partial Week].filter (#.Key >= &CurrentYear.element(0).leadoffset(-1).Key && #.Key < &CurrentYear.element(0).leadoffset(1).Key } ;				
+								
+								
+			Version.[Version Name]	Sales Domain.[Sales Std2]	Item.[Item]	S/Out FCST_AP2	S/Out FCST_GC	
+			CWV_DP	300114	SM-G965FZAFTIM		10	
+			CWV_DP	300114	SM-T580NZWETPH			
+								
+								
+		(Input 2) Sell-In Lock 필요한 Item 정보						
+			df_in_SELLOUTFCST_NOTEXIST					
+				Select (				
+				[Version].[Version Name].[CWV_DP]				
+				* [Item].[Item] 				
+				) on row, 				
+				({Measure.[S/Out Fcst Item Check Flag]}) on column where { Measure.[S/Out Fcst Item Check Flag] == true };				
+								
+			Version.[Version Name]	Item.[Item]	S/Out Fcst Item Check Flag			
+			CWV_DP	SM-G965FZAFTIM	True			
+			CWV_DP	SM-T580NZWETPH	True			
+			CWV_DP	SM-T813NZWEBTU	True			
+			CWV_DP	SM-A217NZKNSKO	True			
+			CWV_DP	SM-A520FZKAXSA	True			
+								
+								
+								
+								
+								
+								
+								
+	Output Tables (*)							
+								
+			df_output_SellOut_FCST_Not_Exist					
+				Select ([Version].[Version Name]				
+				 * [Sales Domain].[Sales Std2]				
+				 * [Item].[Item]  )  on row, 				
+				( { Measure.[S/Out Fcst Not Exist Flag] } ) on column;				
+								
+								
+								
+								
+								
+								
+	주요 로직 (*)							
+								
+		Step 1) df_in_Sout 조건 처리						
+			Version.[Version Name]	Sales Domain.[Sales Std2]	Item.[Item]	S/Out FCST_AP2	S/Out FCST_GC	
+			CWV_DP	300114	SM-G965FZAFTIM		10	
+			CWV_DP	300114	SM-T580NZWETPH			
+			
+            - df_in_Sout 에서 df_in_SELLOUTFCST_NOTEXIST 값이 true인 Item 만 남긴다.					
+			- Sales Std2 가  ('300768','300340','300112') 인 값을 제거한다.					
+			- Nan 인 값에 대해서 0으로 채운다.					
+			- S/Out FCST_AP2 == 0 || S/Out FCST_GC == 0 인 경우만 남긴다					
+								
+								
+								
+								
+		Step 2) 최종 Output 구성						
+			Version.[Version Name]	Sales Domain.[Sales Std2]	Item.[Item]	S/Out Fcst Not Exist Flag		
+			CWV_DP	300114	SM-T580NZWETPH	True		
+			- S/Out FCST_AP2, S/Out FCST_GC 삭제					
+			- S/Out Fcst Not Exist Flag = True 추가					
+								
+								
+								

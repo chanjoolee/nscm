@@ -1,0 +1,421 @@
+    Python 개발요청서 : PYDPUploadeStoreUIDataSplit.py
+
+        개요 (*)
+
+            * 프로그램명
+                PYDPUploadeStoreUIDataSplit
+
+
+
+            * 목적
+                - df_in_d 로 들어오는 데이타는 ^를 구분자로 갖는다.  
+                    - 데이타를 ^ split 하여 df_out 을 만든다.
+                    - 이때 column 명은 df_in_h 를 이용한다.
+                - 단 아래의 컬럼이 있으면  값을 변환한다.(df_in_ratio 의 pw 별 값을 이용)
+                    - PM  : S/Out FCST_AP2, S/In FCST(GI)_AP2, S/Out FCST Modify_AP2
+                    - KAM : S/Out FCST_AP1, S/In FCST(GI)_AP1, S/Out FCST Modify_AP1
+                    
+
+
+        Script Parameter
+
+                Version
+                - CWV_DP
+
+
+        Input Tables (*)
+
+
+            (Input 1) df_in_h. header 정보
+                - 참고
+                    - DP Data Seq.[DP Data Seq]
+                        - AP2 : 5
+                        - AP1 : 15
+                - query
+                    Select (
+                        [DP Data Seq].[DP Data Seq] 
+                    ) on row, 
+                    ({
+                        Measure.[Upload Header_Dimension], 
+                        Measure.[Upload Header_Measure]
+                    }) on column 
+                    where { 
+                        [Personnel].[Email], 
+                        [Version].[Version Name] 
+                    };
+                    
+                - data
+                    DP Data Seq.[DP Data Seq],Upload Header_Dimension,Upload Header_Measure
+                    5,Version.[Version Name]^Item.[Item]^Location.[Location]^Sales Domain.[Ship To]^Time.[Week],S/Out FCST_AP2^S/Out FCST_AP2(ADJ)^S/In FCST(GI)_AP2^S/In FCST(GI)_AP2(W+0)^S/In FCST(GI)_AP2(W+1)^S/In FCST(GI)_AP2(W+2)^S/In FCST(GI)_AP2(W+3)^S/In FCST(GI)_AP2(W+4)^S/In FCST(GI)_AP2(W+5)^S/In FCST(GI)_AP2(W+6)^S/In FCST(GI)_AP2(W+7)^S/In FCST(GI)_AP2(Long Tail)^S/Out FCST Modify_AP2
+
+
+            (Input 2) df_in_d. detail 정보
+                - query
+                    Select (
+                        [DP Data Seq].[DP Data Seq] 
+                        * [DP Data Seq Detail].[DP Data Seq Detail]
+                    ) on row, 
+                    ({Measure.[Upload Data_Data]}) on column 
+                    where { 
+                        [Personnel].[Email], 
+                        [Version].[Version Name] 
+                    };
+                    
+                - data
+                    DP Data Seq.[DP Data Seq],DP Data Seq Detail.[DP Data Seq Detail],Upload Data_Data
+                    5,1,CWV_DP^CG-P615NZAREIA^L424WC4A^CH018876^202546^200^200^200^200^^^^^^^^^1
+                    5,10,CWV_DP^CG-P615NZAREIA^L424WC4A^CH018876^202603^^^71^^71^0^0^0^0^0^0^0^
+                    5,100,CWV_DP^CG-T575FZKBGYA^L424WC4A^CH018876^202603^^^71^^71^0^0^0^0^0^0^0^
+                    5,101,CWV_DP^CG-T575FZKRGJA^L424WC4A^CH018876^202546^200^200^200^200^^^^^^^^^1
+                    5,102,CWV_DP^CG-T575FZKRGJA^L424WC4A^CH018876^202547^200^200^200^200^0^^^^^^^^1
+                    5,103,CWV_DP^CG-T575FZKRGJA^L424WC4A^CH018876^202548^200^200^200^200^0^0^^^^^^^1
+                    5,104,CWV_DP^CG-T575FZKRGJA^L424WC4A^CH018876^202549^200^200^129^129^0^0^0^^^^^^1
+                    5,105,CWV_DP^CG-T575FZKRGJA^L424WC4A^CH018876^202550^200^200^200^129^71^0^0^0^^^^^1
+                    5,106,CWV_DP^CG-T575FZKRGJA^L424WC4A^CH018876^202551^200^200^200^129^71^0^0^0^0^^^^1
+                    5,107,CWV_DP^CG-T575FZKRGJA^L424WC4A^CH018876^202552^200^200^200^129^71^0^0^0^0^0^^^1
+                    5,108,CWV_DP^CG-T575FZKRGJA^L424WC4A^CH018876^202601^200^200^200^129^71^0^0^0^0^0^0^0^1
+                    5,109,CWV_DP^CG-T575FZKRGJA^L424WC4A^CH018876^202602^200^200^200^129^71^0^0^0^0^0^0^0^1
+                    5,11,CWV_DP^CG-P615NZARETA^L424WC4A^CH018876^202546^200^200^200^200^^^^^^^^^1
+                    5,110,CWV_DP^CG-T575FZKRGJA^L424WC4A^CH018876^202603^^^71^^71^0^0^0^0^0^0^0^
+                    5,111,CWV_DP^CG-T575FZKRGKA^L424WC4A^CH018876^202546^200^200^200^200^^^^^^^^^1
+                    5,112,CWV_DP^CG-T575FZKRGKA^L424WC4A^CH018876^202547^200^200^200^200^0^^^^^^^^1
+                    5,113,CWV_DP^CG-T575FZKRGKA^L424WC4A^CH018876^202548^200^200^200^200^0^0^^^^^^^1
+                    5,114,CWV_DP^CG-T575FZKRGKA^L424WC4A^CH018876^202549^200^200^129^129^0^0^0^^^^^^1
+                    5,115,CWV_DP^CG-T575FZKRGKA^L424WC4A^CH018876^202550^200^200^200^129^71^0^0^0^^^^^1
+                    5,116,CWV_DP^CG-T575FZKRGKA^L424WC4A^CH018876^202551^200^200^200^129^71^0^0^0^0^^^^1
+                    5,117,CWV_DP^CG-T575FZKRGKA^L424WC4A^CH018876^202552^200^200^200^129^71^0^0^0^0^0^^^1
+                    5,118,CWV_DP^CG-T575FZKRGKA^L424WC4A^CH018876^202601^200^200^200^129^71^0^0^0^0^0^0^0^1
+                    5,119,CWV_DP^CG-T575FZKRGKA^L424WC4A^CH018876^202602^200^200^200^129^71^0^0^0^0^0^0^0^1
+
+
+            (Input 3) df_in_ratio. ratio 정보
+                - query
+                    Select (
+                        [Version].[Version Name] 
+                        * [Item].[Item] 
+                        * [Location].[Location] 
+                        * [Sales Domain].[Ship To] 
+                        * [Time].[Partial Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )    
+                    ) on row, 
+                    ({
+                        Measure.[S/In FCST(GI) Split Ratio_AP1] ,
+                        Measure.[S/In FCST(GI) Split Ratio_AP2] ,
+                        Measure.[S/Out FCST Split Ratio_AP1],
+                        Measure.[S/Out FCST Split Ratio_AP2]
+                        
+                    }) on column
+                    ;
+
+                    Select (             
+                        [Sales Domain].[Ship To].filter(#.[eStore Account YN] == true)             
+                        * [Item].[Item]             
+                        * [Location].[Location]             
+                        * [Time].[Partial Week]         
+                    ) on row,         
+                    ({             
+                        Measure.[S/Out FCST Split Ratio_AP2], 
+                        Measure.[S/In FCST(GI) Split Ratio_AP2], 
+                        Measure.[S/Out FCST Split Ratio_AP1], 
+                        Measure.[S/In FCST(GI) Split Ratio_AP1]         
+                    }) on column         
+                    where { 
+                        [Version].[Version Name].[CWV_DP], 
+                        [Time].[Week].filter(#.Name >= &CurrentWeek.element(0).Name)      
+                    };
+
+                - data
+                    Version.[Version Name],Item.[Item],Location.[Location],Sales Domain.[Ship To],Time.[Partial Week],S/In FCST(GI) Split Ratio_AP1,S/In FCST(GI) Split Ratio_AP2,S/Out FCST Split Ratio_AP1,S/Out FCST Split Ratio_AP2
+                    CWV_DP,AC026RN1DKG/EU,S711,CT002891,202546A,,1,,
+                    CWV_DP,AC026RN1DKG/EU,S711,CT008473,202546A,,1,,
+                    CWV_DP,AC026RN1DKG/EU,S711,CH002393,202546A,1,,,
+                    CWV_DP,AC026RN1DKG/EU,S711,CH019793,202546A,1,,,
+                    CWV_DP,AC026RN1DKG/EU,-,CH002393,202546A,,,0.0006059575242540436,0.0006059575242540436
+                    CWV_DP,AC035RNMDKG/EU,S711,CT002891,202546A,,1,,
+                    CWV_DP,AC035RNMDKG/EU,S711,CH002393,202546A,1,,,
+                    CWV_DP,AC035RNMDKG/EU,-,CH002393,202546A,,,0.00173130721215441,0.00173130721215441
+                    CWV_DP,AC026RNNDKG/EU,S711,CT002891,202546A,,1,,
+                    CWV_DP,AC026RNNDKG/EU,S711,CH002393,202546A,1,,,
+                    CWV_DP,AC026RNNDKG/EU,-,CH002393,202546A,,,0.0015581764909389693,0.0015581764909389693
+                    CWV_DP,AC026RXADKG/EU,S711,CT002891,202546A,,1,,
+                    CWV_DP,AC026RXADKG/EU,S711,CT008473,202546A,,1,,
+                    CWV_DP,AC026RXADKG/EU,S711,CH002393,202546A,1,,,
+                    CWV_DP,AC026RXADKG/EU,S711,CH019793,202546A,1,,,
+                    CWV_DP,AC026RXADKG/EU,-,CH002393,202546A,,,0.0024238300970161743,0.0024238300970161743
+                    CWV_DP,AC026TNXDKG/EU,S711,CT002891,202546A,,1,,
+                    CWV_DP,AC026TNXDKG/EU,S711,CH002393,202546A,1,,,
+                    CWV_DP,AC026TNXDKG/EU,-,CH002393,202546A,,,0.0015581764909389693,0.0015581764909389693
+                    CWV_DP,AC026DN1DKF/TS,S501,SU000145,202546A,,1,,
+                    CWV_DP,AC026DN1DKF/TS,S501,CH019122,202546A,1,,,
+                    CWV_DP,AC026DN1DKF/TS,S501,CH007231,202546A,1,,,
+                    CWV_DP,AC026DN1DKF/TS,S501,CH000195,202546A,1,,,
+                    CWV_DP,AC026DN1DKF/TS,S501,CH020245,202546A,1,,,
+                    CWV_DP,AC026DN1DKF/TS,S501,CH021632,202546A,1,,,
+                    CWV_DP,AC026DN1DKF/TS,S501,CH020239,202546A,1,,,
+                    CWV_DP,AC026DN1DKF/TS,S501,CH022200,202546A,1,,,
+                    CWV_DP,AC026DN1DKF/TS,S501,CH021634,202546A,1,,,
+                    CWV_DP,AC026DXADKF/TS,S501,SU000145,202546A,,1,,
+                    CWV_DP,AC026DXADKF/TS,S501,CH019122,202546A,1,,,
+                    CWV_DP,AC026DXADKF/TS,S501,CH007231,202546A,1,,,
+                    CWV_DP,AC026DXADKF/TS,S501,CH000195,202546A,1,,,
+                    CWV_DP,AC026DXADKF/TS,S501,CH020245,202546A,1,,,
+                    CWV_DP,AC026DXADKF/TS,S501,CH021632,202546A,1,,,
+                    CWV_DP,AC026DXADKF/TS,S501,CH020239,202546A,1,,,
+                    CWV_DP,AC026DXADKF/TS,S501,CH022200,202546A,1,,,
+                    CWV_DP,AC026DXADKF/TS,S501,CH021634,202546A,1,,,
+                    CWV_DP,AC035DN1DKF/TS,S501,SU000145,202546A,,1,,
+                    CWV_DP,AC035DN1DKF/TS,S501,CH019122,202546A,1,,0.015316343031928898,0.015316343031928898                
+
+
+            (Input 4) df_in_week. Time 정보 pw
+                - query
+                    Select (
+                        Time.[Week].filter(#.Key >= &CurrentWeek.element(0).Key  && #.Key <= &CurrentWeek.element(0).leadoffset(52).Key )
+                        * Time.[Partial Week]   
+                    );
+
+                - data
+                    Time.[Week],Time.[Partial Week]
+                    202546,202546A
+                    202547,202547A
+                    202548,202548A
+                    202549,202549A
+                    202550,202550A
+                    202551,202551A
+                    202552,202552A
+                    202601,202601A
+                    202601,202601B
+                    202602,202602A
+                    202603,202603A
+                    202604,202604A
+                    202605,202605A
+                    202605,202605B
+                    202606,202606A
+                    202607,202607A
+                    202608,202608A
+                    202609,202609A
+                    202609,202609B
+                    202610,202610A
+                    202611,202611A
+                    202612,202612A
+                    202613,202613A
+                    202614,202614A
+                    202614,202614B
+                    202615,202615A
+                    202616,202616A
+                    202617,202617A
+                    202618,202618A
+                    202618,202618B
+                    202619,202619A
+                    202620,202620A
+                    202621,202621A
+                    202622,202622A
+                    202623,202623A
+                    202624,202624A
+                    202625,202625A
+                    202626,202626A
+                    202627,202627A
+                    202627,202627B
+                    202628,202628A
+                    202629,202629A
+                    202630,202630A
+                    202631,202631A
+                    202631,202631B
+                    202632,202632A
+                    202633,202633A
+                    202634,202634A
+                    202635,202635A
+                    202636,202636A
+                    202636,202636B
+                    202637,202637A
+                    202638,202638A
+                    202639,202639A
+                    202640,202640A
+                    202640,202640B
+                    202641,202641A
+                    202642,202642A
+                    202643,202643A
+                    202644,202644A
+                    202644,202644B
+                    202645,202645A
+                    202646,202646A
+
+
+
+        Output Tables (*)
+            1. (Output 1) df_out
+                - 참고 : Upload Header_Dimension , Upload Header_Measure , 에 정의된 컬럼을 return 한다.
+                    Select (
+                    [Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Item]
+                    * [Location].[Location]
+                    * [Time].[Partial Week]
+                    ) on row,
+                    ( { 
+                        Measure.[S/Out FCST Split Ratio_AP2], 
+                        ...
+                    } ) on column;
+
+            2. (Output 1-4) df_out_log
+
+
+            3. (Output 1-5) df_out_logDetail
+
+        주요 로직(*)
+
+            Step 1) df_in_d 를 split 한다.
+                
+                - process 
+                    - load data 
+                        - df_in_h
+                        - df_in_d
+                    - data를 '^' 로 스플릿한다.
+                        - 컬럼을 바라보는 키는 DP Data Seq.[DP Data Seq] 이다.
+                        - 참고 : 기존의 코드
+                            
+                            df_out = df_in_d[["Upload Data_Data"]].copy()
+
+                            # 데이타 분해
+                            df_out = df_out["Upload Data_Data"].str.split("^", expand=True)
+
+                            # 컬럼명 변경
+                            dimension = df_in_h.at[0, "Upload Header_Dimension"]
+                            measure = df_in_h.at[0, "Upload Header_Measure"]
+                            df_out.columns = dimension.split("^") + measure.split("^")
+                    
+                    - return df_step_01
+
+            Step 2) df_step_01 을 전처리한다.
+                - process 
+                    - load 
+                        - df_step_01
+                    - [Version].[Version Name]  컬럼을 삭제한다.
+                    - return df_step_02
+            Step 3) Ratio 처리 (FCST)
+                - result( S377WC1R 의 'S/Out FCST_AP1' 이 100. 
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST_AP1
+                    408349,HAF-QIN-2P/EXP,S377WC1R,202540A,67
+                    408349,HAF-QIN-2P/EXP,S377WC1R,202540B,33
+                    408349,HAF-QIN-2P/EXP,S374WC1R,202540A,133
+                    408349,HAF-QIN-2P/EXP,S374WC1R,202540B,67
+
+                    - 가정
+                        - S377WC1R
+                            - 'S/Out FCST_AP1': 100
+                            -  S/Out FCST Split Ratio_AP1
+                                - 202540A : 2
+                                - 202540B : 1
+
+                        - S374WC1R
+                            - 'S/Out FCST_AP1': 200
+                            -  S/Out FCST Split Ratio_AP1
+                                - 202540A : 2
+                                - 202540B : 1
+
+                - process
+                    - load data
+                        - Step 2) 의 결과( df_step_02 ) 
+                        - df_in_week
+                        - df_in_ratio
+                    - 필터 : df_step_02 에서 아래의 컬럼들만 처리한다.(없는경우도 있음) 
+                        - S/Out FCST_AP2           
+                        - S/In FCST(GI)_AP2     
+                        - S/Out FCST_AP1        
+                        - S/In FCST(GI)_AP1     
+
+
+                    - df_in_ratio 에서 일치하는 데이타를 찾아 해당하는 ratio 컬럼을 찾는다.
+                        - partial week 추가(df_step_02 에는 Time.[Week] 만 있다.) 
+                            - df_in_week 을 이용하여 df_in_ratio 에 Time.[Week] 컬럼을 붙인다.                        
+                            - df_in_week 를 이용하여 df_step_02 에 Time.[Week] 컬럼을 붙인다.  
+                        - df_in_ratio 에서 ratio 컬럼을 찾는다
+                            - 매핑(target : ratio ) 
+                                - S/Out FCST_AP2    :  S/Out FCST Split Ratio_AP2  
+                                - S/In FCST(GI)_AP2 :  S/In FCST(GI) Split Ratio_AP2 
+                                - S/Out FCST_AP1    :  S/Out FCST Split Ratio_AP1 
+                                - S/In FCST(GI)_AP1 :  S/In FCST(GI) Split Ratio_AP1
+
+                            - df_in_ratio 에서 값을 찾은경우 
+                                
+
+                                - partial week 가 하나인경우
+                                    - 아무런 행동을 하지 않는다.
+
+                                - partial week 가 2개인경우(ex: 202601A,202601B)
+                                    - target column(ex:S/In FCST(GI)_AP2) 의 값을 ratio 컬럼의 비율대로 배분한다.
+                                    - 소수점처리
+                                        - 소수점 부분이 0.5 보다 크면 절상한다
+                                        - 소스점 부분이 0.5 보다 작으면 절삭한다
+
+                            - df_in_ratio 에서 값을 찾지 못한경우
+                                - partial week 가 하나인경우
+                                    - 아무런 행동을 하지 않는다.
+                                - partial week 가 2개인경우(ex: 202601A,202601B)
+                                    - 값을 반으로 나눈다. 
+                                    - 소수점처리
+                                        - 소수점 부분이 0.5 보다 크면 절상한다
+                                        - 소스점 부분이 0.5 보다 작으면 절삭한다
+
+                        - target column 들을 integer 화 한다.(int32)
+                    - return df_out
+
+
+            Step 4) Ratio 처리 (Modify 컬럼)
+                - result (ex):
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Time.[Partial Week],S/Out FCST Modify_AP1
+                    408349,HAF-QIN-2P/EXP,S377WC1R,202540A,1
+                    408349,HAF-QIN-2P/EXP,S377WC1R,202540B,1
+                    408349,HAF-QIN-2P/EXP,S374WC1R,202540A,1
+                    408349,HAF-QIN-2P/EXP,S374WC1R,202540B,1
+
+                    - 가정
+                        - S377WC1R
+                            - 'S/Out FCST_AP1': 1
+
+                        - S374WC1R
+                            - 'S/Out FCST_AP1': 1
+                
+                - process
+                    - load data
+                        - Step 3) 의 결과( df_step_03 ) 
+                        - df_in_week
+                        - df_in_ratio
+                    - 필터 : df_step_02 에서 아래의 컬럼들만 처리한다.(없는경우도 있음) 
+                        - S/Out FCST Modify_AP2           
+                        - S/Out FCST Modify_AP1
+
+
+                    - (적용안함) df_in_ratio 에서 일치하는 데이타를 찾아 해당하는 ratio 컬럼을 찾는다.
+                        - A/B 주차모두에 target column의 값을 그대로 대입한다.
+                            - Step 3) 의 경우 금액을 나누었지만 여기서는 그대로 대입한다.
+
+                    - 여기서는 값을 그대로 같은 값 을 대입한다. 
+                        - df_in_ratio 를 찾는 작업을 안한다.
+                        - 원래의 값이 nan 인 경우 nan으로 처리한다. 0 이면 nan 이다.
+
+                    - return df_out
+
+
+            Step 5) Version 추가
+                - process
+                    - load 
+                        - Step 4) 의 결과( df_step_04 ) 
+                    - 맨앞에 컬럼 Version 을 붙인다.
+                    - return df_out
+
+
+
+
+호출 (*)
+
+    EXEC plugin instance [PYDPUploadeStoreUIDataSplit] for measures {[Upload Data_Data]}
+    using scope ( 
+    [Item].[Item].filter(#.Name in {"CG-P615NZAREIA","CG-P615NZARETA","CG-P615NZBRETB","CG-P615NZIRETC","CG-P355MZWRGTC","CG-P355NZWFGAC","CG-P355NZWLGXA","CG-P615NZABEPA","CG-T575FZKBGPA","CG-T575FZKBGYA","CG-T575FZKRGJA","CG-T575FZKRGKA","SM-A166BZKDEEE","SM-A166BZKDEUE","SM-A175FLBEEUE","SM-A176BZAAEUE","SM-A165FZABEUE","SM-A165FZACEUE","SM-A165FZKCEUE","SM-A175FZKBEUE","SM-A166BZKIEUE","SM-A165FLGBEUE","SM-A176BZKAEUE","SM-A165FLGCEUE","SM-A175FZABEUE","SM-A166BLGDEUE","SM-A175FZAEEUE","SM-A166BLGIEUE","SM-A166BZADEUE","SM-A165FZKBEEE","SM-A165FZKBEUE","SM-A166BZAIEUE","SM-A175FLBBEUE","SM-A176BZBAEUE","SM-A266BZWBEUE","SM-A266BZWCEUE","SM-A266BZKBEUE","SM-A266BLGBEUE","SM-A266BLGCEUE","SM-A366BZAGEUE","SM-A366BZKGEUE","SM-A366BLVBEUE","SM-A366BLVGEUE","SM-A366BZKBEUE","SM-A366BZABEUE","SM-A366BLGGEUE","SM-A566BLIAEUE","SM-A566BLICEUE","SM-A566BZGAEUE","SM-A566BZGCEUE","SM-A566BZKCEUE","SM-A566BZAAEUE","SM-A566BZACEUE","SM-A566BZKAEUE","SM-F766BZKGEUE","SM-F766BZRHEUE","SM-F766BZKHEUE","SM-F766BLGGEUE","SM-F766BLGHEUE","SM-F766BDBGEUE","SM-F766BDBHEUE","SM-F766BZRGEUE","SM-G556BZKDEEE","SM-F966BZKCEUE","SM-F966BZKNEUE","SM-F966BDBBEUE","SM-F966BLGBEUE","SM-F966BDBCEUE","SM-F966BLGCEUE","SM-F966BZSBEUE","SM-F966BDBNEUE","SM-F966BZKBEUE","SM-F966BZSCEUE","SM-S731BZKGEUE","SM-S731BZKIEUE","SM-S731BZWDEUE","SM-S731BZWGEUE","SM-S731BZWIEUE","SM-S731BLBDEUE","SM-S731BDBDEUE","SM-S731BLBGEUE","SM-S731BDBGEUE","SM-S731BZKDEUE","SM-S721BZKDEEE","SM-S731BDBIEUE","SM-S921BZVDEUE","SM-S921BZYGEUE","SM-S921BZVGEUE","SM-S921BZKGEUE","SM-S921BZAGEUE","SM-S921BZKDEUE","SM-S921BZADEUE","SM-S938BZSDEUE","SM-S938BZSGEUE","SM-S938BZSHEUE","SM-S938BZTDEUE","SM-S938BZTGEUE","SM-S938BZKGEUE","SM-S938BZTHEUE","SM-S938BZKHEUE","SM-S938BZGGEUE","SM-S938BZGHEUE","SM-S937BZSGEUE","SM-S938BZKDEUE","SM-S936BZRDEUE","SM-S936BZSGEUE","SM-S936BZRGEUE","SM-S937BZKDEUE","SM-S936BLGDEUE","SM-S936BLGGEUE","SM-S936BLBDEUE","SM-S936BZKDEUE","SM-S936BLBGEUE","SM-S938BZDDEUE","SM-S938BZDGEUE"})
+    * [Sales Domain].[Ship To].filter(#.Name in {"CH018876"})
+    * [Version].[Version Name].[CWV_DP]
+    * [Time].[Week].filter (#.Key >= &CurrentWeek.element(0).leadoffset(0).Key && #.Key < &CurrentWeek.element(0).leadoffset(52).Key)
+    * [Time].[Partial Week].filter (#.Key >= &CurrentWeek.element(0).leadoffset(0).Key && #.Key < &CurrentWeek.element(0).leadoffset(52).Key)
+    * [DP Data Seq].[DP Data Seq].[15]
+    * [Personnel].[Email].[angeun09.lee@partner.samsung.com] 
+    ) 
+    using arguments {(ExecutionMode, "MediumWeight"), (MaxSliceTableCells, 200000000), (MaxConcurrency, 1 )};

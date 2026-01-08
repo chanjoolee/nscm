@@ -944,6 +944,7 @@ def gfn_get_partial_week(p_datetime: datetime, p_bool_FI_week: bool = False) -> 
         result = iyyyiw
     return result
 
+
 def gfn_is_partial_week(week_str: str) -> bool:
     """
     Check if the input week string represents a partial week by determining if the dates span across different months.
@@ -962,6 +963,8 @@ def gfn_is_partial_week(week_str: str) -> bool:
     months = {date.month for date in dates_in_week}
     # If there is more than one unique month, it's a partial week
     return len(months) > 1
+
+
 
 def gfn_get_partial_week_days(week_str: str) -> dict:
     """

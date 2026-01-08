@@ -1,0 +1,88 @@
+PYForecastCreateSellInAndSellOutAssortment					
+	Python 개발요청서 : PYForecastSellInAssortment.py				
+					
+		개요 (*)			
+					
+			* 프로그램명		
+				PYForecastCreateSellInAndSellOutAssortment	
+					
+					
+			* 목적		
+				- Lock 조건이 풀렸을 경우, 입력 정상 작동 유도	
+				- Ratio 가 없는 경우, Intersection 생성 방지	
+				- S/In FCST(GI) Assortment_GC Measure의 Assortment 생성	
+				- S/In FCST(GI) Assortment_AP2 Measure의 Assortment 생성	
+				- S/In FCST(GI) Assortment_AP1 Measure의 Assortment 생성	
+				- S/Out FCST Assortment_GC Measure의 Assortment 생성	
+				- S/Out FCST Assortment_AP2 Measure의 Assortment 생성	
+				- S/Out FCST Assortment_AP1 Measure의 Assortment 생성	
+					
+					
+			* 변경이력		
+				2025.03.24 전창민 최초 작성	
+				2025.06.09 Sell-out Simul Master Input 추가 및 로직 변경	
+
+                (25.06.09) 변경점
+                    * Input 6 추가
+                    * Step 2) 에서 S/Out Assortment Column 추가 및 로직 변경
+                    - Step 3) 에서 S/Out Assortment 의 Aggr MAX로 연산 추가 필요
+                    - Step 4) 로직 변경
+                    - Step 5) 에서 전처리 로직 추가 S/Out Assortment Column 삭제
+		
+        Script Parameter			
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+		Input Tables (*)			
+					
+			(Input 1) Forecast Rule 정보		
+				df_in_Forecast_Rule	
+					Select ([Version].[Version Name].[CWV_DP]
+					 * [Item].[Product Group] 
+					 * [Sales Domain].[Ship To] )  on row, 
+					( { Measure.[FORECAST_RULE GC FCST], Measure.[FORECAST_RULE AP2 FCST], Measure.[FORECAST_RULE AP1 FCST], Measure.[FORECAST_RULE CUST FCST],Measure.[FORECAST_RULE ISVALID] } ) on column where {Measure.[FORECAST_RULE ISVALID]  == "Y"};
+
+                Version.[Version Name]	Item.[Product Group]	Sales Domain.[Ship To]	FORECAST_RULE GC FCST	FORECAST_RULE AP2 FCST	FORECAST_RULE AP1 FCST	FORECAST_RULE CUST FCST	FORECAST_RULE ISVALID
+                CWV_DP	REF	300114	3	5	6		Y
+                CWV_DP	REF	400362		6			Y
+                CWV_DP	MOBILE	300114	6	6	6		Y
+                CWV_DP	MOBILE	5002453	7	7	7		Y
+                CWV_DP	TV	300114	3	3	3		Y
+
+			(Input 2) Sales Domian Master 정보		
+				df_in_Sales_Domain_Dimension	
+					Select (
+					 * [Sales Domain].[Sales Std1]
+					 * [Sales Domain].[Sales Std2] 
+					 * [Sales Domain].[Sales Std3] 
+					 * [Sales Domain].[Sales Std4] 
+					 * [Sales Domain].[Sales Std5] 
+					 * [Sales Domain].[Sales Std6] 
+					 * [Sales Domain].[Ship To] )
+
+                Sales Domain.[Sales Std1]	Sales Domain.[Sales Std2]	Sales Domain.[Sales Std3]	Sales Domain.[Sales Std4]	Sales Domain.[Sales Std5]	Sales Domain.[Sales Std6]	Sales Domain.[Ship To]
+                203	203	203	203	203	203	203
+                203	300114	300114	300114	300114	300114	300114
+                203	300114	A300114	A300114	A300114	A300114	A300114
+                203	300114	A300114	400362	400362	400362	400362
+                203	300114	A300114	400362	5002453	5002453	5002453
+                203	300114	A300114	400362	5002453	A5002453	A5002453
+                203	300114	A300114	400362	5003074	5003074	5003074
+                203	300114	A300114	400362	5003074	A5003074	A5003074
+                203	300114	A300114	400362	5005569	5005569	5005569
+                203	300114	A300114	400362	5005569	A5005569	A5005569
+                203	300114	A300114	400362	5007280	5007280	5007280
+                203	300114	A300114	400362	5007280	A5007280	A5007280
+                203	300114	A300114	408273	408273	408273	408273
+                203	300114	A300114	408273	5006941	5006941	5006941
+                203	300114	A300114	408273	5006941	A5006941	A5006941
+                203	300114	A300114	408273	5019692	5019692	5019692
+                203	300114	A300114	408273	5019692	A5019692	A5019692

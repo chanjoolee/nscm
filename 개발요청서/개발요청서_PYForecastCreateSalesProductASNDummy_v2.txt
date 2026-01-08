@@ -1,0 +1,332 @@
+* 프로그램명	
+	PYForecastCreateSalesProductASNDummy
+
+
+* 목적	
+	- SalesProductASN 의 기본 Data가 6/7 Lv로 되어 있어서, Dummy Data가 보이기 위해서 Dummy에 대한 ASN 생성 필요
+	- Sell-Out Data를 위한 Location = '-' 인 Data 생성 필요
+	- PY 실행 전 o9에서 ASN의 초기 Leaf Data를 제외하고 삭제 필요
+
+
+* 변경이력	
+	2025.03.28 전창민 최초 작성
+
+* Script Parameter
+
+
+* Input Tables (*)
+
+    - (Input 1) Sales Domian Master 정보		
+        df_in_Sales_Domain_Dimension	
+            Select (
+            * [Sales Domain].[Sales LV2]
+            * [Sales Domain].[Sales LV3] 
+            * [Sales Domain].[Sales LV4] 
+            * [Sales Domain].[Sales LV5] 
+            * [Sales Domain].[Sales LV6] 
+            * [Sales Domain].[Sales LV7] 
+            * [Sales Domain].[Ship To] )
+
+            Sales Domain.[Sales LV2]	Sales Domain.[Sales LV3]	Sales Domain.[Sales LV4]	Sales Domain.[Sales LV5]	Sales Domain.[Sales LV6]	Sales Domain.[Sales LV7]	Sales Domain.[Ship To]
+            203	203	203	203	203	203	203
+            203	300114	300114	300114	300114	300114	300114
+            203	300114	A300114	A300114	A300114	A300114	A300114
+            203	300114	A300114	400362	400362	400362	400362
+            203	300114	A300114	400362	5002453	5002453	5002453
+            203	300114	A300114	400362	5002453	A5002453	A5002453
+            203	300114	A300114	400362	5003074	5003074	5003074
+            203	300114	A300114	400362	5003074	A5003074	A5003074
+            203	300114	A300114	400362	5005569	5005569	5005569
+            203	300114	A300114	400362	5005569	A5005569	A5005569
+            203	300114	A300114	400362	5007280	5007280	5007280
+            203	300114	A300114	400362	5007280	A5007280	A5007280
+            203	300114	A300114	408273	408273	408273	408273
+            203	300114	A300114	408273	5006941	5006941	5006941
+            203	300114	A300114	408273	5006941	A5006941	A5006941
+            203	300114	A300114	408273	5019692	5019692	5019692
+            203	300114	A300114	408273	5019692	A5019692	A5019692
+
+    - (Input 2) Sales Product ASN 정보					
+        df_in_Sales_Product_ASN				
+            Select ([Version].[Version Name]			
+            * [Sales Domain].[Ship To] 			
+            * Item.[Item]			
+            * [Location].[Location] )  on row, 			
+            ( { Measure.[Sales Product ASN] } ) on column			
+            where { (Measure.[Sales Product ASN] == "Y" ) } ;			
+                        
+        Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Sales Product ASN
+        CWV_DP	A5002453	RF29BB8600QLAA	S377	Y
+        CWV_DP	A5002453	RF29BB8600QLAA	S376	Y
+        CWV_DP	5006941	RF29BB8600QLAA	S377	Y
+        CWV_DP	5006941	RF29BB8600QLAA	S376	Y
+
+* Output Tables (*)
+    - (Output 1)		
+        Output_Sales_Product_ASN	
+            Select ([Version].[Version Name]
+            * [Sales Domain].[Ship To] 
+            * Item.[Item]
+            * [Location].[Location] )  on row, 
+            ( { Measure.[Sales Product ASN] } ) on column
+            where { (Measure.[Sales Product ASN] == "Y" ) } ;
+
+        Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Sales Product ASN
+        CWV_DP	203	RF29BB8600QLAA	S377	Y
+        CWV_DP	203	RF29BB8600QLAA	S376	Y
+        CWV_DP	300114	RF29BB8600QLAA	S377	Y
+        CWV_DP	300114	RF29BB8600QLAA	S376	Y
+        CWV_DP	A300114	RF29BB8600QLAA	S377	Y
+        CWV_DP	A300114	RF29BB8600QLAA	S376	Y
+        CWV_DP	400362	RF29BB8600QLAA	S377	Y
+        CWV_DP	400362	RF29BB8600QLAA	S376	Y
+        CWV_DP	408273	RF29BB8600QLAA	S377	Y
+        CWV_DP	408273	RF29BB8600QLAA	S376	Y
+        CWV_DP	5002453	RF29BB8600QLAA	S377	Y
+        CWV_DP	5002453	RF29BB8600QLAA	S376	Y
+        CWV_DP	203	RF29BB8600QLAA	-	Y
+        CWV_DP	300114	RF29BB8600QLAA	-	Y
+        CWV_DP	A300114	RF29BB8600QLAA	-	Y
+        CWV_DP	400362	RF29BB8600QLAA	-	Y
+        CWV_DP	408273	RF29BB8600QLAA	-	Y
+        CWV_DP	5002453	RF29BB8600QLAA	-	Y
+        CWV_DP	A5002453	RF29BB8600QLAA	-	Y
+        CWV_DP	A5002453	RF29BB8600QLAA	-	Y
+        CWV_DP	5006941	RF29BB8600QLAA	-	Y
+        CWV_DP	5006941	RF29BB8600QLAA	-	Y
+
+
+- Summary of origin
+    Step 1) Sales Product ASN 전처리			
+        Step 1-1) Sales Product 전처리	
+            - load data 
+                df_in_asn = input_dataframes['df_in_Sales_Product_ASN'].copy()
+            - Version.[Version Name] 삭제		
+            - Sales Product ASN 삭제	
+            - result data will be below 
+                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+                A5002453	RF29BB8600QLAA	S377
+                A5002453	RF29BB8600QLAA	S376
+                5006941	RF29BB8600QLAA	S377
+                5006941	RF29BB8600QLAA	S376
+            - df_fn_Sales_Product_ASN 생성 like below
+                - output_dataframes['df_fn_Sales_Product_ASN'] = df_in_asn
+
+        Step 1-2) Sales Product Sell-Out Data 구성	
+            - load data df_fn_Sales_Product_ASN
+                - df_fn_asn =  output_dataframes['df_fn_Sales_Product_ASN']
+            - Location.[Location] 삭제		
+            - Sales Domain.[Ship To] * Item.[Item] 으로 Group by 진행		
+            - Location.[Location] = '-' Data 추가		
+            - output_sellout 으로 Keep	
+            - set df 
+                output_dataframes['df_fn_Sales_Product_ASN_Dummy'] = df_fn_asn_dummy
+            - result data will be below 	
+                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+                A5002453	RF29BB8600QLAA	-
+                A5002453	RF29BB8600QLAA	-
+                5006941	RF29BB8600QLAA	-
+                5006941	RF29BB8600QLAA	-	
+        
+        Step 1-3) Step 1-1) Data를 Sales Product Lv 분리	
+            - load data df_fn_Sales_Product_ASN
+                - df_fn_asn =  output_dataframes['df_fn_Sales_Product_ASN']
+            - 6LV 과 7LV 분리	
+                - output_dataframes['df_fn_Sales_Product_ASN_lv6'] = df_fn_asn_lv6
+                - output_dataframes['df_fn_Sales_Product_ASN_lv7'] = df_fn_asn_lv7
+            
+            - result data will be below 	
+                - df_fn_asn_lv7	
+                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+                    A5002453	RF29BB8600QLAA	S377
+                    A5002453	RF29BB8600QLAA	S376
+                - df_fn_asn_lv6        
+                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+                    5006941	RF29BB8600QLAA	S377
+                    5006941	RF29BB8600QLAA	S376
+    
+    Step 2) 7Lv Sales Product ASN 을 Sales Lv6 으로 Aggr	
+	    - load data 
+            df_fn_asn_lv7 = output_dataframes['df_fn_Sales_Product_ASN_lv7']
+            dim = input_dataframes['df_in_Sales_Domain_Dimension']
+        Step 2-1) 7Lv Sales Product ASN 에 Sales Domain Master 의 Sales Lv6 을 Merge
+            
+            - Sales Domain.[Ship To] 를 기준으로 Merge with dim
+            - result data will be below 	
+                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Sales Domain.[Sales LV6]
+                A5002453	RF29BB8600QLAA	S377	5002453
+                A5002453	RF29BB8600QLAA	S376	5002453
+        Step 2-2) Group by
+            - Sales Domain.[Sales LV6]으로 Group by 진행
+            - result data will be below 
+                Sales Domain.[Sales LV6]	Item.[Item]	Location.[Location]
+                5002453	RF29BB8600QLAA	S377
+                5002453	RF29BB8600QLAA	S376
+            
+            - rename : Sales Domain.[Sales LV6] -> Sales Domain.[Ship To]
+            - set data 
+                output_dataframes['df_fn_Sales_Product_ASN_lv7'] = df_fn_asn_lv7
+            - result data will be below 
+                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+                5002453	RF29BB8600QLAA	S377
+                5002453	RF29BB8600QLAA	S376
+
+    - Step 3) 6Lv Sales Product ASN 을 상위 Sales로 Aggr
+        - Step 3-1) (Step 2-2) 의 결과와 Step 1의 6Lv Sales Product ASN 을 Concat 하고 dupicate 제거
+            - this is mean like below.
+                - concat below df
+                    output_dataframes['df_fn_Sales_Product_ASN_lv6']  
+                    output_dataframes['df_fn_Sales_Product_ASN_lv7']  
+            - remove duplicate 
+            - set output_dataframes
+                - output_dataframes['df_fn_Sales_Product_ASN_Concat'] = df_concat
+            - data will be below
+                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+                5002453	RF29BB8600QLAA	S377
+                5002453	RF29BB8600QLAA	S376
+                5006941	RF29BB8600QLAA	S377
+                5006941	RF29BB8600QLAA	S376
+        - Step 3-2) Step 3-1) 의 결과에 Sales Domain Master를 Merge
+            - load data 
+                dim = input_dataframes['df_in_Sales_Domain_Dimension']
+            - merge df_concat with dim 
+            - create object df_fn_Sales_Product_ASN_Concat_dim
+                - set output like below 
+                    - output_dataframes['df_fn_Sales_Product_ASN_Concat_dim'] = df_concat_dim
+                
+            - data will be like below
+                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]	Sales Domain.[Sales LV2]	Sales Domain.[Sales LV3]	Sales Domain.[Sales LV4]	Sales Domain.[Sales LV5]	Sales Domain.[Sales LV6]	Sales Domain.[Sales LV7]
+                5002453	RF29BB8600QLAA	S377	203	300114	A300114	400362	5002453	A5002453
+                5002453	RF29BB8600QLAA	S376	203	300114	A300114	400362	5002453	A5002453
+                5006941	RF29BB8600QLAA	S377	203	300114	A300114	408273	5006941	A5006941
+                5006941	RF29BB8600QLAA	S376	203	300114	A300114	408273	5006941	A5006941
+        
+        - Step 3-3) Sales Lv2 ~ Sales Lv5 까지 Groupby 진행하여 Output Data 생성
+            
+            - groupby lv5*Item*Location and rename : Sales Domain.[Sales Lv5] -> Sales Domain.[Ship To]
+                - df_group_lv5
+                - data will be like below
+                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+                    400362	RF29BB8600QLAA	S377
+                    400362	RF29BB8600QLAA	S376
+                    408273	RF29BB8600QLAA	S377
+                    408273	RF29BB8600QLAA	S376
+
+            - groupby lv4*Item*Location and rename : Sales Domain.[Sales Lv4] -> Sales Domain.[Ship To]
+                - df_group_lv5
+                - data will be like below
+                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+                    A300114	RF29BB8600QLAA	S377
+                    A300114	RF29BB8600QLAA	S376
+
+            - groupby lv3*Item*Location and rename : Sales Domain.[Sales Lv3] -> Sales Domain.[Ship To]
+                - df_group_lv3
+                - data will be like below
+                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+                    300114	RF29BB8600QLAA	S377
+                    300114	RF29BB8600QLAA	S376
+
+            - groupby lv2*Item*Location and rename : Sales Domain.[Sales Lv2] -> Sales Domain.[Ship To]
+                - df_group_lv2
+                - data will be like below
+                    Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+                    203	RF29BB8600QLAA	S377
+                    203	RF29BB8600QLAA	S376
+            - create df_fn_Sales_Product_ASN_Lv2_to_Lv5
+                - concat above grouped df (from 2 to 5)
+                - create data frame like below
+                    output_dataframes['df_fn_Sales_Product_ASN_Lv2_to_Lv5'] = df_group_lv2_lv5
+    - Step 4) Sales Product ASN Sell In Data 구성
+        - Step 2-2) 와 Step 3-3) 결과들에 대해서 Concat 진행
+            - load data 
+                - df_asn_lv2_lv5 = output_dataframes['df_fn_Sales_Product_ASN_Lv2_to_Lv5']
+                - df_asn_lv6 = output_dataframes['df_fn_Sales_Product_ASN_Concat']
+                    - shipto 
+            - this is mean concat df_fn_Sales_Product_ASN_Concat and df_fn_Sales_Product_ASN_Lv2_to_Lv5
+            - Create df_fn_Sales_Product_ASN_Lv2_to_Lv6 like below
+                - output_dataframes['df_fn_Sales_Product_ASN_Lv2_to_Lv6'] = df_group_lv2_lv6
+            - data will be like below
+                Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+                203	RF29BB8600QLAA	S377
+                203	RF29BB8600QLAA	S376
+                300114	RF29BB8600QLAA	S377
+                300114	RF29BB8600QLAA	S376
+                A300114	RF29BB8600QLAA	S377
+                A300114	RF29BB8600QLAA	S376
+                400362	RF29BB8600QLAA	S377
+                400362	RF29BB8600QLAA	S376
+                408273	RF29BB8600QLAA	S377
+                408273	RF29BB8600QLAA	S376
+                5002453	RF29BB8600QLAA	S377
+                5002453	RF29BB8600QLAA	S376
+
+    Step 5) Sales Product ASN Sell out Data 구성
+        - Step 4) 의 결과에서 Location.[Location]을 제거하고, Sales Domain.[Ship To] 와 Item.[Item] 으로 Group by 진행
+        - load data 
+            df_asn_lv2_to_lv6 = output_dataframes['df_fn_Sales_Product_ASN_Lv2_to_Lv6']
+        
+        - remove Location from df_asn_lv2_to_lv6
+        - group by df_asn_lv2_to_lv6 with shipto , item
+        - Location.[Location] = '-' 추가
+        - set df_fn_Sales_Product_ASN_Lv2_to_Lv6_Dummy like below
+            - output_dataframes['df_fn_Sales_Product_ASN_Lv2_to_Lv6_Dummy'] = df_asn_dummy
+        - data wll be like below
+            Sales Domain.[Ship To]	Item.[Item]	Location.[Location]
+            203	RF29BB8600QLAA	-
+            300114	RF29BB8600QLAA	-
+            A300114	RF29BB8600QLAA	-
+            400362	RF29BB8600QLAA	-
+            408273	RF29BB8600QLAA	-
+            5002453	RF29BB8600QLAA	-
+
+    Step 6)  최종 Output 구성
+        concat df_fn_Sales_Product_ASN_Lv2_to_Lv6 and df_fn_Sales_Product_ASN_Lv2_to_Lv6_Dummy
+        - set data like below
+            - variable : df_fanal
+            - concat
+                - df_fn_Sales_Product_ASN_Lv2_to_Lv6
+                - df_fn_Sales_Product_ASN_Lv2_to_Lv6_Dummy
+        - ['Sales Product ASN'] = 'Y' 추가
+        - output_dataframes['df_fn_Sales_Product_ASN_Final'] = df_fanal
+
+
+- 실행구문
+    - 전체
+        exec plugin instance [PYForecastCreateSalesProductASNDummy]
+        for measures
+        {
+        Measure.[Sales Product ASN]
+        }
+        using scope
+        (
+        [Version].[Version Name].filter(#.Name in {"CWV_DP"})
+        * [Item].[Item]
+        * [Sales Domain].[Ship To]
+        * [Location].[Location]
+        )
+        using arguments
+        {
+        (ExecutionMode, "MediumWeight")
+        , (Version,&NSCWVDP.element(0).Name )
+        , (IncludeNullrows, False)
+        };
+
+    - 특정아이템
+        Exec plugin instance [PYForecastCreateSalesProductASNDummy]
+        for measures 
+        {
+        Measure.[Sales Product ASN]
+        } 
+        using scope 
+        (
+            [Version].[Version Name].filter(#.Name in {"CWV_DP"}) 
+            * [Item].[Item].filter(#.Name in {"RF24R7201SR/AA","RF28R7201SR/AA"}) 
+            * [Sales Domain].[Ship To]
+            * [Location].[Location]
+        )
+        using arguments
+        { 
+            (ExecutionMode, "MediumWeight")
+            , (Version,&NSCWVDP.element(0).Name )
+            , (IncludeNullrows, False)
+        };  

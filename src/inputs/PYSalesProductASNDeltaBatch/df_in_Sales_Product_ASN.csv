@@ -1,0 +1,4 @@
+Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN
+A5000001,RF29BB8600QLAA,S001,Y
+A5000001,RF29BB8600QLAA,S002,Y
+A5000001,Remove_Dummy,S002,Y

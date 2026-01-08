@@ -1,0 +1,393 @@
+* 프로그램명	
+	PYForecastCreateSellInAndSellOutAssortment
+	
+	
+* 목적	
+	- Lock 조건이 풀렸을 경우, 입력 정상 작동 유도
+	- Ratio 가 없는 경우, Intersection 생성 방지
+	- S/In FCST(GI) Assortment_GC Measure의 Assortment 생성
+	- S/In FCST(GI) Assortment_AP2 Measure의 Assortment 생성
+	- S/In FCST(GI) Assortment_AP1 Measure의 Assortment 생성
+	- S/Out FCST Assortment_GC Measure의 Assortment 생성
+	- S/Out FCST Assortment_AP2 Measure의 Assortment 생성
+	- S/Out FCST Assortment_AP1 Measure의 Assortment 생성
+	
+	
+* 변경이력	
+	2025.03.24 전창민 최초 작성
+
+
+
+Input Tables (*)			
+			
+	(Input 1) Forecast Rule 정보		
+		df_in_Forecast_Rule	
+			Select ([Version].[Version Name]
+			 * [Item].[Product Group] 
+			 * [Sales Domain].[Ship To] )  on row, 
+			( { Measure.[FORECAST_RULE GC FCST], Measure.[FORECAST_RULE AP2 FCST], Measure.[FORECAST_RULE AP1 FCST], Measure.[FORECAST_RULE CUST FCST],Measure.[FORECAST_RULE ISVALID] } ) on column;
+
+			Version.[Version Name],Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE GC FCST,FORECAST_RULE AP2 FCST,FORECAST_RULE AP1 FCST,FORECAST_RULE CUST FCST,FORECAST_RULE ISVALID
+			CWV_DP,REF,300114,3,5,6,,Y
+			CWV_DP,REF,400362,,6,,,Y
+			CWV_DP,MOBILE,300114,6,6,6,,Y
+			CWV_DP,MOBILE,5002453,7,7,7,,Y
+			CWV_DP,TV,300114,3,3,3,,Y
+		
+	(Input 2) Sales Domian Master 정보		
+		df_in_Sales_Domain_Dimension	
+			Select (
+			 * [Sales Domain].[Sales LV2]
+			 * [Sales Domain].[Sales LV3] 
+			 * [Sales Domain].[Sales LV4] 
+			 * [Sales Domain].[Sales LV5] 
+			 * [Sales Domain].[Sales LV6] 
+			 * [Sales Domain].[Sales LV7] 
+			 * [Sales Domain].[Ship To] )
+			 
+			 
+			Sales Domain.[Sales LV2],Sales Domain.[Sales LV3],Sales Domain.[Sales LV4],Sales Domain.[Sales LV5],Sales Domain.[Sales LV6],Sales Domain.[Sales LV7],Sales Domain.[Ship To]
+			203,203,203,203,203,203,203
+			203,300114,300114,300114,300114,300114,300114
+			203,300114,A300114,A300114,A300114,A300114,A300114
+			203,300114,A300114,400362,400362,400362,400362
+			203,300114,A300114,400362,5002453,5002453,5002453
+			203,300114,A300114,400362,5002453,A5002453,A5002453
+			203,300114,A300114,400362,5003074,5003074,5003074
+			203,300114,A300114,400362,5003074,A5003074,A5003074
+			203,300114,A300114,400362,5005569,5005569,5005569
+			203,300114,A300114,400362,5005569,A5005569,A5005569
+			203,300114,A300114,400362,5007280,5007280,5007280
+			203,300114,A300114,400362,5007280,A5007280,A5007280
+			203,300114,A300114,408273,408273,408273,408273
+			203,300114,A300114,408273,5006941,5006941,5006941
+			203,300114,A300114,408273,5006941,A5006941,A5006941
+			203,300114,A300114,408273,5019692,5019692,5019692
+			203,300114,A300114,408273,5019692,A5019692,A5019692
+		
+		
+	(Input 3) Sales Product ASN 정보		
+		df_in_Sales_Product_ASN	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * Item.[Item]
+			 * [Location].[Location] )  on row, 
+			( { Measure.[Sales Product ASN] } ) on column
+			where { (Measure.[Sales Product ASN] == "Y" ) } ;
+
+
+			Version.[Version Name],Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN
+			CWV_DP,A5002453,RF29BB8600QLAA,S377,Y
+			CWV_DP,A5002453,RF29BB8600QLAA,S376,Y
+			CWV_DP,A5002453,SM-S911ULIAATT,S341,Y
+			CWV_DP,A5002453,SM-S921UZKAATT,S341,Y
+			CWV_DP,A5006941,SM-S911ULIAATT,S341,Y
+			CWV_DP,A5006941,SM-S911UZKEATT,S341,Y
+			CWV_DP,A5006941,SM-S921UZKAATT,S341,Y
+			CWV_DP,A5019692,SM-S921UZKAAIO,S341,Y
+			CWV_DP,A5019692,SM-S921UZKEATT,S341,Y
+			CWV_DP,A5003074,SM-S911NZGEKOC,L999,Y
+			CWV_DP,5003074,SM-S921NZAEKOC,L999,Y
+			CWV_DP,A5002453,TV1,S341,Y
+			CWV_DP,A5006941,TV1,S342,Y
+			CWV_DP,A5006941,TV1,S341,Y
+			CWV_DP,A5003074,RF29BB8600QLAA,S377,Y
+			
+	(Input 4) MST_Item 정보		
+		df_in_Item_Master	
+			Select (
+			 * [Item].[Item GBM]
+			 * [Item].[Product Group]
+			 * [Item].[Item]
+			);
+			
+			
+			
+			Item.[Item GBM],Item.[Product Group],Item.[Item]
+			MOBILE,MOBILE,BSM-A032F/32D
+			VD,MONITOR,LH65WAFWLGCXZA
+			VD,TV,TV1
+			SHA,REF,RF29BB8600QLAA
+			MOBILE,MOBILE,SM-S911NLIEKOC
+			MOBILE,MOBILE,SM-S911NLIEKOD
+			MOBILE,MOBILE,SM-S911NZGEKOC
+			MOBILE,MOBILE,SM-S911ULIAATT
+			MOBILE,MOBILE,SM-S911UZKEATT
+			MOBILE,MOBILE,SM-S921NZAEKOC
+			MOBILE,MOBILE,SM-S921UZKAAIO
+			MOBILE,MOBILE,SM-S921UZKAATT
+			MOBILE,MOBILE,SM-S921UZKEATT
+			MOBILE,MOBILE,SM-S921UZVAATT
+			
+	(Input 5) E-Store 정보		
+		df_in_Sales_Domain_Estore	
+			Select ( 
+			[Sales Domain].[Ship To].filter(#.[eStore Account YN] == True) );
+			
+			
+			Sales Domain.[Ship To]
+			A5018711
+			A5021262
+			A5018751
+			A5021088
+			A5021541
+			A5003074
+
+Output Tables (*)		
+	(Output 1)		
+		Output_SOut_Assortment_GC	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]) on row, 
+			( { Measure.[S/Out FCST Assortment_GC] } ) on column ;
+		
+		
+	(Output 2)		
+		Output_SOut_Assortment_AP2	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]) on row, 
+			( { Measure.[S/Out FCST Assortment_AP2] } ) on column ;
+			
+			
+	(Output 3)		
+		Output_SOut_Assortment_AP1	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]) on row, 
+			( { Measure.[S/Out FCST Assortment_AP1] } ) on column ;
+			
+			
+			
+	(Output 4)		
+		Output_SIn_Assortment_GC	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]  ) on row, 
+			( { Measure.[S/In FCST(GI) Assortment_GC] } ) on column;
+			
+			
+	(Output 5)		
+		Output_SIn_Assortment_AP2	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]  ) on row, 
+			( { Measure.[S/In FCST(GI) Assortment_AP2] } ) on column;
+			
+			
+	(Output 6)		
+		Output_SIn_Assortment_AP1	
+			Select ([Version].[Version Name]
+			 * [Sales Domain].[Ship To] 
+			 * [Item].[Item] 
+			 * [Location].[Location]  ) on row, 
+			( { Measure.[S/In FCST(GI) Assortment_AP1] } ) on column;
+			
+
+- Note for columns of inut Tables
+	- df_in_Forecast_Rule
+		- Sales_Domain_ShipTo 
+			- level 2,3,4,6...   
+			- level is from 
+
+	- df_in_Sales_Product_ASN
+		- Sales_Domain_ShipTo
+			- level 6,7
+	- step3: selin 	생성
+	- step4: selout 생성
+	- step5: by estore , filter asn. and sellout 생성. 
+		- selout concat with step4
+
+- Question
+	- step5 에서는 df_in_Sales_Domain_Estore 에 있는 것을 필더링을 하는데
+		- 이것을 step4 (Sout 작업) 을 한것과 concate 를 하는데 이것은 중복되는 것이 아닌가.
+			- step4 에서는 location 에 '-' 를 추가하였기에 중복되지 않을 것임.
+		- 
+
+	
+- Process
+	- Step 1) df_in_Forecast_Rule 전처리
+		- I will skip this step
+
+		- Step 1-1) Column 제거 
+			Version_Name 제거
+		- Step 1-2) GC, AP2, AP1 분리
+
+	- Step 2) Sales Product ASN 전처리
+		- I will skip this step
+
+	- Step 3) 
+		- purpose: make output data frame of below.
+			- Output_SIn_Assortment_GC 
+			- Output_SIn_Assortment_AP2
+			- Output_SIn_Assortment_AP1	
+		- note 
+			- df_in_Forecast_Rule.Sales_Domain_ShipTo have level from 2 to 7
+				- diffrence with fn_step12_apply_forecast_rule, 
+				- in fn_step12_apply_forecast_rule, df_in_Forecast_Rule.Sales_Domain_ShipTo have level from 2 to 3
+				- but, fortunately, I think this will not be problem.
+			- target key
+				- when  we make target data frame like Output_SIn_Assortment_GC .., in fn_step12_apply_forecast_rule, part_val is used for my_key, but in this process , we will not use part_val as my_key.
+		- load data
+			- df_in_Sales_Domain_Dimension
+				- input_dataframes['df_in_Sales_Domain_Dimension']
+			- df_in_Item_Master
+				- input_dataframes['df_in_Item_Master']
+			- df_in_Forecast_Rule
+				- input_dataframes['df_in_Forecast_Rule']
+			- df_in_Sales_Product_ASN
+				- input_dataframes['df_in_Sales_Product_ASN']
+				- this is source data .
+		- process 
+			- process is like fn_step12_apply_forecast_rule
+			- diffrence
+				- return object : 
+					- in fn_step12_apply_forecast_rule, we return only one object
+					- we will make 3 object below.
+						- Output_SIn_Assortment_GC
+						- Output_SIn_Assortment_AP2
+						- Output_SIn_Assortment_AP1
+					- in fn_step12_apply_forecast_rule, there is columns in one dataframe, 
+					- in this function, we will split columns like ERD I gave you.
+					- and it is better to do not return object
+						- I will allocate object to output_dataframes in this step like below.
+							- output_dataframes['Output_SIn_Assortment_GC'] = Output_SIn_Assortment_GC
+							- output_dataframes['Output_SIn_Assortment_AP2'] = Output_SIn_Assortment_AP2
+							- output_dataframes['Output_SIn_Assortment_AP1'] = Output_SIn_Assortment_AP1
+				- refer to df_in_Forecast_Rule
+					- df_in_Sales_Product_ASN have sort of foreign key for df_in_Forecast_Rule like below.
+						- Sales_Domain_ShipTo
+							- this is similar to fn_step12_apply_forecast_rule
+						- Product_Group
+							- in fn_step12_apply_forecast_rule((var name is rule_dict )), there is Product_Group in df_source(df_fn_Sales_Product_ASN_Item_Week)
+								- df_fn_Sales_Product_ASN_Item_Week is merged object joined df_in_Item_Master and df_in_Sales_Product_ASN
+							- but , in this process , I will refer  to Product_Group in df_in_Item_Master.
+
+		- modified
+			- there is modified columns in df_in_Sales_Domain_Dimension
+				- columns
+					- Sales Domain.[Sales Std1]
+					- Sales Domain.[Sales Std2]
+					- Sales Domain.[Sales Std3]
+					- Sales Domain.[Sales Std4]
+					- Sales Domain.[Sales Std5]
+					- Sales Domain.[Sales Std6]
+				- and I modified constant like below
+					Sales_Domain_LV2        = 'Sales Domain.[Sales Std1]'
+					Sales_Domain_LV3        = 'Sales Domain.[Sales Std2]'
+					Sales_Domain_LV4        = 'Sales Domain.[Sales Std3]' 
+					Sales_Domain_LV5        = 'Sales Domain.[Sales Std4]'
+					Sales_Domain_LV6        = 'Sales Domain.[Sales Std5]'
+					Sales_Domain_LV7        = 'Sales Domain.[Sales Std6]'
+
+	- Step 4) 
+		- purpose : make output data frame of below.	
+			- Output_SOut_Assortment_GC
+			- Output_SOut_Assortment_AP2
+			- Output_SOut_Assortment_AP1
+
+		- process
+			- load data
+				- Output_SIn_Assortment_GC
+				- Output_SIn_Assortment_AP2
+				- Output_SIn_Assortment_AP1
+			- group by each df by Sales_Domain_ShipTo, Item_Item
+			- copy to Sout data frame
+				- grouped df is converted to like below.
+					- grouped Output_SIn_Assortment_GC => Output_SOut_Assortment_GC
+					- grouped Output_SIn_Assortment_AP2 => Output_SOut_Assortment_AP2
+					- grouped Output_SIn_Assortment_AP1 => Output_SOut_Assortment_AP1
+			- add Location_Location as '-'
+			- add output_dataframes like below
+				output_dataframes['Output_SOut_Assortment_GC']  = Output_SOut_Assortment_GC
+				output_dataframes['Output_SOut_Assortment_AP2'] = Output_SOut_Assortment_AP2
+				output_dataframes['Output_SOut_Assortment_AP1'] = Output_SOut_Assortment_AP1
+
+
+	- Step 5) 
+		- purpose : make output data frame and concat to below df.
+			- Output_SOut_Assortment_GC
+			- Output_SOut_Assortment_AP2
+			- Output_SOut_Assortment_AP1
+
+		- process
+			- load data
+				- df_in_Sales_Domain_Dimension
+					- input_dataframes['df_in_Sales_Domain_Dimension']
+				- df_in_Item_Master
+					- input_dataframes['df_in_Item_Master']
+				- df_in_Forecast_Rule
+					- input_dataframes['df_in_Forecast_Rule']
+				- df_in_Sales_Product_ASN
+					- input_dataframes['df_in_Sales_Product_ASN']
+					- this is source data .
+			- filter df_in_Sales_Product_ASN by df_in_Sales_Domain_Estore
+				- matching columns
+					- Sales_Domain_ShipTo
+			- process like as step03
+				- this process is similar with step03.
+				- but before process just filter df_in_Sales_Product_ASN by df_in_Sales_Domain_Estore.Sales_Domain_ShipTo
+					- remain process is same with step03 except below
+						- data frame names
+							- Output_SIn_Assortment_GC		=> Output_SOut_Assortment_GC
+							- Output_SIn_Assortment_AP2		=> Output_SOut_Assortment_AP2
+							- Output_SIn_Assortment_AP1		=> Output_SOut_Assortment_AP1
+
+						- column names
+							- SIn_FCST_GC_ASS 	=> SOut_FCST_GC_ASS
+							- SIn_FCST_AP2_ASS	=> SOut_FCST_AP2_ASS
+							- SIn_FCST_AP1_ASS	=> SOut_FCST_AP1_ASS
+
+			- concat dataframes to exist dataframes
+				- Output_SOut_Assortment_GC
+				- Output_SOut_Assortment_AP2
+				- Output_SOut_Assortment_AP1
+
+	- Step last format)
+		- purpose : align columns according to ERD. and add Version_Name to first columns
+		- function name : fn_output_formatter
+		- process
+			- read dataframes from output_dataframes
+			- align columns according to ERD
+			- add Version_Name to first columns like below
+				- df['Version.[Version Name]'] = Param_OUT_VERSION
+			- check data length and add empty data when data is None lie below.
+				- this is prevent to raise errors when there is not data.
+				    df = pd.DataFrame(
+					{
+						Version_Name: [], 
+						Sales_Domain_ShipTo: [], 
+						Item_Item: [], 
+						Location_Location: [],
+						SIn_FCST_GC_ASS : []
+					})
+
+	- To be improve : Remove higher level  for step03
+		- As is processed for fn_step05_make_actual_and_inv_fcst_level in PYDPMakeActualAndInventoryForecastLevel, I want to add logic to remove higher level of Sales_Domain_ShipTo
+		- current code is below 
+		- below is current constant
+		- below is current ERD
+		- code of fn_step05_make_actual_and_inv_fcst_level for deleting higher level of ShipTo is below. please refer to below code. and show me improved code for step03
+
+	- To be improve : Remove higher level  for step03. group by and using ancestors
+		- latest code what you give me is not work for deleting higher level
+		- to remove higher level shipto ,use like fn_step05_make_actual_and_inv_fcst_level
+			- it is better to use function like _filter_block
+				- in  _filter_block, ancestors is used 
+				- and in remove_upper_shipto, use groupby and applied _filter_block
+			- in _flush function of fn_step05_make_actual_and_inv_fcst_level , before call remove_upper_shipto , used df.groupby 
+				- it is better to use groupby 
+				- and assign target column with 1 later
+		- and use sub def instead Extract function to global
+		- please refer to logic of fn_step05_make_actual_and_inv_fcst_level in PYDPMakeActualAndInventoryForecastLevel
+
+	- To be improve : don't use iterrows
+		- don't use iterrows
+			- you use iterrows like below.
+				for _, r in df_asn_item.iterrows():
+			- use numpy

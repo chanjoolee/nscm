@@ -1,0 +1,479 @@
+PYForecastMasterSelloutDelta
+    Python 개발요청서 : PYForecastMasterSelloutDelta.py
+
+        개요 (*)
+
+            * 프로그램명
+                PYForecastMasterSelloutDelta
+
+
+            * 목적
+                - Master Sell-Out 값 변동에 따른 입력 제약 조절
+                - S/Out FCST Assortment_GC, AP2, AP1, Local 값 변경
+
+
+
+            * 변경이력
+                2025.11.22 전창민 최초 작성.  PYForecastCreateSellInAndSellOutAssortment 로직 활용 -> S/Out Assortment 만 생성
+
+
+
+        Script Parameter
+
+
+
+
+
+
+
+
+
+
+
+        Input Tables (*)
+
+            (Input 1) df_in_Forecast_Rule. Forecast Rule 정보
+                - Query
+                    Select (
+                    [Version].[Version Name].[CWV_DP]
+                    * [Item].[Product Group] 
+                    * [Sales Domain].[Ship To] )  on row, // 2,3LV구성
+                    ( { 
+                        Measure.[FORECAST_RULE GC FCST], 
+                        Measure.[FORECAST_RULE AP2 FCST], 
+                        Measure.[FORECAST_RULE AP1 FCST], 
+                        Measure.[FORECAST_RULE AP0 FCST],
+                        Measure.[FORECAST_RULE ISVALID] 
+                    } ) on column 
+                    where {Measure.[FORECAST_RULE ISVALID]  == "Y"};
+
+
+                Version.[Version Name],Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE GC FCST,FORECAST_RULE AP2 FCST,FORECAST_RULE AP1 FCST,FORECAST_RULE AP0 FCST,FORECAST_RULE ISVALID
+                CWV_DP,REF,SU000118,3,5,6,,Y
+
+
+
+            (Input 2) df_in_Sales_Domain_Dimension. Sales Domian Master 정보
+                - Query
+                    Select (
+                    * [Sales Domain].[Sales Std1]
+                    * [Sales Domain].[Sales Std2] 
+                    * [Sales Domain].[Sales Std3] 
+                    * [Sales Domain].[Sales Std4] 
+                    * [Sales Domain].[Sales Std5] 
+                    * [Sales Domain].[Sales Std6] 
+                    * [Sales Domain].[Ship To] );
+
+
+
+                Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Sales Domain.[Ship To]
+                RH000206,RH000206,RH000206,RH000206,RH000206,RH000206,RH000206
+                RH000206,SU000133,SU000133,SU000133,SU000133,SU000133,SU000133
+                RH000206,SU000133,CO000710,CO000710,CO000710,CO000710,CO000710
+                RH000206,SU000133,CO000710,CT007431,CT007431,CT007431,CT007431
+                RH000206,SU000133,CO000710,CT000877,CT000877,CT000877,CT000877
+                RH000206,SU000133,CO000710,CT002435,CT002435,CT002435,CT002435
+                RH000206,SU000133,CO000710,CT008473,CT008473,CT008473,CT008473
+                RH000226,SU000118,CO000710,CT007431,CH018113,CH018113,CH018113
+                RH000226,SU000118,CO000710,CT000877,CH016583,CH016583,CH016583
+                RH000226,SU000118,CO000710,CT002435,CH019794,CH019794,CH019794
+                RH000226,SU000118,CO000710,CT008473,CH022355,CH022355,CH022355
+
+
+            (Input 3) df_in_Sales_Product_ASN. Sales Product ASN 정보
+                - Query
+                    Select (
+                        [Version].[Version Name].[CWV_DP]
+                        * [Sales Domain].[Ship To]
+                        * Item.[Item]
+                        * [Location].[Location] 
+                    )  on row, 
+                    ( { Measure.[Sales Product ASN] } ) on column
+                    where { 
+                        Measure.[Sales Product ASN] == "Y",  
+                        Measure.[Sales Product ASN Leaf Flag] == "Y" 
+                    };
+
+                Version.[Version Name],Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN
+                CWV_DP,CH018113,RF29BB8600QLAA,S377,Y
+                CWV_DP,CH016583,RF29BB8600QLAA,S377,Y
+                CWV_DP,CH019794,RF29BB8600QLAA,S377,Y
+                CWV_DP,CH022355,RF29BB8600QLAA,S341,Y
+
+
+
+            (Input 4) df_in_Item_Master. MST_Item 정보
+                - Query
+                    Select (
+                    * [Item].[Item GBM]
+                    * [Item].[Product Group]
+                    * [Item].[Item]
+                    );
+
+                - Data
+                    Item.[Item GBM],Item.[Product Group],Item.[Item]
+                    SHA,REF,RF29BB8600QLAA
+
+            (Input 5) df_in_Sales_Domain_Estore. E-Store 정보
+                
+                    Select ( 
+                    [Sales Domain].[Ship To].filter(#.[eStore Account YN] == True) );
+
+
+                - Data
+                    Sales Domain.[Ship To]
+                    CH022355
+
+            (Input 6) df_in_Sell_Out_Simul_Master. Sell-Out Simul. Master 정보 (TO-BE : 7LV)
+                - Query
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Product Group] )  on row, 
+                    ( {Measure.[S/Out Master Status] } ) on column;
+
+                - Data
+                    Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Status
+                    CWV_DP,CH018113,REF,CON
+                    CWV_DP,CH016583,REF,CON
+                    CWV_DP,CH019794,REF,CON
+                    CWV_DP,CH022355,REF,CON
+
+            (Input 7) df_in_Sell_Out_Simul_Master_Delta. Sell-Out Simul. Master Delta 정보 
+                - Query
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Product Group] )  on row, 
+                    ( {Measure.[S/Out Master Cutoff Delta], Measure.[S/Out Master Status Delta] } ) on column;
+                
+                - Data
+                    Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff Delta,S/Out Master Status Delta
+                    CWV_DP,CH018113,REF,TEST,TEST
+
+
+
+
+        Output Tables (*)
+
+
+                    Logic 간략 설명
+
+
+
+
+
+
+            (Output 1) Output_SOut_Assortment_GC
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_GC] } ) on column ;
+
+
+            (Output 2) Output_SOut_Assortment_AP2
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_AP2] } ) on column ;
+
+
+            (Output 3) Output_SOut_Assortment_AP1
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_AP1] } ) on column ;
+
+
+
+
+            (Output 4) Output_SOut_Assortment_Local
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_Local] } ) on column ;
+
+
+            (Output 8) Output_Sell_Out_Simul_Master
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Product Group] )  on row, 
+                    ( {Measure.[S/Out Master Cutoff], Measure.[S/Out Master Status] } ) on column;
+
+
+            (Output 9) Output_Sell_Out_Simul_Master_Delta
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Product Group] )  on row, 
+                    ( {Measure.[S/Out Master Cutoff Delta], Measure.[S/Out Master Status Delta] } ) on column;
+
+
+        주요 로직 (*)
+
+
+            Step 0)  Sell_Out_Simul_Master Delta 처리
+                Step 0-1)  Sell_Out_Simul_Master Delta 처리
+                    
+                    - df_in_Sell_Out_Simul_Master_Delta
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff Delta,S/Out Master Status Delta
+                        CWV_DP,CH018113,REF,TEST,TEST
+
+                    - df_in_Sell_Out_Simul_Master
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Status
+                        CWV_DP,CH018113,REF,CON
+                        CWV_DP,CH016583,REF,CON
+                        CWV_DP,CH019794,REF,CON
+                        CWV_DP,CH022355,REF,CON
+
+                    - Result
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Status
+                        CWV_DP,CH018113,REF,TEST
+                        CWV_DP,CH016583,REF,CON
+                        CWV_DP,CH019794,REF,CON
+                        CWV_DP,CH022355,REF,CON
+                    
+                    - process
+                        - df_in_Sell_Out_Simul_Master 의 S/Out Master Status 값을  df_in_Sell_Out_Simul_Master_Delta 의 S/Out Master Status Delta 로 Update를 한다.
+                        - return df_step0_1_in_Sell_Out_Simul_Master
+
+                Step 0-2)  Sell_Out_Simul_Master Output 생성 -> Output 8
+                    - df_in_Sell_Out_Simul_Master_Delta
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff Delta,S/Out Master Status Delta
+                        CWV_DP,CH018113,REF,TEST,TEST
+
+                    - Result
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff,S/Out Master Status
+                        CWV_DP,CH018113,REF,TEST,TEST
+
+                    - process
+                        - df_in_Sell_Out_Simul_Master_Delta 의 Measure 의 이름을 바꾼다. 
+                            - S/Out Master Cutoff Delta -> S/Out Master Cutoff 
+                            - S/Out Master Status Delta -> S/Out Master Status
+
+                        - Output_Sell_Out_Simul_Master 으로 생성
+
+                Step 0-3)  Sell_Out_Simul_Master_Delta Output 생성 -> Output 9
+                    - df_in_Sell_Out_Simul_Master_Delta
+                    Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff Delta,S/Out Master Status Delta
+                    CWV_DP,CH018113,REF,TEST,TEST
+
+                    - Result
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff,S/Out Master Status
+                        CWV_DP,CH018113,REF,,
+                    
+                    - process
+                        - df_in_Sell_Out_Simul_Master_Delta 의 Measure 의 값을 Null로 변경한다.
+                        - Output_Sell_Out_Simul_Master_Delta 으로 생성
+
+                Step 0-4) 하위 Assortment 생성 로직에서 Delta만 반영하기 위해 df_in_Sell_Out_Simul_Master_Delta 의 Product Group 추출
+                    - Result : REF
+                    - process
+                        - 하위 로직에서 위에서 추출된 Product Group 만 로직 수행
+
+
+            Step 1) Forecast Rule 전처리 ( 이 부분은 넘어간다) 
+                Step 1-1) Column 제거
+                    - result
+                        Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE GC FCST,FORECAST_RULE AP2 FCST,FORECAST_RULE AP1 FCST,FORECAST_RULE AP0 FCST
+                        REF,SU000118,3,5,6,
+                    
+                    - process
+                        - load df_in_Forecast_Rule
+                        - Version.[Version Name] 삭제
+                        - 'FORECAST_RULE ISVALID' 삭제
+
+                Step 1-2) GC, AP2, AP1 분리
+                    - result(GC)
+                        Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE GC FCST
+                        REF,SU000118,3
+
+                    - result(AP2)
+                        Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE AP2 FCST
+                        REF,SU000118,5
+                 
+                    - result(AP1)
+                        Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE AP1 FCST
+                        REF,SU000118,6
+
+                    - result(AP2)
+                        Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE AP2 FCST
+
+                    - process
+                        * Null 제거
+
+            Step 2) Sales Product ASN(df_in_Sales_Product_ASN) 전처리
+                Step 2-1) Sales Product ASN 전처리
+                    - result
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out Assortment Flag
+                        CH018113,RF29BB8600QLAA,S377,Y,True
+                        CH016583,RF29BB8600QLAA,S377,Y,True
+                        CH019794,RF29BB8600QLAA,S377,Y,True
+                        CH022355,RF29BB8600QLAA,S341,Y,True
+                    
+                    - process
+                        - load 
+                            - df_in_Sales_Product_ASN
+                            - df_step0_1_in_Sell_Out_Simul_Master
+                        - Version.[Version Name] 삭제
+                        - S/Out Assortment Flag = True 추가
+                        - return df_step2_1_Sales_Product_ASN
+
+                Step 2-2) Sell-out Simul Master CON 값 반영 Sales Product ASN 전처리
+                    - result
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out Assortment Flag
+                        CH018113,RF29BB8600QLAA,S377,Y,False
+                        CH016583,RF29BB8600QLAA,S377,Y,True
+                        CH019794,RF29BB8600QLAA,S377,Y,True
+                        CH022355,RF29BB8600QLAA,S341,Y,True
+                    
+                    - process
+                        - PYForecastCreateSellInAndSellOutAssortment 의 step02_preprocess_asn 활용
+                        - load 
+                            - df_step2_1_Sales_Product_ASN
+                            - df_step0_1_in_Sell_Out_Simul_Master
+                            - df_in_Item_Master
+                        - df_in_Sell_Out_Simul_Master 에서 Sales Domain.[Ship To] * Item.[Product Group] 에 존재하지 않는 값에 대해  S/Out Assortment = False 처리 
+                            - 여기서 차이점은 PYForecastCreateSellInAndSellOutAssortment 의 step02_preprocess_asn 에서는 df_in_Sell_Out_Simul_Master 을 사용했는데 여기서는 조정된 df_step0_1_in_Sell_Out_Simul_Master 을 활용한다.
+
+                        - 6Lv 하위에 7Lv에 있는 경우 위의 로직 추가 처리
+                            
+
+                Step 2-3) E-store 값 반영 Sales Product ASN 전처리
+                    - result
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out Assortment Flag
+                        CH018113,RF29BB8600QLAA,S377,Y,False
+                        CH016583,RF29BB8600QLAA,S377,Y,True
+                        CH019794,RF29BB8600QLAA,S377,Y,True
+                        CH022355,RF29BB8600QLAA,S377,Y,False
+
+                    - process
+                        - df_in_Sales_Domain_Estore 의 ShipTo인 S/Out Assortment = False 처리
+
+                        * 로직 사유 MEMO
+                            Sell-Out에서 Sell-Out Simul Master에 없는 값 입력 불가 -> False처리
+                            Sell-Out에서 E-store는 - 생성 X -> False 처리
+
+            Step 3) Forecast Rule에 따른 Data 생성 (GC,AP2,AP1, AP0에 대해서 각각 진행)
+                Step 3-1) Step 2) 의 결과에 Sales Domain Master와 Item Master Dataframe을 Merge
+                    - result
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Item.[Product Group],Sales Product ASN,S/Out Assortment Flag
+                        CH018113,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT007431,CH018113,CH018113,REF,Y,False
+                        CH016583,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT000877,CH016583,CH016583,REF,Y,True
+                        CH019794,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT002435,CH019794,CH019794,REF,Y,True
+                        CH022355,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT008473,CH022355,CH022355,REF,Y,False
+                    
+                    - process
+                        - Sales Domain.[Ship To] 를 기준으로 Merge
+                        - Item.[Item]을 기준으로 Merge
+                        - 재활용할 Dataframe
+
+                Step 3-2) Step 3-1) 의 결과에 Forecast Rule Merge
+                    - result
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Item.[Product Group],Sales Product ASN,S/Out Assortment Flag,FORECAST_RULE AP2 FCST
+                        CH018113,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT007431,CH018113,CH018113,REF,Y,False,5
+                        CH016583,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT000877,CH016583,CH016583,REF,Y,True,5
+                        CH019794,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT002435,CH019794,CH019794,REF,Y,True,5
+                        CH022355,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT008473,CH022355,CH022355,REF,Y,False,5
+                    - process
+                        Case 1) Forecast Rule의 Ship To 값을 기준으로,  Sales Domain.[Sales Std1], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+                        Case 2) Forecast Rule의 Ship To 값을 기준으로 Sales Domain.[Sales Std2], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+
+                        Case 3) Forecast Rule의 Ship To 값을 기준으로, Sales Domain.[Sales Std3], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+
+                        Case 4) Forecast Rule의 Ship To 값을 기준으로, Sales Domain.[Sales Std4], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+                        Case 5) Forecast Rule의 Ship To 값을 기준으로, Sales Domain.[Sales Std5], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+                        Case 6) Forecast Rule의 Ship To 값을 기준으로, Sales Domain.[Sales Std6], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+
+
+                Step 3-3) ASN에 대해서 Forecast Rule을 바탕으로 Groupby 할 기준 Column 생성
+                    - result
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Item.[Product Group],Sales Product ASN,S/Out Assortment Flag,FORECAST_RULE AP2 FCST,GBRULE
+                        CH018113,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT007431,CH018113,CH018113,REF,Y,False,5,CT007431
+                        CH016583,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT000877,CH016583,CH016583,REF,Y,True,5,CT000877
+                        CH019794,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT002435,CH019794,CH019794,REF,Y,True,5,CT002435
+                        CH022355,RF29BB8600QLAA,S377,RH000226,SU000118,CO000710,CT008473,CH022355,CH022355,REF,Y,False,5,CT008473
+                
+                    - process
+                        - FORECAST_RULE XX FCST 값에 해당하는 Lv의 값을 가져와서 GBRULE Column에 추가
+
+                Step 3-4) Group By를 통해 Output Data Set 생성
+                    - result
+                        Item.[Item],Location.[Location],Sales Domain.[Ship To],Sales Product ASN,S/Out Assortment Flag
+                        RF29BB8600QLAA,S377,CT007431,Y,False
+                        RF29BB8600QLAA,S377,CT000877,Y,True
+                        RF29BB8600QLAA,S377,CT002435,Y,True
+                        RF29BB8600QLAA,S377,CT008473,Y,False
+
+                    - process
+                        - GBRULE, Item, Location 으로 Groupby 진행
+                        * S/Out Assortment Aggr 적용시 (True, False) -> True 적용
+                        - Sales Product ASN 의 Aggr ( (Y, N) => Y ) 적용
+                        - Rename : GBRULE -> Sales Domain.[Ship To]
+
+            Step 4) Forecast Rule에 따른 S/Out Assortment Column 및 Data 생성 (GC,AP2,AP1,AP0에 대해서 각각 진행)
+                Step 4-1) Step 3-4)의 Table을 사용하여, Location 을 제외하고 Group by 진행
+                    - process
+                Sales Domain.[Ship To],Item.[Item],Sales Product ASN
+                CT007431,RF29BB8600QLAA,Y
+                CT000877,RF29BB8600QLAA,Y
+                CT002435,RF29BB8600QLAA,Y
+                CT008473,RF29BB8600QLAA,Y
+                - Sales Domain.[Ship To], Item.[Item] 으로 Group by 진행, 
+                * S/Out Assortment Aggr 적용시 (True, False) -> True 적용
+                - Sales Product ASN 의 Aggr ( MAX(Y,N) => Y ) 적용
+
+                Step 4-2) Location 및 S/Out FCST Assortment 추가 
+                Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out Assortment Flag,S/Out FCST Assortment_AP2
+                CT007431,RF29BB8600QLAA,-,Y,False
+                CT000877,RF29BB8600QLAA,-,Y,True,1
+                CT002435,RF29BB8600QLAA,-,Y,True,1
+                CT008473,RF29BB8600QLAA,-,Y,False
+                - Location.[Location] = '-' 추가
+                - S/Out FCST Assortment_AP2 값 생성. 
+                S/Out Assortment Flag == False -> Null
+                S/Out Assortment Flag == True -> 1
+
+            Step 5) 최종 Output 구성
+                - Version.[Version Name] = CWV_DP 추가
+                - 4개의 Output 구성
+                Output_SOut_Assortment_GC,S/Out Assortment Flag, Sales Product ASN Column 삭제 필요
+                Output_SOut_Assortment_AP2,S/Out Assortment Flag, Sales Product ASN Column 삭제 필요
+                Output_SOut_Assortment_AP1,S/Out Assortment Flag, Sales Product ASN Column 삭제 필요
+                Output_SOut_Assortment_Local,S/Out Assortment Flag, Sales Product ASN Column 삭제 필요
+
+
+        Validation (*)
+
+
+
+
+        호출 (*)
+
+                    EXEC plugin instance [PYDPSelloutMasterDelta]
+                         for measures {Measure.[S/Out Master Cutoff], Measure.[S/Out Master Status], Measure.[S/Out Master Cutoff Delta], Measure.[S/Out Master Status Delta],  Measure.[S/Out FCST Assortment_GC] , Measure.[S/Out FCST Assortment_AP2] , Measure.[S/Out FCST Assortment_AP1], Measure.[S/Out FCST Assortment_Local] } 
+                    using scope ([Version].[Version Name].[CWV_DP] * [Sales Domain].[Ship To] * [Item].[Item] * [Location].[Location])
+                    using arguments {   
+                (ExecutionMode, "MediumWeight") 
+                ,(IncludeNullrows, False)
+                                    }
+                    ;
+
+
+        Test Case Query (*)
+
+
+        그 외 특이사항
+
+
+
+
+
+

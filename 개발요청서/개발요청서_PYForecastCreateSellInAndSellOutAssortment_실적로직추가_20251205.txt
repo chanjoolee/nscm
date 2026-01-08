@@ -1,0 +1,760 @@
+PYForecastCreateSellInAndSellOutAssortment
+	Python 개발요청서 : PYForecastSellInAssortment.py
+
+		개요 (*)
+
+			* 프로그램명
+				PYForecastCreateSellInAndSellOutAssortment
+
+
+			* 목적
+				- Lock 조건이 풀렸을 경우, 입력 정상 작동 유도
+				- Ratio 가 없는 경우, Intersection 생성 방지
+				- S/In FCST(GI) Assortment_GC Measure의 Assortment 생성
+				- S/In FCST(GI) Assortment_AP2 Measure의 Assortment 생성
+				- S/In FCST(GI) Assortment_AP1 Measure의 Assortment 생성
+				- S/Out FCST Assortment_GC Measure의 Assortment 생성
+				- S/Out FCST Assortment_AP2 Measure의 Assortment 생성
+				- S/Out FCST Assortment_AP1 Measure의 Assortment 생성
+				- S/In FCST(GI) Assortment_AP0 Measure의 Assortment 생성
+				- S/Out FCST Assortment_AP0 Measure의 Assortment 생성
+
+			* 변경이력
+				2025.03.24 전창민 최초 작성
+				2025.06.09 Sell-out Simul Master Input 추가 및 로직 변경
+				2025.06.23 AP0 FCST 추가 및 ASN Aggr 로직 추가
+                    (25.06.23) 변경점
+                        * input)
+                            - df_in_Sales_Domain_Dimension
+                                - 컬럼명 변경
+                                    [Sales Domain].[Sales LV2] =>  [Sales Domain].[Sales Std1]
+                                    [Sales Domain].[Sales LV3] =>  [Sales Domain].[Sales Std2]
+                                    [Sales Domain].[Sales LV4] =>  [Sales Domain].[Sales Std3]
+                                    [Sales Domain].[Sales LV5] =>  [Sales Domain].[Sales Std4]
+                                    [Sales Domain].[Sales LV6] =>  [Sales Domain].[Sales Std5]
+                                    [Sales Domain].[Sales LV7] =>  [Sales Domain].[Sales Std6]
+                                    [Sales Domain].[Ship To]   =>  [Sales Domain].[Ship To]
+
+
+
+                        * Step2)
+                            - Sales Product ASN 삭제로직 삭제
+                            - S/Out Assortment Flag = True 추가
+                            - Sell-out Simul Master CON 반영 단계 추가
+                            - E-store 값 반영 로직 추가
+
+                        * Step3)
+                            - AP0 FCSTRULE 생성 로직 추가
+                            - S/Out Assortment Flag 의 Aggr ( MAX ) 추가 및 적용
+                            - Sales Product ASN 의 Aggr ( MAX(Y,N) => Y ) 추가 및 적용
+                            - Step 3-5 삭제, Step 3-2 로직 변경 (기존 로직이 더 효율적이면 유지)
+
+                        * Step4)
+                            - AP0 FCSTRULE 생성 로직 추가
+                            - S/Out Assortment Flag 의 Aggr ( MAX ) 추가 및 적용
+                            - Sales Product ASN 의 Aggr ( MAX(Y,N) => Y ) 추가 및 적용
+                        * Step5)
+                            - AP0 FCSTRULE 생성 로직 추가
+                            - Step3) 변경에 따른 로직 자동 변경
+                2025.12.04 S/Out Actual 값 참조하여, Assortment Data 생성
+                    1.  (추가조건) Step 5-2 에서 생성한 Assortment Data를 E-store Account에 대해서만 생성하도록 Filtering 로직 추가 부탁드립니다.
+
+                        * 25.12.05 df_in_Sales_Domain_Estore 에 해당하는 Ship To 가 아닌 경우에는 삭제
+
+                        * 이후 Step 4 의 결과와 Merge
+
+
+
+                    2. (추가 Step) Step 6) 25.12.05 S/Out Actual 값이 있는 Item에 대해서 S/Out Assortment 생성
+
+                        - "df_in_Sell_Out_Actual_NoeStore_Past12" Input 추가했습니다.
+
+                        - df_in_Sell_Out_Actual_NoeStore_Past12 에 해당하는 Ship To, Item, Location 에 대해서 S/Out Assortment 생성 부탁드립니다.
+
+
+
+
+
+
+		Script Parameter
+
+
+        Input Tables (*)
+
+            (Input 1) Forecast Rule 정보
+                df_in_Forecast_Rule
+                    Select ([Version].[Version Name]
+                    * [Item].[Product Group]
+                    * [Sales Domain].[Ship To] )  on row,
+                    ( {
+                        Measure.[FORECAST_RULE GC FCST],
+                        Measure.[FORECAST_RULE AP2 FCST],
+                        Measure.[FORECAST_RULE AP1 FCST],
+                        Measure.[FORECAST_RULE AP1 FCST],
+                        Measure.[FORECAST_RULE AP0 FCST],
+                        Measure.[FORECAST_RULE ISVALID] } ) on column;
+
+                    Version.[Version Name],Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE GC FCST,FORECAST_RULE AP2 FCST,FORECAST_RULE AP1 FCST,FORECAST_RULE AP0 FCST,FORECAST_RULE ISVALID
+                    CWV_DP,REF,300114,3,5,6,7,Y
+                    CWV_DP,REF,400362,,6,,,Y
+                    CWV_DP,TV,203,2,3,6,,Y
+
+
+            (Input 2) Sales Domian Master 정보
+                df_in_Sales_Domain_Dimension
+                    Select (
+                        * [Sales Domain].[Sales Std1]
+                        * [Sales Domain].[Sales Std2]
+                        * [Sales Domain].[Sales Std3]
+                        * [Sales Domain].[Sales Std4]
+                        * [Sales Domain].[Sales Std5]
+                        * [Sales Domain].[Sales Std6]
+                        * [Sales Domain].[Ship To] )
+
+
+
+                    Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Sales Domain.[Ship To]
+                    203,203,203,203,203,203,203
+                    203,300114,300114,300114,300114,300114,300114
+                    203,300114,A300114,A300114,A300114,A300114,A300114
+                    203,300114,A300114,400362,400362,400362,400362
+                    203,300114,A300114,400362,5002453,5002453,5002453
+                    203,300114,A300114,400362,5002453,A5002453,A5002453
+                    203,300114,A300114,400362,5003074,5003074,5003074
+                    203,300114,A300114,400362,5003074,A5003074,A5003074
+                    203,300114,A300114,400362,5005569,5005569,5005569
+                    203,300114,A300114,400362,5005569,A5005569,A5005569
+                    203,300114,A300114,400362,5007280,5007280,5007280
+                    203,300114,A300114,400362,5007280,A5007280,A5007280
+                    203,300114,A300114,408273,408273,408273,408273
+                    203,300114,A300114,408273,5006941,5006941,5006941
+                    203,300114,A300114,408273,5006941,A5006941,A5006941
+                    203,300114,A300114,408273,5019692,5019692,5019692
+
+
+
+            (Input 3) Sales Product ASN 정보
+                df_in_Sales_Product_ASN
+                    Select (
+                        [Version].[Version Name].[CWV_DP]
+                        * [Sales Domain].[Ship To].filter(#.Name startswith([5]))
+                        * Item.[Item]
+                        * [Location].[Location].filter(#.Name != "-") )  on row,
+                    ( { Measure.[Sales Product ASN] } ) on column
+                    where { (Measure.[Sales Product ASN] == "Y" ) } ;
+
+
+
+                    Version.[Version Name],Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN
+                    CWV_DP,A5002453,RF29BB8600QLAA,S377,Y
+                    CWV_DP,5019692,RF29BB8600QLAA,S377,Y
+                    CWV_DP,A5006941,RF29BB8600QLAA,S377,Y
+                    CWV_DP,A5005569,RF29BB8600QLAA,S377,Y
+                    CWV_DP,A5002453,TV1,S341,Y
+                    CWV_DP,A5006941,TV1,S342,Y
+                    CWV_DP,A5006941,TV1,S341,Y
+
+
+            (Input 4) MST_Item 정보
+                df_in_Item_Master
+                    Select (
+                    * [Item].[Item GBM]
+                    * [Item].[Product Group]
+                    * [Item].[Item]
+                    );
+
+
+
+
+                    Item.[Item GBM],Item.[Product Group],Item.[Item]
+                    VD,TV,TV1
+                    SHA,REF,RF29BB8600QLAA
+                    NOASN,NOASN,NOASNITEM
+
+
+            (Input 5) E-Store 정보
+                df_in_Sales_Domain_Estore
+                    Select (
+                    [Sales Domain].[Ship To].filter(#.[eStore Account YN] == True) );
+
+
+                    Sales Domain.[Ship To]
+                    A5005569
+
+            (Input 6) Sell-Out Simul. Master 정보 (TO-BE : 7LV)	 추가됨
+                df_in_Sell_Out_Simul_Master
+                    Select ([Version].[Version Name]
+                        * [Sales Domain].[Ship To]
+                        * [Item].[Product Group] )  on row,
+                    ( {Measure.[S/Out Master Status] } ) on column;
+
+
+
+                    Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Status
+                    CWV_DP,5002453,REF,CON
+                    CWV_DP,5005569,REF,CON
+                    CWV_DP,5019692,REF,CON
+                    CWV_DP,5002453,TV,CON
+                    CWV_DP,5006941,TV,CON
+
+
+            (Input 7) Sell-Out Actual No eStore 정보	(25.12.04 추가)
+                df_in_Sell_Out_Actual_NoeStore_Past12
+                    Select (
+                        [Sales Domain].[Ship To].filter(#.[eStore Account YN] == false)
+                        * [Item].[Item]
+                        * [Location].[Location].[-]
+                    ) on row,
+                    ({Measure.[S/Out Actual]}) on column
+                    where {
+                        [Version].[Version Name]
+                        ,[Time].[Week].filter(#.Key >= &CurrentWeek.element(0).leadoffset(-12).Key && #.Key < &CurrentWeek.element(0).leadoffset(0).Key )
+                    } ;
+
+                - data
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],S/Out Actual
+                    5002453,NOASNITEM,-,129
+
+
+
+
+		Output Tables (*)
+
+			(Output 1)
+				Output_SOut_Assortment_GC
+					Select ([Version].[Version Name]
+					 * [Sales Domain].[Ship To]
+					 * [Item].[Item]
+					 * [Location].[Location]) on row,
+					( { Measure.[S/Out FCST Assortment_GC] } ) on column ;
+
+
+			(Output 2)
+				Output_SOut_Assortment_AP2
+					Select ([Version].[Version Name]
+					 * [Sales Domain].[Ship To]
+					 * [Item].[Item]
+					 * [Location].[Location]) on row,
+					( { Measure.[S/Out FCST Assortment_AP2] } ) on column ;
+
+
+			(Output 3)
+				Output_SOut_Assortment_AP1
+					Select ([Version].[Version Name]
+					 * [Sales Domain].[Ship To]
+					 * [Item].[Item]
+					 * [Location].[Location]) on row,
+					( { Measure.[S/Out FCST Assortment_AP1] } ) on column ;
+
+
+
+			(Output 4)
+				Output_SIn_Assortment_GC
+					Select ([Version].[Version Name]
+					 * [Sales Domain].[Ship To]
+					 * [Item].[Item]
+					 * [Location].[Location]  ) on row,
+					( { Measure.[S/In FCST(GI) Assortment_GC] } ) on column;
+
+
+			(Output 5)
+				Output_SIn_Assortment_AP2
+					Select ([Version].[Version Name]
+					 * [Sales Domain].[Ship To]
+					 * [Item].[Item]
+					 * [Location].[Location]  ) on row,
+					( { Measure.[S/In FCST(GI) Assortment_AP2] } ) on column;
+
+
+			(Output 6)
+				Output_SIn_Assortment_AP1
+					Select ([Version].[Version Name]
+					 * [Sales Domain].[Ship To]
+					 * [Item].[Item]
+					 * [Location].[Location]  ) on row,
+					( { Measure.[S/In FCST(GI) Assortment_AP1] } ) on column;
+
+			(Output 7)		추가됨
+				Output_SOut_Assortment_Local
+					Select ([Version].[Version Name]
+					 * [Sales Domain].[Ship To]
+					 * [Item].[Item]
+					 * [Location].[Location]) on row,
+					( { Measure.[S/Out FCST Assortment_Local] } ) on column ;
+
+			(Output 8)	    추가됨
+				Output_SIn_Assortment_Local
+					Select ([Version].[Version Name]
+					 * [Sales Domain].[Ship To]
+					 * [Item].[Item]
+					 * [Location].[Location]  ) on row,
+					( { Measure.[S/In FCST(GI) Assortment_Local] } ) on column;
+
+
+		주요 로직 (*)
+            - 사전 지시사항.
+                - 대량데이타를 다루기 때문에 메모리 최적화
+                    - 이후에 사용하지 않는 object 가 있는 경우 아래처럼. object 삭제한다.
+                        del object
+                        gc.collect()
+
+			Step 1) Forecast Rule 전처리 (기존의 방식과 마찬가지로 Step 1 ) 은 넘어간다.)
+
+				Step 1-1) Column 제거
+                    Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE GC FCST,FORECAST_RULE AP2 FCST,FORECAST_RULE AP1 FCST,FORECAST_RULE AP0 FCST
+                    REF,300114,3,5,6,7
+                    REF,400362,,6,,
+                    TV,203,2,3,6,
+
+				* Version.[Version Name] 삭제
+				* FORECAST_RULE ISVALID
+
+                Step 1-2) GC, AP2, AP1 분리
+                    - 결과예시
+                        Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE GC FCST
+                        REF,300114,3
+                        TV,203,2
+
+                        * Null 제거
+                    - 결과예시
+                        Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE AP2 FCST
+                        REF,300114,5
+                        REF,400362,6
+                        TV,203,3
+
+                        * Null 제거
+                    - 결과예시
+                        Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE AP1 FCST
+                        REF,300114,6
+                        TV,203,6
+
+                        * Null 제거
+
+			Step 2) Sales Product ASN 전처리
+                - 기존 버전에서는 너무 간단하기 때문에 이단계를 skip 을 했지만, 'S/Out Assortment Flag' 컬럼이 추가되었기 때문에 이 버젼에서는 Step 2) 에 대한 코드를 추가해야 해야 할 것 같다.
+                - 주요변화는 'S/Out Assortment Flag' 컬럼추가
+                    SOUT_ASS_FLAG             = 'S/Out Assortment Flag'
+                - 아래에서는 2-1 , 2-2, 2-3 으로 나누었지만, step2 에 대한 function은 하나의 function 에서 구현 하도록 하는 것이 좋을 것 같다.
+				Step 2-1) Sales Product ASN 전처리
+                    - 결과예시
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out Assortment Flag
+                        A5002453,RF29BB8600QLAA,S377,Y,True
+                        5019692,RF29BB8600QLAA,S377,Y,True
+                        A5006941,RF29BB8600QLAA,S377,Y,True
+                        A5005569,RF29BB8600QLAA,S377,Y,True
+                        A5002453,TV1,S341,Y,True
+                        A5006941,TV1,S342,Y,True
+                        A5006941,TV1,S341,Y,True
+                    * Version.[Version Name] 삭제
+                    * Sales Product ASN 삭제 : ASN 생성 로직에서 Y,N을 Aggregation 필요. 동일 로직 사용을 위해 넣어놨으나, 해당 로직에서는 쓰지 않음.
+                    * S/Out Assortment Flag = True 추가
+
+				Step 2-2) Sell-out Simul Master CON 값 반영 Sales Product ASN 전처리
+                    - 결과예시
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out Assortment Flag
+                        A5002453,RF29BB8600QLAA,S377,Y,True
+                        5019692,RF29BB8600QLAA,S377,Y,True
+                        A5006941,RF29BB8600QLAA,S377,Y,False
+                        A5005569,RF29BB8600QLAA,S377,Y,True
+                        A5002453,TV1,S341,Y,True
+                        A5006941,TV1,S342,Y,True
+                        A5006941,TV1,S341,Y,True
+
+                    - PYForecastSellOutLockColor Step5)  로직 활용( 로직 이동 예정)
+                    - df_in_Sell_Out_Simul_Master 에서 Sales Domain.[Ship To] * Item.[Product Group] 에 존재하지 않는 값에 대해  S/Out Assortment = False 처리
+                        - df_in_Sell_Out_Simul_Master 의 COL_MASTER_STATUS 의 값이 'CON' 인것만만 활용한다.
+                        - df_in_Sell_Out_Simul_Master 에는 Product_Group 이 없으므로 df_fn_Sales_Product_ASN 을 만들때 df_in_Item_Master 와 조인하여 Product_Group 컬럼을 추가한다.
+                    - 6Lv 하위에 7Lv에 있는 경우 위의 로직 추가 처리
+                        - df_in_Sell_Out_Simul_Master의 shipto 는 6 levl(std5) 로 되어있음. df_in_Sales_Product_ASN 의 	shipto 는 6lv(std5) 또는 7lv(std6) 로 되어 있어서 단순히 filter 를 하면 일치하지 않음.
+                        - 아래의 로직을 참조한다.
+                            - 아래의 function으로 dimmention 에 대한 lut을 만들고
+                                @_decoration_
+                                def fn_step01_6_load_shipto_dimension(
+                                        df_dim: pd.DataFrame          # df_in_Sales_Domain_Dimension
+                                    ) -> pd.DataFrame:
+                                    """
+                                    Step 01-6  (patched)
+                                    --------------------
+                                    Ship-To(LV5/6 코드) 기준 계층 LUT 생성.    레벨 매핑 규칙
+                                    ─────────────
+                                        Std1 == ShipTo  → LV2
+                                        Std2 == ShipTo  → LV3
+                                        Std3 == ShipTo  → LV4
+                                        Std4 == ShipTo  → LV5
+                                        Std5 == ShipTo  → LV6
+                                        Std6 == ShipTo  → LV7
+                                        (어느 것도 매칭되지 않으면 LV2)
+
+                                    반환 컬럼
+                                    ────────
+                                        • COL_SHIP_TO
+                                        • COL_STD1 … COL_STD6
+                                        • LV_CODE  (int8)
+
+                                    메모리
+                                    ──────
+                                        • category 캐스팅
+                                        • 중간 bool / int 배열 삭제 후 gc.collect()
+                                    """
+                                    # import gc
+
+                                    # 1) 필요한 열만 선택 & category 캐스팅 ------------------------
+                                    use_cols = [
+                                        COL_SHIP_TO, COL_STD1, COL_STD2, COL_STD3, COL_STD4, COL_STD5, COL_STD6
+                                    ]
+                                    df_lut = (
+                                        df_dim[use_cols]
+                                        .copy(deep=False)
+                                        .astype({c: 'category' for c in use_cols})
+                                    )
+
+                                    # 2) 레벨 계산 (벡터라이즈) ------------------------------------
+                                    # 초기값 LV2
+                                    lv_code = np.full(len(df_lut), 2, dtype='int8')
+
+                                    # 각 Std 열이 Ship-To 와 동일하면 해당 레벨로 갱신
+                                    std_cols_levels = [
+                                        (COL_STD6, 7),
+                                        (COL_STD5, 6),
+                                        (COL_STD4, 5),
+                                        (COL_STD3, 4),
+                                        (COL_STD2, 3),
+                                        (COL_STD1, 2)
+                                    ]
+                                    ship_vals = df_lut[COL_SHIP_TO].to_numpy()
+
+                                    for col, lvl in std_cols_levels:
+                                        match = df_lut[col].to_numpy() == ship_vals
+                                        lv_code[match] = lvl
+
+                                    df_lut['LV_CODE'] = lv_code
+
+                                    # 3) 결과 등록 & 로그 -----------------------------------------
+                                    # STR_DF_FN_SHIPTO_DIM = 'df_fn_shipto_dim'
+                                    # output_dataframes[STR_DF_FN_SHIPTO_DIM] = df_lut
+                                    # fn_log_dataframe(df_lut, STR_DF_FN_SHIPTO_DIM)
+
+                                    # 4) 불필요 객체 메모리 해제 -----------------------------------
+                                    del ship_vals, lv_code, match, df_dim
+                                    gc.collect()
+
+                                    return df_lut
+                            - 아래처럼 호출하여 object를 만들고
+                                df_fn_shipto_dim = fn_step01_6_load_shipto_dimension(
+                                    input_dataframes[STR_DF_IN_SALES_DOMAIN_DIM],
+                                    **dict_log
+                                )
+                            - 아래에서 처럼 활용한다.
+                                - call
+                                    df_fn_sales_product_asn_item_week = fn_step01_8_apply_rts_colour_to_asn(
+                                        df_fn_sales_product_asn_item_week,          # Step 01-7
+                                        df_fn_rts_eos_pw,                           # Step 01-5
+                                        output_dataframes[STR_DF_FN_SHIPTO_DIM],    # Step 01-6  df_fn_shipto_dim
+                                        **dict_log
+                                    )
+                                - fn_step01_8_apply_rts_colour_to_asn
+                                    @_decoration_
+                                    def fn_step01_8_apply_rts_colour_to_asn(
+                                            df_asn_week : pd.DataFrame,      # df_fn_sales_product_asn_item_week  (in-place)
+                                            df_rts_pw   : pd.DataFrame,      # df_fn_rts_eos_pw  (LV2·LV3 혼재)
+                                            df_ship_dim : pd.DataFrame       # df_fn_shipto_dim  (LV_CODE, Std1~6)
+                                        ) -> pd.DataFrame:
+                                        """
+                                        LV2(Std1) → LV3(Std2) 순서로 Lock / Color 복사
+                                        ----------------------------------------------
+                                        1) Ship-To → Std1·Std2 매핑
+                                        2) RTS 측 Ship-To 레벨(LV2/LV3) 분리 lookup
+                                        3) LV2 먼저 복사  →  LV3 덮어쓰기
+                                        """
+                                        # import gc
+
+                                        # ── 0) 컬러 컬럼을 object 로 임시 변환 (새 색상 허용) ──────────
+                                        df_asn_week[COL_BO_FCST_COLOR_COND] = df_asn_week[COL_BO_FCST_COLOR_COND].astype(object)
+
+                                        # ── 1) Ship-To 매핑 dict 생성 --------------------------------
+                                        dim        = df_ship_dim.set_index(COL_SHIP_TO)
+                                        map_std1   = dim[COL_STD1].to_dict()        # Std1 → LV2 코드
+                                        map_std2   = dim[COL_STD2].to_dict()        # Std2 → LV3 코드
+                                        lv_code    = dim['LV_CODE'].to_dict()       # Ship-To → 레벨번호
+
+                                        df_asn_week['_LV2'] = df_asn_week[COL_SHIP_TO].map(map_std1)
+                                        df_asn_week['_LV3'] = df_asn_week[COL_SHIP_TO].map(map_std2)
+
+                                        # ── 2) RTS 쪽 Ship-To 레벨 부여 & lookup 테이블 제작 ---------
+                                        df_rts_pw['_LV_CODE'] = df_rts_pw[COL_SHIP_TO].map(lv_code).astype('int8')
+
+                                        key_cols = ['_SHIP_STD', COL_ITEM, COL_TIME_PW]
+
+                                        def _make_lookup(src: pd.DataFrame, lv: int):
+                                            return (src.query('_LV_CODE == @lv')
+                                                    .rename(columns={COL_SHIP_TO: '_SHIP_STD'})
+                                                    .set_index(key_cols, drop=False)[
+                                                        [COL_BO_FCST_LOCK, COL_BO_FCST_COLOR_COND]])
+
+                                        lkp_lv2 = _make_lookup(df_rts_pw, 2)
+                                        lkp_lv3 = _make_lookup(df_rts_pw, 3)
+
+                                        # ── 3) 복사 헬퍼 (DataFrame.loc 사용) ------------------------
+                                        def _copy(df_dst: pd.DataFrame, ship_series: pd.Series, lkp: pd.DataFrame):
+                                            idx_tuples = list(zip(ship_series, df_dst[COL_ITEM], df_dst[COL_TIME_PW]))
+                                            pos        = lkp.index.get_indexer(idx_tuples)
+                                            valid_idx  = np.flatnonzero(pos >= 0)           # 행 인덱스 (ASN)
+                                            if len(valid_idx):
+                                                src_pos = pos[valid_idx]                    # RTS 행 위치
+                                                df_dst.loc[valid_idx, COL_BO_FCST_LOCK]        = lkp[COL_BO_FCST_LOCK].to_numpy()[src_pos]
+                                                df_dst.loc[valid_idx, COL_BO_FCST_COLOR_COND]  = lkp[COL_BO_FCST_COLOR_COND].to_numpy()[src_pos]
+                                                test = 1
+                                                """
+                                                import duckdb
+                                                # numpy 배열을 DataFrame 으로 래핑
+
+                                                duckdb.register('lkp', lkp)
+                                                duckdb.register('df_dst', df_dst.loc[valid_idx])
+                                                duckdb.sql(f'SELECT "{COL_BO_FCST_COLOR_COND}", COUNT(*) AS rows from lkp GROUP BY 1 ORDER BY 2 DESC').show()
+                                                duckdb.sql(f'SELECT "{COL_BO_FCST_COLOR_COND}", COUNT(*) AS rows from df_dst GROUP BY 1 ORDER BY 2 DESC').show()
+                                                """
+
+                                        # ── 4) LV2 적용 후 LV3 덮어쓰기 ------------------------------
+                                        _copy(df_asn_week, df_asn_week['_LV2'], lkp_lv2)
+                                        _copy(df_asn_week, df_asn_week['_LV3'], lkp_lv3)
+
+                                        # ── 5) 컬러 컬럼을 카테고리로 재캐스팅 ------------------------
+                                        df_asn_week[COL_BO_FCST_COLOR_COND] = pd.Categorical(
+                                            df_asn_week[COL_BO_FCST_COLOR_COND],
+                                            categories=[COLOR_WHITE, COLOR_GRAY,
+                                                        COLOR_DARKBLUE, COLOR_LIGHTBLUE,
+                                                        COLOR_LIGHTRED, COLOR_DARKRED]
+                                        )
+
+                                        # ── 6) 임시 열 및 중간 객체 정리 -----------------------------
+                                        df_asn_week.drop(columns=['_LV2', '_LV3'], inplace=True)
+                                        del map_std1, map_std2, lkp_lv2, lkp_lv3; gc.collect()
+
+                                        """
+                                        ══════════════════════════════════════════════════════════════
+                                        DUCKDB VALIDATION – 색상 반영 확인
+                                        ══════════════════════════════════════════════════════════════
+                                        import duckdb, os
+                                        duckdb.register('asn', df_asn_week)
+                                        duckdb.register('rts', df_rts_pw)
+                                        duckdb.register('dim', df_ship_dim)
+
+                                        # 1) RTS 컬러 종류
+                                        duckdb.sql(f'SELECT DISTINCT "{COL_BO_FCST_COLOR_COND}" FROM rts').show()
+
+                                        # 2) ASN 컬러 종류
+                                        duckdb.sql(f'SELECT DISTINCT "{COL_BO_FCST_COLOR_COND}" FROM asn').show()
+
+                                        # 3) LV2·LV3 매칭 성공 행 로그 CSV
+                                        for lv, std_col, name in [(2, COL_STD1, 'lv2_hits'),
+                                                                (3, COL_STD2, 'lv3_hits')]:
+                                            q = duckdb.sql(f'''
+                                                SELECT a.*
+                                                FROM   asn a
+                                                JOIN   rts r
+                                                ON   r."{COL_SHIP_TO}" IN (
+                                                        SELECT "{std_col}" FROM dim
+                                                        WHERE "{COL_SHIP_TO}" = a."{COL_SHIP_TO}"
+                                                    )
+                                                AND   r."{COL_ITEM}"     = a."{COL_ITEM}"
+                                                AND   r."{COL_TIME_PW}"  = a."{COL_TIME_PW}"
+                                                AND   r."_LV_CODE"       = {lv}
+                                            ''').to_df()
+                                            fn_log_dataframe(q, f'chk_step01_8_{name}')
+                                            # q.to_csv(os.path.join(str_output_dir, f'{name}.csv'), index=False)
+                                        """
+                                        return df_asn_week
+
+
+
+				Step 2-3) E-store 값 반영 Sales Product ASN 전처리
+                    - 결과예시
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out Assortment Flag
+                        A5002453,RF29BB8600QLAA,S377,Y,True
+                        5019692,RF29BB8600QLAA,S377,Y,True
+                        A5006941,RF29BB8600QLAA,S377,Y,False
+                        A5005569,RF29BB8600QLAA,S377,Y,False
+                        A5002453,TV1,S341,Y,True
+                        A5006941,TV1,S342,Y,True
+                        A5006941,TV1,S341,Y,True
+				- df_in_Sales_Domain_Estore 의 ShipTo인 S/Out Assortment = False 처리
+
+				* 로직 사유 MEMO
+				Sell-Out에서 Sell-Out Simul Master에 없는 값 입력 불가 -> False처리
+				Sell-Out에서 E-store는 - 생성 X -> False 처리
+
+			Step 3) Forecast Rule에 따른 Data 생성 (GC,AP2,AP1, AP0에 대해서 각각 진행)
+                - 아래의 3-1, 3-2, 3-3, 3-4, 3-5 의 과정은 개념적인 설명임. 프로그램을 위한 spec으로는 적합하지 않다.
+                    - 기존의 코드 step03_create_sellin_assortments 에 logic 은 잘 적용되어 있다.
+                    - 코드의 차이점만 추가적으로 반영하도록 하자.
+                - 기존코드와의 변경사항
+                    - AP0 추가
+                        - df_in_Forecast_Rule 에 'FORECAST_RULE AP0 FCST' 컬럼이 추가됨.
+                        - 'FORECAST_RULE AP0 FCST' 컬럼을 이용해 Output_SOut_Assortment_Local 를 생성한다.
+                            - 'FORECAST_RULE AP0 FCST' 은 Output_SOut_Assortment_Local 의 'S/Out FCST Assortment_Local' 에 대응한다.
+                    - 컬럼추가
+                        - Step4 에서 사용할 컬럼을 위해 아래의 두개의 컬럼이 추가됨
+                        - 추가된 컬럼
+                            - 'S/Out Assortment Flag' 컬럼추가
+                            - 'Sales Product ASN' 컬럼추가
+                        - Step5 에서 는 필요없음
+
+				Step 3-1) Step 2) 의 결과에 Sales Domain Master와 Item Master Dataframe을 Merge
+                    - 결과예시
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Item.[Product Group],Sales Product ASN,S/Out Assortment Flag
+                        A5002453,RF29BB8600QLAA,S377,203,300114,A300114,400362,5002453,A5002453,REF,Y,True
+                        5019692,RF29BB8600QLAA,S377,203,300114,A300114,400362,5019692,5019692,REF,Y,True
+                        A5006941,RF29BB8600QLAA,S377,203,300114,A300114,408273,5006941,A5006941,REF,Y,False
+                        A5005569,RF29BB8600QLAA,S377,203,300114,A300114,400362,5005569,A5005569,REF,Y,False
+                        A5002453,TV1,S341,203,300114,A300114,400362,5002453,A5002453,TV,Y,True
+                        A5006941,TV1,S342,203,300114,A300114,400362,5006941,A5006941,TV,Y,True
+                        A5006941,TV1,S341,203,300114,A300114,408273,5006941,A5006941,TV,Y,True
+                    - Sales Domain.[Ship To] 를 기준으로 Merge
+                    - Item.[Item]을 기준으로 Merge
+                    - 재활용할 Dataframe
+
+				Step 3-2) Step 3-1) 의 결과에 Forecast Rule Merge
+                    - 결과예시
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Item.[Product Group],Sales Product ASN,S/Out Assortment Flag,FORECAST_RULE AP2 FCST
+                        A5002453,RF29BB8600QLAA,S377,203,300114,A300114,400362,5002453,A5002453,REF,Y,True,6
+                        5019692,RF29BB8600QLAA,S377,203,300114,A300114,400362,5019692,5019692,REF,Y,True,6
+                        A5006941,RF29BB8600QLAA,S377,203,300114,A300114,408273,5006941,A5006941,REF,Y,False,5
+                        A5005569,RF29BB8600QLAA,S377,203,300114,A300114,400362,5005569,A5005569,REF,Y,False,6
+                        A5002453,TV1,S341,203,300114,A300114,400362,5002453,A5002453,TV,Y,True,3
+                        A5006941,TV1,S342,203,300114,A300114,400362,5006941,A5006941,TV,Y,True,3
+                        A5006941,TV1,S341,203,300114,A300114,408273,5006941,A5006941,TV,Y,True,3
+
+                    Case 1) Forecast Rule의 Ship To 가 2인 경우, Sales Domain.[Sales Std1], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+                    Case 2) Forecast Rule의 Ship To 가 3인 경우, Sales Domain.[Sales Std2], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+                    Case 3) Forecast Rule의 Ship To 가 A3인 경우, Sales Domain.[Sales Std3], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+                    Case 4) Forecast Rule의 Ship To 가 4인 경우, Sales Domain.[Sales Std4], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+                    Case 5) Forecast Rule의 Ship To 가 5인 경우, Sales Domain.[Sales Std5], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+                    Case 6) Forecast Rule의 Ship To 가 A5인 경우, Sales Domain.[Sales Std6], Item.[Product Group] 를 기준으로 FCSTRULE 정보 Update
+                    * 앞의 코드는 임시 코드로 향후 2 ~ 7 로 변경 예정
+
+				Step 3-3) ASN에 대해서 Forecast Rule을 바탕으로 Groupby 할 기준 Column 생성
+                    - 결과예시
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Item.[Product Group],Sales Product ASN,S/Out Assortment Flag,FORECAST_RULE AP2 FCST,GBRULE
+                        A5002453,RF29BB8600QLAA,S377,203,300114,A300114,400362,5002453,A5002453,REF,Y,True,6,5002453
+                        5019692,RF29BB8600QLAA,S377,203,300114,A300114,400362,5019692,5019692,REF,Y,True,6,5019692
+                        A5006941,RF29BB8600QLAA,S377,203,300114,A300114,408273,5006941,A5006941,REF,Y,False,5,400362
+                        A5005569,RF29BB8600QLAA,S377,203,300114,A300114,400362,5005569,A5005569,REF,Y,False,6,5005569
+                        A5002453,TV1,S341,203,300114,A300114,400362,5002453,A5002453,TV,Y,True,3,300114
+                        A5006941,TV1,S342,203,300114,A300114,400362,5006941,A5006941,TV,Y,True,3,300114
+                        A5006941,TV1,S341,203,300114,A300114,408273,5006941,A5006941,TV,Y,True,3,300114
+
+				    - FORECAST_RULE XX FCST 값에 해당하는 Lv의 값을 가져와서 GBRULE Column에 추가
+
+				Step 3-4) Group By를 통해 Output Data Set 생성
+                    - 결과예시
+                        Item.[Item],Location.[Location],Sales Domain.[Ship To],Sales Product ASN,S/Out Assortment Flag
+                        RF29BB8600QLAA,S377,5002453,Y,True
+                        RF29BB8600QLAA,S377,5019692,Y,True
+                        RF29BB8600QLAA,S377,400362,Y,False
+                        RF29BB8600QLAA,S377,5005569,Y,False
+                        TV1,S341,300114,Y,True
+                        TV1,S342,300114,Y,True
+
+                    - GBRULE, Item, Location 으로 Groupby 진행
+                    - S/Out Assortment Aggr 적용시 (True, False) -> True 적용
+                        - 이것은 만약 집계를 할 때 'S/Out Assortment Flag' 의 값이 [True,False,False] 이라면 , 여러개의 값 중 True 가 하나라도 있으면 True 로 한다는 것이다.
+                    - Sales Product ASN 의 Aggr ( (Y, N) => Y ) 적용
+                        - 'S/Out Assortment Flag' 와 마찬가지로 'Sales Product ASN' 의 값이 [Y,N,N] 이라면 , 여러개의 값 중 Y 가 하나라도 있으면 Y 로 한다는 것이다.
+                    - Rename : GBRULE -> Sales Domain.[Ship To]
+
+
+				Step 3-5) Assortment Column 추가 및 값 1 입력
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out Assortment Flag,S/In FCST(GI) Assortment_AP2
+                    RF29BB8600QLAA,S377,5002453,Y,True,1
+                    RF29BB8600QLAA,S377,5019692,Y,True,1
+                    RF29BB8600QLAA,S377,400362,Y,False,1
+                    RF29BB8600QLAA,S377,5005569,Y,False,1
+                    TV1,S341,300114,Y,True,1
+                    TV1,S342,300114,Y,True,1
+
+			Step 4) Forecast Rule에 따른 S/Out Assortment Column 및 Data 생성 (GC,AP2,AP1,AP0에 대해서 각각 진행)
+				Step 4-1) Step 3-6)의 Table을 사용하여, Location 을 제외하고 Group by 진행
+                    - 결과예시
+                        Sales Domain.[Ship To],Item.[Item],Sales Product ASN,S/Out Assortment Flag
+                        RF29BB8600QLAA,S377,Y,True
+                        TV1,S341,Y,True
+                        TV1,S342,Y,True
+
+                    - S/In FCST(GI) Assortment_XX Column 삭제
+                    - S/Out Assortment Flag에서 False 인 값(row) 삭제 (25.06.20 추가)
+                    - Sales Domain.[Ship To], Item.[Item] 으로 Group by 진행,
+                    - S/Out Assortment Aggr 적용시 (True, False) -> True 적용
+                    - Sales Product ASN 의 Aggr ( MAX(Y,N) => Y ) 적용
+                    - Rename : S/Out Assortment ->S/Out FCST Assortment_??, 값 1 적용
+
+                Step 4-2) Location 추가
+                    - 결과예시
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out FCST Assortment_AP2
+                        RF29BB8600QLAA,S377,-,Y,1
+                        TV1,S341,-,Y,1
+                        TV1,S342,-,Y,1
+
+                    - Location.[Location] = '-' 추가
+			Step 5) Forecast Rule에 따른 E-store S/Out Assortment Column 및 Data 생성 (GC,AP2,AP1, AP0에 대해서 각각 진행)
+				Step 5-1) Step 2) 의 결과에서 E-store에 해당하는 Account만 Filtering 진행
+                	- 결과예시
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN
+                        A5005569,RF29BB8600QLAA,S377,Y
+
+
+
+				Step 5-2) Step 5-1)의 output으로 Step 3의 과정 진행
+                    - 결과예시
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out Assortment Flag,S/In FCST(GI) Assortment_GC -> S/Out FCST Assortment_GC
+                        5005569,RF29BB8600QLAA,S377,Y,False,1
+				- Rename : S/In FCST(GI) Assortment_XX ->S/Out FCST Assortment_XX
+				- S/Out Assortment Flag 삭제
+
+				Step 5-3) Step 5-2) 와 Step 4) 를 Concat
+
+            Step 6) (25.12.05)  S/Out Actual 값이 있는 Item에 대해서 S/Out Assortment 배정
+                Step 6-1): df_in_Sell_Out_Actual_NoeStore_Past12 의 S/Out Actual 값이 있는 Item에 대해서 S/Out Assortment 생성
+                    - result (ap2 에 대한 예시)
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out FCST Assortment_AP2
+                        5002453,NOASNITEM,-,,1
+
+                    - process v1
+                        - df_in_Sell_Out_Actual_NoeStore_Past12 에 해당하는 Ship To, Item, Location 에 대해서 Assortment 생성
+                        - Step 3, Step 4 과정 진행하여, S/Out FCST Assortment_AP1, S/Out FCST Assortment_AP2, S/Out FCST Assortment_GC, S/Out FCST Assortment_Local 각각 생성
+                            - Step 2 도 진행해야 한다.
+                        
+                    -  고려사항
+                        - ASN 이 Null 일 텐데, 로직에 오류없는지 확인 요청드립니다.
+                            - df_in_Sell_Out_Actual_NoeStore_Past12 에는 'Sales Product ASN' 컬럼이 없는데 Step3 를 돌리는데 오류없는지를 물어보는 것 같음.
+                            - 'Sales Product ASN' 가 없으니 필드를 만들고 이런경우 값을 pd.NA 로 대입해라
+                    
+                Step 6-2): Step 6-1) 과 Step 5-3) 을 Concat
+                
+                - process v2. (내가.chanju 재정비한 process) 
+                    - load 
+                        - df_in_Sell_Out_Actual_NoeStore_Past12
+                        - df_sout_dict
+                        - 기타필요한 df들
+                    - Step2 call
+                        - df_asn 에 df_in_Sales_Product_ASN 대신 df_in_Sell_Out_Actual_NoeStore_Past12
+                    - Step3 call
+                    - Step4 call
+                    - concat (위의 Step4 call) + (df_sout_dict)
+                    - return df_sout_dict
+
+                
+
+
+
+			Step 7) 최종 Output 구성
+
+				- Version.[Version Name] = CWV_DP 추가
+				- 6개의 Output 구성
+					Output_SOut_Assortment_GC	Sales Product ASN Column 삭제 필요
+					Output_SOut_Assortment_AP2	Sales Product ASN Column 삭제 필요
+					Output_SOut_Assortment_AP1	Sales Product ASN Column 삭제 필요
+					Output_SOut_Assortment_Local	Sales Product ASN Column 삭제 필요
+					Output_SIn_Assortment_GC	S/Out Assortment Flag, Sales Product ASN Column 삭제 필요
+					Output_SIn_Assortment_AP2	S/Out Assortment Flag, Sales Product ASN Column 삭제 필요
+					Output_SIn_Assortment_AP1	S/Out Assortment Flag, Sales Product ASN Column 삭제 필요
+					Output_SIn_Assortment_Local	S/Out Assortment Flag, Sales Product ASN Column 삭제 필요

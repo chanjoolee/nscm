@@ -1,0 +1,220 @@
+	개요 (*)								
+									
+		* 프로그램명							
+			PYForecastVDPanelMonthInput						
+									
+									
+		* 목적							
+			- VD 패널 패널확정/미확정이 겹치는 달의 월총량 변경시 주차배분 방식						
+									
+									
+									
+		* 변경이력							
+			2025.01.13 전창민 최초 작성						
+									
+									
+									
+		- Panel 확정/미확정 구간							
+			- VD에서 제공할 Total BOD L/T 정보를 사용하면 됨. (Netting 에서 사용할 주차 정보와 동일)						
+			- Total BOD L/T 은 3-digit으로 구성						
+			- 맨 앞자리가 1- or 2- 이면 패널 홪겅 구간, 3- 이면 미확정 구간						
+			Total BOD L/T은 NSCM 에서만 구현될 것이므로, VD Tenant로부터 I/F 받을 예정						
+			* Grain 불명확함						
+									
+									
+	Script Parameter								
+									
+									
+		(Param) MonthTotalValue							
+			- Action Button 에서 하나의 Month Data만 받아와야함						
+									
+									
+									
+									
+		(Param) CurrentWeek							
+									
+									
+	Input Tables (*)								
+									
+		(Input 1) S/In FCST(GI)_AP2 정보							
+			df_in_S/In_FCST(GI)_AP2						
+				Select ([Version].[Version Name]					
+				 * [Sales Domain].[Ship To] .[ {{ A5000001  }} ]					
+				 * [Item].[Item],[ {{ InputItem }} ] 					
+				 * [Location].[Location].[ {{ InputLocation  }} ] 					
+				 * [Time].[Week] ) on row, 					
+				( { Measure.[S/In FCST(GI)_AP2] } ) on column					
+				where {Item.[Item Stage].[PANEL], Time.[Month],[{{InputMonth }}] } ;			// Panel Item (제외가능) 만, 입력한 해당 월 load		
+									
+			df_in_S/In_FCST(GI)_AP2						
+			Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Loaction.[Location]	Time.[Week]	S/In FCST(GI)_AP2	
+		Case 1	CurrentWorkingView	A5000001	P1	S001	202436	100	
+			CurrentWorkingView	A5000001	P1	S001	202437	100	
+			CurrentWorkingView	A5000001	P1	S001	202438	100	
+			CurrentWorkingView	A5000001	P1	S001	202439	100	
+			CurrentWorkingView	A5000001	P1	S001	202440	100	
+									
+		Case2	CurrentWorkingView	A5000001	P2	S001	202436	80	
+			CurrentWorkingView	A5000001	P2	S001	202437	80	
+			CurrentWorkingView	A5000001	P2	S001	202438	80	
+			CurrentWorkingView	A5000001	P2	S001	202439	80	
+			CurrentWorkingView	A5000001	P2	S001	202440	80	
+									
+									
+		(Input 2) Total BOD L/T 정보							
+			df_in_Total_BOD_LT						
+				Select ([Version].[Version Name]					
+				 * [Item].[Item],[ {{ InputItem }} ] 					
+				 * [Location].[Location].[ {{ InputLocation  }} ] 					
+				 * [Time].[Week] ) on row, 					
+				( { Measure.[Total BOD L/T] } ) on column					
+				where {Item.[Item Stage].[PANEL], Time.[Month],[{{InputMonth }}] } ;					
+									
+			df_in_Total BOD LT						
+			Version.[Version Name]	Item.[Item]	Loaction.[Location]	Time.[Week]	Total BOD L/T		
+		Case 1	CurrentWorkingView	P1	S001	202436	100		
+			CurrentWorkingView	P1	S001	202437	100		
+			CurrentWorkingView	P1	S001	202438	200		
+			CurrentWorkingView	P1	S001	202439	300		
+			CurrentWorkingView	P1	S001	202440			
+									
+		Case2	CurrentWorkingView	P2	S001	202436	100		
+			CurrentWorkingView	P2	S001	202437	100		
+			CurrentWorkingView	P2	S001	202438	200		
+			CurrentWorkingView	P2	S001	202439	300		
+			CurrentWorkingView	P2	S001	202440			
+									
+									
+									
+									
+									
+									
+	Output Tables (*)								
+									
+			[Version].[Version Name]						
+			[Sales Domain].[Ship To] 						
+			[Item].[Item] 						
+			[Location].[Location] 						
+			[Time].[Week]						
+			Measure.[S/In FCST(GI)_AP2]	    Lock과 음수를 고려한 월총량 분배					
+									
+		(Output 1)							
+			Output						
+				Select ([Version].[Version Name]					
+				 * [Sales Domain].[Ship To] 					
+				 * [Item].[Item] 					
+				 * [Location].[Location] 					
+				 * [Time].[Week] ) on row, 					
+				( { Measure.[S/In FCST(GI)_AP2] } ) on column;					
+									
+									
+	주요 로직 (*)								
+									
+			Step 1) df_in_S/In_FCST(GI)_AP2 에 df_in_Total BOD LT 반영						
+									
+                Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Loaction.[Location]	Time.[Week]	S/In FCST(GI)_AP2	Total BOD L/T
+                CurrentWorkingView	A5000001	P1	S001	202436	100	100
+                CurrentWorkingView	A5000001	P1	S001	202437	100	100
+                CurrentWorkingView	A5000001	P1	S001	202438	100	200
+                CurrentWorkingView	A5000001	P1	S001	202439	100	300
+                CurrentWorkingView	A5000001	P1	S001	202440	100	
+                * Item.[Item] 과 Location.[Location] 과 Time.[Week] 으로 두 Dataframe 을 Join 하여 Total BOD L/T Column 생성						
+                                        
+                                        
+                Case 1) MonthTotalValue = 600						
+                Case 2) MonthTotalValue = 200						
+									
+			Step 2) MonthTotalValue 를 unLock 구간에 월 총량 분배						
+                * Total BOD L/T 의 값이 1-, 2- 이면 Lock(패널 확정 구간), 이고, 3-이거나 Null 이면 unLock(패널 미확정 구간)						
+                1. MonthTotalValue 에서 Lock 구간 Value 차감						
+                2. 차감된 MonthTotalValue 를 unlock 구간의 기존 Measure의 값 비율로 분배						
+                                        
+                Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Loaction.[Location]	Time.[Week]	S/In FCST(GI)_AP2	Total BOD L/T
+                CurrentWorkingView	A5000001	P1	S001	202436	100	100
+                CurrentWorkingView	A5000001	P1	S001	202437	100	100
+                CurrentWorkingView	A5000001	P1	S001	202438	100	200
+                CurrentWorkingView	A5000001	P1	S001	202439	150	300
+                CurrentWorkingView	A5000001	P1	S001	202440	150	
+                                    * 수식 참조 	
+                Case 1)						
+                    1. 600 - 100 -100 -100 = 300						
+                    2. 300 * ( 100 / 200 ) = 150	chanjoo: 분모 200 은 AP2 의 합계					
+                                        
+                                        
+                    CurrentWorkingView	A5000001	P2	S001	202436	80	100
+                    CurrentWorkingView	A5000001	P2	S001	202437	80	100
+                    CurrentWorkingView	A5000001	P2	S001	202438	80	200
+                    CurrentWorkingView	A5000001	P2	S001	202439	-20	300
+                    CurrentWorkingView	A5000001	P2	S001	202440	-20	300
+                                        
+                Case 2)						
+                    1. 200 - 80 - 80 - 80 = -40						
+                    2. -40 * ( 80 / 160 ) = -20						
+									
+									
+			Step 3) 음수인 경우 패널 확정 주차에서 차감						
+                1. 음수인 값 전 주차로 이동하며 차감						
+                                        
+                Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Loaction.[Location]	Time.[Week]	S/In FCST(GI)_AP2	Total BOD L/T
+                CurrentWorkingView	A5000001	P1	S001	202436	100	100
+                CurrentWorkingView	A5000001	P1	S001	202437	100	100
+                CurrentWorkingView	A5000001	P1	S001	202438	100	200
+                CurrentWorkingView	A5000001	P1	S001	202439	150	300
+                CurrentWorkingView	A5000001	P1	S001	202440	150	
+									
+                Case1) 완료						
+                                        
+                Case2) 로직 반복						
+									
+                    Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Loaction.[Location]	Time.[Week]	S/In FCST(GI)_AP2	Total BOD L/T
+                    CurrentWorkingView	A5000001	P2	S001	202436	80	100
+                    CurrentWorkingView	A5000001	P2	S001	202437	80	100
+                    CurrentWorkingView	A5000001	P2	S001	202438	80	200
+                    CurrentWorkingView	A5000001	P2	S001	202439	-40	300
+                    CurrentWorkingView	A5000001	P2	S001	202440	0	300
+                                            
+                    1. 40주차의 값 39주차로 차감						
+                                            
+                    Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Loaction.[Location]	Time.[Week]	S/In FCST(GI)_AP2	Total BOD L/T
+                    CurrentWorkingView	A5000001	P2	S001	202436	80	100
+                    CurrentWorkingView	A5000001	P2	S001	202437	80	100
+                    CurrentWorkingView	A5000001	P2	S001	202438	40	200
+                    CurrentWorkingView	A5000001	P2	S001	202439	0	300
+                    CurrentWorkingView	A5000001	P2	S001	202440	0	300
+                                            
+                    2. 39주차의 값 38주차로 차감						
+                                            
+									
+									
+									
+									
+			Step 4) Total BOD L/T 제외 (최종 OupPut)						
+									
+                Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Loaction.[Location]	Time.[Week]	S/In FCST(GI)_AP2	
+                CurrentWorkingView	A5000001	P1	S001	202436	100	
+                CurrentWorkingView	A5000001	P1	S001	202437	100	
+                CurrentWorkingView	A5000001	P1	S001	202438	100	
+                CurrentWorkingView	A5000001	P1	S001	202439	150	
+                CurrentWorkingView	A5000001	P1	S001	202440	150	
+                                        
+                                        
+                Version.[Version Name]	Sales Domain.[Ship To]	Item.[Item]	Loaction.[Location]	Time.[Week]	S/In FCST(GI)_AP2	
+                CurrentWorkingView	A5000001	P2	S001	202436	80	
+                CurrentWorkingView	A5000001	P2	S001	202437	80	
+                CurrentWorkingView	A5000001	P2	S001	202438	40	
+                CurrentWorkingView	A5000001	P2	S001	202439	0	
+                CurrentWorkingView	A5000001	P2	S001	202440	0	
+									
+									
+	Validation (*)								
+									
+			S/In FCST(GI)_AP2 음수 값 없는지 확인						
+			MonthTotalValue 값과 총합 같은지 확인						
+									
+	호출 (*)								
+									
+									
+	Test Case Query (*)								
+									
+									
+	그 외 특이사항								

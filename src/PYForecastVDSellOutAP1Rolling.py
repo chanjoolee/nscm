@@ -6,17 +6,17 @@ import traceback
 import pandas as pd
 from NSCMCommon import NSCMCommon as common
 from NSCMCommon import VDCommon as vdCommon
-
 # from typing_extensions import Literal
 import glob
 import re
 import numpy as np
+import gc
 
 ########################################################################################################################
 # Local 개발 시에 필요한 공통 변수 선언
 ########################################################################################################################
 # o9에 저장된 instanceName
-str_instance = 'PYForecastVDSellInAP2Rolling'
+str_instance = 'PYForecastVDSellOutAP1Rolling'
 str_input_dir = f"Input/{str_instance}"
 str_output_dir = f"Output/{str_instance}"
 is_local = common.gfn_get_isLocal()
@@ -40,23 +40,30 @@ LOG_LEVEL = common.G_log_level
 ########################################################################################################################
 # 컬럼상수
 ########################################################################################################################
-# ── column constants ──────────────────────────────────────────────────────────────────────────────────────────
-COL_VERSION         = 'Version.[Version Name]'
-COL_ITEM            = 'Item.[Item]'
-COL_SHIP_TO         = 'Sales Domain.[Ship To]'
-COL_LOC             = 'Location.[Location]'
-COL_PMONTH          = 'Time.[Planning Month]'
-COL_WEEK            = 'Time.[Week]'
-COL_FCST_AP2        = 'S/In FCST(GI)_AP2'
-COL_FCST_AP2_ROLL   = 'S/In FCST(GI)_AP2(Rolling ADJ)'
 # ───────────────────────────────────────────────────────────────
-# CONSTANT STRING VARIABLES FOR DATAFRAME NAMES
+# CONSTANT STRING VARIABLES FOR COLUMN NAMES  (Sell-OUT  AP1)
+# ───────────────────────────────────────────────────────────────
+COL_VERSION          = 'Version.[Version Name]'
+COL_ITEM             = 'Item.[Item]'
+COL_SHIP_TO          = 'Sales Domain.[Ship To]'
+COL_LOC              = 'Location.[Location]'
+COL_PYEAR            = 'Time.[Planning Year]'
+COL_PMONTH           = 'Time.[Planning Month]'
+COL_WEEK             = 'Time.[Week]'
+COL_FCST_AP1         = 'S/Out FCST_AP1'
+COL_FCST_AP1_ROLL    = 'S/Out FCST_AP1(Rolling ADJ)'
+COL_GBRULE           = 'GBRULE'                       
+# ← **원본 df_in_Sout 에 존재**
+# ───────────────────────────────────────────────────────────────
+# CONSTANT STRING VARIABLES FOR DATAFRAME HANDLES
 # ───────────────────────────────────────────────────────────────
 # input
-STR_DF_IN_SIN           = 'df_in_SIn'
-STR_DF_IN_TIME          = 'df_in_Time'
-STR_DF_STEP01_ROLL      = 'df_fn_step01_rolling'
-STR_DF_OUT_DEMAND       = 'out_Demand'
+STR_DF_IN_SOUT       = 'df_in_Sout'
+STR_DF_IN_TIME       = 'df_in_Time'
+# step
+STR_DF_STEP01_ROLL   = 'df_fn_step01_rolling'
+# output
+STR_DF_OUT_DEMAND    = 'out_Demand'
 
 
 ################  Start of Functions  ################
@@ -75,14 +82,14 @@ def fn_log_dataframe(df_p_source: pd.DataFrame, str_p_source_name: str) -> None:
         is_output = True
 
     if is_print:
-        logger.PrintDF(p_df=df_p_source, p_df_name=str_p_source_name, p_log_level=LOG_LEVEL.debug(), p_format=1)
+        logger.PrintDF(p_df=df_p_source, p_df_name=str_p_source_name, p_log_level=LOG_LEVEL.debug(), p_format=1,p_row_num=20)
         if is_local and not df_p_source.empty and flag_csv:
             # 로컬 Debugging 시 csv 파일 출력
             df_p_source.to_csv(str_output_dir + "/"+str_p_source_name+".csv", encoding="UTF8", index=False)
     else:
         # 최종 Output 테이블인 경우에는 무조건 로그 출력
         if is_output:
-            logger.PrintDF(p_df=df_p_source, p_df_name=str_p_source_name, p_log_level=LOG_LEVEL.debug(), p_format=1)
+            logger.PrintDF(p_df=df_p_source, p_df_name=str_p_source_name, p_log_level=LOG_LEVEL.debug(), p_format=1,p_row_num=20)
             if is_local and not df_p_source.empty:
                 # 로컬 Debugging 시 csv 파일 출력
                 df_p_source.to_csv(str_output_dir + "/"+str_p_source_name+".csv", encoding="UTF8", index=False)
@@ -153,7 +160,7 @@ def fn_check_input_table(df_p_source: pd.DataFrame, str_p_source_name: str, str_
     :return: None
     """
     # Input Table 로그 출력
-    logger.PrintDF(p_df=df_p_source, p_df_name=str_p_source_name, p_log_level=LOG_LEVEL.debug(), p_format=1)
+    logger.PrintDF(p_df=df_p_source, p_df_name=str_p_source_name, p_log_level=LOG_LEVEL.debug(), p_format=1,p_row_num=20)
 
     if df_p_source.empty:
         if str_p_cond == '0':
@@ -232,9 +239,11 @@ def fn_set_header() -> pd.DataFrame:
     df_return = pd.DataFrame(
         {
             COL_VERSION         : [],
-            COL_ITEM            : [],
             COL_SHIP_TO         : [],
-            COL_LOC             : []
+            COL_ITEM         : [],
+            COL_LOC             : [],
+            COL_WEEK : [],
+            COL_FCST_AP1_ROLL : []
 
         }
     )
@@ -296,8 +305,8 @@ def fn_process_in_df_mst():
         csv_files = glob.glob(file_pattern)
 
         file_to_df_mapping = {
-            "df_in_SIn.csv"     : "df_in_SIn"       ,
-            "df_in_Time.csv"    : "df_in_Time"  
+            "df_in_Sout.csv" : STR_DF_IN_SOUT       ,
+            "df_in_Time.csv" : STR_DF_IN_TIME 
         }
 
         def read_csv_with_fallback(filepath):
@@ -326,239 +335,312 @@ def fn_process_in_df_mst():
 
     else:
         # o9 에서 
-        input_dataframes[STR_DF_IN_SIN]         = df_in_SIn
+        input_dataframes[STR_DF_IN_SOUT]        = df_in_Sout
         input_dataframes[STR_DF_IN_TIME]        = df_in_Time
     
-    # o9과 local의 data type 을 맞춘다.
-    fn_convert_type(input_dataframes[STR_DF_IN_SIN],'Sales Domain.',str)
-    fn_convert_type(input_dataframes[STR_DF_IN_SIN],'Time.','int32')
+    # input_dataframes = {...}  # 이미 채워진 전역 dict
+    fn_convert_type(input_dataframes[STR_DF_IN_SOUT],'Sales Domain.',str)
+    fn_convert_type(input_dataframes[STR_DF_IN_SOUT],'Time.','int32')
     fn_convert_type(input_dataframes[STR_DF_IN_TIME],'Time.','int32')
-    # object 는 category 로.  숫자형은 int32로
     fn_prepare_input_types(input_dataframes)
+
+def fn_fill_missing_weeks_year_end(
+    df_src: pd.DataFrame,          # 특정 Version 의 원본 Forecast
+    df_time: pd.DataFrame,         # Time Master
+    current_week: str | int,
+    version: str
+) -> pd.DataFrame:
+    """
+    ▸ current_week  ~ 해당 연도의 **최대 주차**(df_time 기준)까지
+      Ship-To × Item × Loc × Week 그리드를 생성하고
+      Forecast 값이 없으면 0 으로 채운다.
+    """
+    # ── 1) 기준 정보 ───────────────────────────────────────────────────
+    wk_curr  = _normalize_week(str(current_week))          # ex) '202417'
+    year_str = str(wk_curr)[:4]                       # '2024'    # df_time 에서 같은 연도의 최대 주차를 추출
+    wk_max = (
+        df_time.loc[df_time[COL_WEEK].astype(str).str[:4] == year_str, COL_WEEK]
+        .astype(int).max()
+    )
+
+    # 대상 주차 리스트 (df_time 에 존재하는 Week 만 사용)
+    week_list = (
+        df_time.loc[
+            # (df_time[COL_WEEK].astype(int) >= wk_curr) &
+            (df_time[COL_WEEK].astype(int) <= wk_max)
+        ][COL_WEEK]
+        .astype(int).sort_values().unique()
+    )
+
+    # ── 2) cross-join 그리드 ──────────────────────────────────────────
+    key_cols  = [COL_SHIP_TO, COL_ITEM, COL_LOC]
+    base_keys = df_src[key_cols].drop_duplicates()
+
+    grid = base_keys.merge(
+        pd.DataFrame({COL_WEEK: week_list}),
+        how="cross"
+    )
+    grid[COL_VERSION] = version
+
+    # ── 3) Forecast 병합 & 0-채움 ─────────────────────────────────────
+    out = (
+        grid.merge(
+            df_src[[COL_VERSION, *key_cols, COL_WEEK, COL_FCST_AP1]],
+            how="left"
+        )
+        .fillna({COL_FCST_AP1: 0})
+    )
+    out[COL_FCST_AP1] = out[COL_FCST_AP1].astype("int32")
+    return out
 
 # ************************************************************************************
 # 본격적인 Step 함수
 # ************************************************************************************
-# ──────────────────────────────────────────────────────────────────────────────
-#  보강용 : 주차 누락 0-채움  (week key → int32 기준)
-# ──────────────────────────────────────────────────────────────────────────────
-def fn_fill_missing_weeks(
-    df_roll: pd.DataFrame,
-    df_time: pd.DataFrame,
-    current_week: str | int,
-    version: str
-) -> pd.DataFrame:
-
-    wk_curr   = _normalize_week(current_week)
-    cur_pm    = int(df_time.loc[df_time[COL_WEEK] == wk_curr, COL_PMONTH].iloc[0])
-    month_weeks = (
-        df_time.loc[df_time[COL_PMONTH] == cur_pm, COL_WEEK]
-        .astype(int).sort_values().tolist()
-    )
-
-    key_cols  = [COL_SHIP_TO, COL_ITEM, COL_LOC]
-    base_keys = df_roll[key_cols].drop_duplicates()
-    week_df   = pd.DataFrame({COL_WEEK: month_weeks})
-    grid      = base_keys.merge(week_df, how='cross')
-    grid[COL_VERSION]       = version
-
-    out = (
-        grid.merge(df_roll, how='left')
-            .fillna({COL_FCST_AP2_ROLL: 0})
-    )
-    out[COL_FCST_AP2_ROLL] = out[COL_FCST_AP2_ROLL].astype('int32')
-    return out
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# STEP-01 : VD Sell-In AP2 Rolling 계산
-#   · Planning-Month 추출 = df_time LOOK-UP (Week → PM)
-#   · week key 전부 int32 로 통일
+# STEP-01 : VD SellOut AP1 Rolling 로직 적용 및 S/Out FCST_AP1(Rolling ADJ) Measure 생성
+# VD Sell-Out AP1 Rolling (Vectorized)
 # ──────────────────────────────────────────────────────────────────────────────
+
+# ──────────────────────────────────────────────────────────────────────────────
+# STEP-01 : VD Sell-Out AP1 Rolling  (Vectorized + 메모리 최적화)
+# ──────────────────────────────────────────────────────────────────────────────
+# import gc                                     # ← ➊ GC 사용@_decoration_
 @_decoration_
-def fn_step01_vd_sellin_ap2_rolling(
-    df_sin: pd.DataFrame,
+def fn_step01_vd_sellout_ap1_rolling(
+    df_sout: pd.DataFrame,
     df_time: pd.DataFrame,
     current_week: str | int,
     version: str,
-    prev_version: str | None = None      # ★ 필요 시 직접 지정 (없으면 diff-version 자동)
+    prev_version: str | None = None,
 ) -> pd.DataFrame:
-    """
-    · Version = `version`(예: 'CWV_DP') 행에 Rolling 결과 생성
-    · 이전 Version(예: '202414') 행과 비교하여 Δ 반영
-    · “동월”이 아닐 경우 Δ = 0 (롤링 미적용)
-    · prev_ver row 가 존재하지 않으면 Δ = 0
-    · 음수 → 다음 주 carry, 월말까지 반복
-    · 반환 DF 컬럼 : Version / Ship-To / Item / Loc / Week / Rolling Adj
-    """
 
-    prev_week      = common.gfn_add_week(current_week[:6], -1)
+    # ── 0) 주차·Version 준비 ──────────────────────────────────────────────
+    wk_curr = _normalize_week(current_week)
+    wk_3    = int(common.gfn_add_week(str(wk_curr)[:6], -3))
+    wk_2    = int(common.gfn_add_week(str(wk_curr)[:6], -2))
 
-    # --- 0) 기본 정보 ---------------------------------------------------------
-    wk_curr = _normalize_week(current_week)                 # ex) "202415" → 202415 (int)
-    wk_prev = int(common.gfn_add_week(current_week[:6], -1))     # 1‒주차 전
-
-    # 0-1) 현재 Planning-Month
-    cur_pmonth = int(
-        df_time.loc[df_time[COL_WEEK] == wk_curr, COL_PMONTH].iloc[0]
-    )
-
-    # 0-2) 이전 주차의 Planning-Month (없으면 NaN → Δ=0 로 처리)
-    prev_pm_row = df_time.loc[df_time[COL_WEEK] == wk_prev, COL_PMONTH]
-    prev_pmonth = int(prev_pm_row.iloc[0]) if not prev_pm_row.empty else None
-
-    # 0-3) 동월 여부
-    same_month = (prev_pmonth == cur_pmonth)
-
-    # 0-4) prev_version 자동 추출 (없으면 첫 번째 non-current Version)
     if prev_version is None:
         cand = (
-            df_sin.loc[df_sin[COL_WEEK] == wk_prev, COL_VERSION]
-            .unique()
-            .tolist()
+            df_sout.loc[df_sout[COL_WEEK] == wk_curr, COL_VERSION]
+            .unique().tolist()
         )
         cand = [v for v in cand if v != version]
-        if not cand:                               # 없으면 Δ 계산 자체 skip
-            same_month = False
-        else:
-            prev_version = cand[0]
+        prev_version = cand[0] if cand else None
 
-    # 0-5) 당월 주차 리스트. 질문: 왜 당월주차만 ?    
-    month_weeks: list[int] = (
-        df_time.loc[df_time[COL_PMONTH] == cur_pmonth, COL_WEEK]
-        .astype(int).sort_values().tolist()
+    # ── 1) Week 그리드 확장 ───────────────────────────────────────────────
+    df_curr_full = fn_fill_missing_weeks_year_end(
+        df_sout[df_sout[COL_VERSION] == version],
+        df_time, wk_curr, version
     )
 
-    # ------------------------------------------------------------------ 1. Split
-    df_prev = df_sin[df_sin[COL_VERSION] == prev_version]      # 이전 Version
-    df_curr = df_sin[df_sin[COL_VERSION] == version]           # 현재 Version
-
-    grp_cols = [COL_SHIP_TO, COL_ITEM, COL_LOC]
-    rows_out: list[dict] = []
-
-    for ship_to, item, loc in df_curr[grp_cols].drop_duplicates().itertuples(index=False):
-
-        # 1-A) dict 준비 (week:int → value:int32)  ※ Week 미존재 = 0
-        prev_vals = (
-            df_prev.loc[
-                (df_prev[COL_SHIP_TO] == ship_to) &
-                (df_prev[COL_ITEM]   == item)    &
-                (df_prev[COL_LOC]    == loc)
-            ]
-            .set_index(COL_WEEK)[COL_FCST_AP2]
-            .astype(int).to_dict()
+    if prev_version:
+        df_prev_full = fn_fill_missing_weeks_year_end(
+            df_sout[df_sout[COL_VERSION] == prev_version],
+            df_time, wk_curr, prev_version
         )
-        curr_vals = (
-            df_curr.loc[
-                (df_curr[COL_SHIP_TO] == ship_to) &
-                (df_curr[COL_ITEM]   == item)    &
-                (df_curr[COL_LOC]    == loc)
-            ]
-            .set_index(COL_WEEK)[COL_FCST_AP2]
-            .astype(int).to_dict()
+    else:
+        df_prev_full = df_curr_full.copy()
+        df_prev_full[COL_VERSION]  = "NA"
+        df_prev_full[COL_FCST_AP1] = 0
+
+    # ── 2) Pivot (행 : Ship-To×Item×Loc, 열 : Week) ──────────────────────
+    grp_cols  = [COL_SHIP_TO, COL_ITEM, COL_LOC]
+    week_cols = sorted(df_curr_full[COL_WEEK].unique())
+    idx_curr  = week_cols.index(wk_curr)
+
+    # column 을 category 로 바꿔 메모리 ↓
+    for c in grp_cols:
+        df_curr_full[c] = df_curr_full[c].astype("category")
+        df_prev_full[c] = df_prev_full[c].astype("category")
+    logger.Note('category 로 변경', p_log_level=LOG_LEVEL.debug())
+    # def _build_pivot(df_src: pd.DataFrame) -> pd.DataFrame:
+    #     """
+    #     observed=True 로 **중복 조합만** 유지 → pivot_table 보다 메모리 절약
+    #     """
+    #     g = (
+    #         df_src
+    #         .groupby(grp_cols + [COL_WEEK], observed=True)[COL_FCST_AP1]
+    #         .first()
+    #     )
+    #     return (
+    #         g.unstack(fill_value=0)               # (G, W)   ※ 중복 없는 값
+    #          .reindex(columns=week_cols, fill_value=0)
+    #          .astype("int32")
+    #     )
+
+    # def _build_pivot(df_src) -> pd.DataFrame:
+    #     return (
+    #         df_src
+    #         .pivot_table(index=grp_cols,
+    #                      columns=COL_WEEK,
+    #                      values=COL_FCST_AP1,
+    #                      aggfunc='first',
+    #                      fill_value=0)
+    #         .reindex(columns=week_cols, fill_value=0)
+    #         .astype("int32")
+    #     )
+
+    # ──────────────── fix: _build_pivot + index-align ────────────────
+    def _build_pivot(
+        df_src: pd.DataFrame,
+        week_cols: list[int],
+    ) -> pd.DataFrame:
+        """
+        (Ship-To × Item × Loc) 행, Week 열의 int32 Matrix 를 만들어 돌려준다.
+        - groupby(..., observed=True)   : 실제로 존재하는 조합만 집계 → 메모리 ↓
+        - .first()                     : (동일 그룹, 동일 Week) 이 1행이므로 ‘첫 값’ = 유일 값
+        - .unstack(fill_value=0)       : Week 컬럼을 wide 포맷으로 전개. 없는 Week → 0
+        """
+        g = (
+            df_src
+            .groupby(grp_cols + [COL_WEEK], observed=True, sort=False)[COL_FCST_AP1]
+            .first()                                # ← pandas.Series, index = MultiIndex(G, W)
         )
+        return (
+            g.unstack(fill_value=0)                 # ← DataFrame, index = G, columns = Week
+            .reindex(columns=week_cols, fill_value=0)
+            .astype("int32")
+        )
+    # ------------------------------------------------------------------
+    # pv_curr = _build_pivot(df_curr_full)
+    # pv_prev = _build_pivot(df_prev_full)
+    pv_curr = _build_pivot(df_curr_full, week_cols)
+    pv_prev = _build_pivot(df_prev_full, week_cols)
+    fn_check_input_table(pv_curr,'pv_curr_01','1')
+    fn_check_input_table(pv_prev,'pv_prev_01','1')
+    logger.Note('pivot 성공', p_log_level=LOG_LEVEL.debug())
 
-        # ------------------------------------------------------------------ 2. Δ 계산
-        if same_month and prev_vals:          # 동월 + 이전 Version 데이터 존재
-            delta = prev_vals.get(wk_prev, 0) - curr_vals.get(wk_prev, 0)
-        else:
-            delta = 0                         # (1) 다른 월  (2) prev_version 행 없음
+    # **두 pivot 의 행 집합이 다르면 shape 미스매치 발생** → union 후 0-채움
+    all_idx = pv_curr.index.union(pv_prev.index)
+    pv_curr = pv_curr.reindex(all_idx, fill_value=0)
+    pv_prev = pv_prev.reindex(all_idx, fill_value=0)
+    fn_check_input_table(pv_curr,'pv_curr_02','1')
+    fn_check_input_table(pv_prev,'pv_prev_02','1')
+    logger.Note('pivot 미스매치 조정', p_log_level=LOG_LEVEL.debug())
 
-        # 2-1) 현주차 가산
-        curr_vals[wk_curr] = curr_vals.get(wk_curr, 0) + delta
+    # 큰 DataFrame 해제 ➜ GC
+    del df_curr_full, df_prev_full
+    gc.collect()                                  # ← ➋
 
-        # ------------------------------------------------------------------ 3. 음수 carry-over
-        idx = month_weeks.index(wk_curr)
-        while idx < len(month_weeks):
-            w = month_weeks[idx]
-            val = curr_vals.get(w, 0)
-            if val >= 0:
-                break
+    # ── 3) Δ(week-3, week-2) Vector 계산 ──────────────────────────────────    
+    pm_map  = df_time.set_index(COL_WEEK)[COL_PMONTH].astype(int).to_dict()
+    same_m3 = int(pm_map.get(wk_3) == pm_map.get(wk_curr))
+    same_m2 = int(pm_map.get(wk_2) == pm_map.get(wk_curr))
 
-            # 음수 → 다음 주로 carry
-            if idx + 1 == len(month_weeks):        # 월 마지막 주
-                curr_vals[w] = 0
-                break
+    # 25.08.21 : 동월인지를 체크하지는 않는다.
+    same_m2 = 1 
+    delta_total = (
+          same_m3 * (pv_prev[wk_3].values - pv_curr[wk_3].values)
+        + same_m2 * (pv_prev[wk_2].values - pv_curr[wk_2].values)
+    ).astype("int32")
 
-            carry     = val
-            curr_vals[w] = 0
-            nxt_w     = month_weeks[idx + 1]
-            curr_vals[nxt_w] = curr_vals.get(nxt_w, 0) + carry
-            idx += 1
+    pv_curr.iloc[:, pv_curr.columns.get_loc(wk_curr)] += delta_total
+    logger.Note('delta 계산', p_log_level=LOG_LEVEL.debug())
+    # 더 이상 안쓰는 pv_prev 해제
+    del pv_prev, delta_total
+    gc.collect()                                  # ← ➌
 
-        # ------------------------------------------------------------------ 4. 결과 행
-        for w in month_weeks[idx:]:      # current_week 부터 월말까지
-            rows_out.append({
-                COL_VERSION:       version,
-                COL_SHIP_TO:       ship_to,
-                COL_ITEM:          item,
-                COL_LOC:           loc,
-                COL_WEEK:          w,
-                COL_FCST_AP2_ROLL: max(int(curr_vals.get(w, 0)), 0)
-            })
-    df_return = pd.DataFrame(rows_out)
-    fn_prepare_input_types({'df_return':df_return})
-    return df_return
+    # ── 4) 음수 carry-over  (Week loop × 그룹 벡터) ───────────────────────
+    M = pv_curr.values  # NumPy view (int32)
 
-# ──────────────────────────────────────────────────────────────────────────────
-#  향상된 fn_output_formatter
-#    · df_step01_roll(=df_roll) 을 그대로 입력
-#    · df_in_Time 과 머지하여 **현재월 마지막 주차까지** 누락 주차 생성
-#    · Rolling 값이 없으면 0 대입
-# ──────────────────────────────────────────────────────────────────────────────
+    for c in range(idx_curr, len(week_cols) - 1):
+        neg_mask = M[:, c] < 0
+        if not neg_mask.any():
+            continue
+        carry           = M[neg_mask, c]
+        M[neg_mask, c]  = 0
+        M[neg_mask, c+1] += carry                # 다음 주차에 전가
+
+    pv_curr.iloc[:, :] = M                      # 변경값 commit
+
+    del M
+    gc.collect()                                  # ← ➍
+    logger.Note('carry-over', p_log_level=LOG_LEVEL.debug())
+    # ── 5) Long 형식 복원 & 반환 ─────────────────────────────────────────
+    df_return = (
+        pv_curr
+        .reset_index()
+        .melt(id_vars=grp_cols,
+              var_name=COL_WEEK,
+              value_name=COL_FCST_AP1_ROLL)
+    )
+    del pv_curr
+    gc.collect()                                  # ← ➎
+
+    df_return[COL_VERSION] = version
+    fn_convert_type(df_return, "Time.", "int32")
+    fn_prepare_input_types({"df_return": df_return})
+
+    return df_return[[COL_VERSION, *grp_cols, COL_WEEK, COL_FCST_AP1_ROLL]]
+
 @_decoration_
 def fn_output_formatter(
-    df_roll: pd.DataFrame,              # ← fn_step01_vd_sellin_ap2_rolling 결과
-    df_time: pd.DataFrame,              # ← input_dataframes[STR_DF_IN_TIME]
-    current_week: str | int,
-    version: str
+    df_roll: pd.DataFrame,          # ← step-01 결과(S/Out FCST_AP1(Rolling ADJ) 컬럼 포함)
+    df_time: pd.DataFrame,          # ← Time master
+    current_week: str | int,        # ex) '202417'
+    version: str                    # ex) 'CWV_DP'
 ) -> pd.DataFrame:
     """
-    반환 DF 컬럼 : Version / Ship-To / Item / Loc / Week / Rolling-Adj
-    """    
+    • step-01 산출 DF(df_roll) 에서 누락 주차(당월 기준)를 채우고,
+      Rolling 값이 없으면 0 으로 보강한다.
+    • 반환 컬럼 순서:
+        Version / Ship-To / Item / Loc / Week / S/Out FCST_AP1(Rolling ADJ)
+    """
+    logger.Note('1) 기준 정보', p_log_level=LOG_LEVEL.warning())
     if df_roll.empty:
-        logger.Note('[fn_output_formatter] 입력 df_roll 이 비어 있습니다.', p_log_level=LOG_LEVEL.warning())
-        return pd.DataFrame()
+        logger.Note('[fn_output_formatter] 시작', p_log_level=LOG_LEVEL.debug())
+        return pd.DataFrame()    
+    # ── 1) 기준 정보 ──────────────────────────────────────────────────────
+    wk_curr = _normalize_week(current_week)
+    year_str = str(wk_curr)[:4]   
+    cur_pyear  = int(df_time.loc[df_time[COL_PYEAR] == int(year_str), COL_PYEAR].iloc[0])
 
-    # ── 1) 기준 정보 계산 ────────────────────────────────────────────────────
-    wk_curr   = _normalize_week(current_week)
-    cur_pm    = int(df_time.loc[df_time[COL_WEEK] == wk_curr, COL_PMONTH].iloc[0])
-
-    # 당월 주차 리스트 (int32, 오름차순)
-    month_weeks: list[int] = (
-        df_time.loc[df_time[COL_PMONTH] == cur_pm, COL_WEEK]
+    # ― 당월 주차 리스트 (int32, 오름차순)
+    year_weeks: list[int] = (
+        df_time.loc[
+            (df_time[COL_PYEAR] == cur_pyear) 
+            # & (df_time[COL_WEEK] >= wk_curr)
+            , 
+            COL_WEEK
+        ]
         .astype(int).sort_values().tolist()
     )
+    logger.Note('1) 기준 정보', p_log_level=LOG_LEVEL.debug())
 
-    # ── 2) 현 Version + 현월 key cross-join ─────────────────────────────────
-    key_cols   = [COL_SHIP_TO, COL_ITEM, COL_LOC]
-    base_keys  = (
+    # ── 2) Version + 당월 key cross-join ───────────────────────────────
+    key_cols  = [COL_SHIP_TO, COL_ITEM, COL_LOC]
+    base_keys = (
         df_roll.loc[df_roll[COL_VERSION] == version, key_cols]
         .drop_duplicates()
     )
 
-    week_df    = pd.DataFrame({COL_WEEK: month_weeks})
-    full_grid  = base_keys.merge(week_df, how='cross')
+    week_df   = pd.DataFrame({COL_WEEK: year_weeks})
+    full_grid = base_keys.merge(week_df, how='cross')
     full_grid[COL_VERSION] = version
 
-    # ── 3) merge + 누락 0 보충 ──────────────────────────────────────────────
+    logger.Note('2) Version + 당월 key cross-join', p_log_level=LOG_LEVEL.debug())
+    # ── 3) merge + 0-채움 ────────────────────────────────────────────────
     result = (
         full_grid.merge(
-            df_roll[[COL_VERSION, *key_cols, COL_WEEK, COL_FCST_AP2_ROLL]],
+            df_roll[[COL_VERSION, *key_cols, COL_WEEK, COL_FCST_AP1_ROLL]],
             how='left'
         )
-        .fillna({COL_FCST_AP2_ROLL: 0})
+        .fillna({COL_FCST_AP1_ROLL: 0})
     )
+    logger.Note('3) merge + 0-채움', p_log_level=LOG_LEVEL.debug())
 
     # 현재주차 이후
     mask = (
         (result[COL_WEEK] >= wk_curr)
     )
     result = result.loc[mask]
+    
 
     # 타입 보강
     result[COL_WEEK]          = result[COL_WEEK].astype('int32')
-    result[COL_FCST_AP2_ROLL] = result[COL_FCST_AP2_ROLL].astype('int32')
+    result[COL_FCST_AP1_ROLL] = result[COL_FCST_AP1_ROLL].astype('int32')
 
     # 최종 컬럼 순서
     final_cols = [
@@ -567,13 +649,14 @@ def fn_output_formatter(
         COL_ITEM,
         COL_LOC,
         COL_WEEK,
-        COL_FCST_AP2_ROLL
+        COL_FCST_AP1_ROLL
     ]
-
     df_return = result[final_cols]
-    fn_prepare_input_types({'df_return':df_return})
 
+    fn_prepare_input_types({'df_return': df_return})
     return df_return
+
+
 
 if __name__ == '__main__':
     logger.debug(f'[START] {str_instance} {time.strftime("%Y-%m-%d - %H:%M:%S")}')
@@ -590,8 +673,14 @@ if __name__ == '__main__':
             # parse_args 대체
             # input , output 폴더설정. 작업시마다 History를 남기고 싶으면
             # ----------------------------------------------------
-            input_folder_name  = 'PYForecastVDSellInAP2Rolling_개발요청서_0625'
-            output_folder_name = 'PYForecastVDSellInAP2Rolling_개발요청서_0625'
+            input_folder_name  = 'PYForecastVDSellOutAP1Rolling_개발요청서_0625'
+            output_folder_name = 'PYForecastVDSellOutAP1Rolling_개발요청서_0625'
+            # # o9에서의 소량테스트
+            # input_folder_name  = 'PYForecastVDSellOutAP1Rolling_개발요청서_0625_o9_0708'
+            # output_folder_name = 'PYForecastVDSellOutAP1Rolling_개발요청서_0625_o9_0708'
+            # # o9에서의 대량테스트
+            # input_folder_name  = 'PYForecastVDSellOutAP1Rolling_개발요청서_0625_o9_0708_8M'
+            # output_folder_name = 'PYForecastVDSellOutAP1Rolling_개발요청서_0625_o9_0708_8M'
             
             # ------
             str_input_dir = f'Input/{input_folder_name}'
@@ -607,7 +696,7 @@ if __name__ == '__main__':
             # ----------------------------------------------------
             # Week
             # ----------------------------------------------------
-            CurrentPartialWeek = '202415'
+            CurrentPartialWeek = '202417A'
 
         logger.Note(p_note=f'Parameter Check', p_log_level=LOG_LEVEL.debug())
         logger.Note(p_note=f'Version            : {Version}', p_log_level=LOG_LEVEL.debug())
@@ -627,39 +716,37 @@ if __name__ == '__main__':
 
         current_week_normalized = _normalize_week(CurrentPartialWeek)
 
-        ################################################################################################################
-        # Step 01 – VD Sell-In AP2 Rolling
-        ################################################################################################################
+        # ──────────────────────────────────────────────────────────────────────────────
+        # STEP-01 : VD SellOut AP1 Rolling 로직 적용 및 S/Out FCST_AP1(Rolling ADJ) Measure 생성
+        # ──────────────────────────────────────────────────────────────────────────────
         dict_log = {
             'p_step_no': 100,
-            'p_step_desc': 'Step 01 – VD Sell-In AP2 Rolling'
+            'p_step_desc': 'Step 01 – VD SellOut AP1 Rolling 로직 적용 및 S/Out FCST_AP1(Rolling ADJ) Measure 생성'
         }
-        df_step01_roll = fn_step01_vd_sellin_ap2_rolling(
-            input_dataframes[STR_DF_IN_SIN],
+        df_step01_roll = fn_step01_vd_sellout_ap1_rolling(
+            input_dataframes[STR_DF_IN_SOUT],
             input_dataframes[STR_DF_IN_TIME],
-            CurrentPartialWeek,  # main scope 변수
-            Version,                   # main scope 변수
+            CurrentPartialWeek,
+            Version,
             **dict_log
         )
         fn_log_dataframe(df_step01_roll, f'step01_{STR_DF_STEP01_ROLL}')
 
-
-        ################################################################################################################
-        # Step 02 – 최종 Output 정리
-        ################################################################################################################
+        # ──────────────────────────────────────────────────────────────────────────────
+        # STEP-02 : Output formatter
+        # ──────────────────────────────────────────────────────────────────────────────
         dict_log = {
-            'p_step_no': 900,
+            'p_step_no'  : 900,
             'p_step_desc': 'Step 02 – Output formatter'
         }
         out_Demand = fn_output_formatter(
-            df_step01_roll,                         # 이전 Step 결과
+            df_step01_roll,                         # ← step-01 결과
             input_dataframes[STR_DF_IN_TIME],       # Time 테이블
-            CurrentPartialWeek,                     # ex: '202415'
-            Version,                                 # ex: 'CWV_DP'
+            CurrentPartialWeek,                     # ex: '202417'
+            Version,                                # ex: 'CWV_DP'
             **dict_log
         )
         fn_log_dataframe(out_Demand, STR_DF_OUT_DEMAND)
-
 
     except Exception as e:
         trace_msg = traceback.format_exc()

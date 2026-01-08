@@ -1,0 +1,5 @@
+Sales Domain.[Ship To],Item.[Item],Location.[Location],S/Out FCST Assortment_AP1,S/Out FCST Assortment_AP2,S/Out FCST Assortment_GC,S/Out FCST Assortment_Local
+A5000001,RF29BB8600QLAA,-,0,0,0,1
+5000001,RF29BB8600QLAA,-,1,0,0,0
+400001,RF29BB8600QLAA,-,0,1,0,0
+300001,RF29BB8600QLAA,-,0,0,1,0

@@ -1,0 +1,629 @@
+PYForecastMasterSelloutDelta
+    Python 개발요청서 : PYForecastMasterSelloutDelta.py
+
+        개요 (*)
+
+            * 프로그램명
+                PYForecastMasterSelloutDelta
+
+
+            * 목적
+                - Master Sell-Out 값 변동에 따른 입력 제약 조절
+                - S/Out FCST Assortment_GC, AP2, AP1, Local 값 변경
+
+
+
+            * 변경이력
+                - 2025.11.22 전창민 최초 작성.  PYForecastCreateSellInAndSellOutAssortment 로직 활용 -> S/Out Assortment 만 생성
+                    - PYForecastCreateSellInAndSellOutAssortment 에서는 S/In Assortment 도 생성했지만 , 여기서는 S/Out Assortment 만 생성
+                    - df_in_Sell_Out_Simul_Master 이외에 df_in_Sell_Out_Simul_Master_Delta 를 고려한다.
+
+                - 2025.12.18 S/Out Master Delta Init Time, S/Out Master Delta Up Time  추가 로 인한 Step 0 변경
+
+            * 참고     
+                - groupby 시 _ultra_fast_groupby_numpy 를 사용하지 않고 ultra_fast_groupby_numpy_general 를 사용한다.
+                    - 사용예시
+                        df = ultra_fast_groupby_numpy_general(
+                            df=df,
+                            key_cols=[COL_SHIP_TO, COL_ITEM, COL_LOCATION],
+                            aggs={
+                                COL_SALES_PRODUCT_ASN : 'max',
+                                COL_SOUT_ASS_FLAG     : 'max'  
+                            }
+                        )
+                        df = df.assign(**{qty_col: 1})
+                    - function body
+                        # ──────────────────────────────────────────────────────────────────────────────
+                        # Ultra-fast, NumPy-only groupby (generalised) — ndarray/Series 안전 변환 패치
+                        # ------------------------------------------------------------------------------
+                        # • 목표: 거대한 DF에서 pandas.groupby 대신 **완전 벡터라이즈**로 집계
+                        # • 키 컬럼 개수 제한 없음 (2, 3, 4…)
+                        # • 지원 집계: 'sum', 'max', 'min', 'any', 'all', 'first', 'last', 'count'
+                        #     - 'max'/'min'은 bool 또는 'Y'/'N' (문자) 플래그에도 안전하게 동작
+                        # • 반환: key + 집계결과 컬럼들
+                        # • 팁: 반환 후 qty=1 고정, Location='-' 등은 호출부에서 .assign 로 추가
+                        # ──────────────────────────────────────────────────────────────────────────────
+                        # • pd.to_numeric(...) 가 numpy.ndarray 를 반환할 때 .to_numpy() 가 없어
+                        #   AttributeError 가 나는 이슈를 해결했습니다.
+                        # • dtype 분기(숫자/불리언/문자) 명확화 + 변환 경로 최소화.
+                        # ──────────────────────────────────────────────────────────────────────────────
+                        def ultra_fast_groupby_numpy_general(
+                            df: pd.DataFrame,
+                            key_cols: list[str],
+                            aggs: dict[str, str],
+                            *,
+                            cast_key_to_category: bool = True,
+                            treat_YN_as_bool: bool = True,
+                        ) -> pd.DataFrame:
+                            """
+                            Ultra-fast groupby using NumPy (lexsort + reduceat pattern)
+
+                            Parameters
+                            ----------
+                            df : pd.DataFrame
+                                입력 데이터.
+                            key_cols : list[str]
+                                그룹 키 컬럼 리스트 (예: [COL_SHIP_TO, COL_ITEM] 또는 [COL_SHIP_TO, COL_ITEM, COL_LOC]).
+                            aggs : dict[str, str]
+                                {대상컬럼: 집계함수명} 매핑.
+                                지원 집계: 'sum','max','min','any','all','first','last','count'
+                                - 'count' 의 대상컬럼 값은 무시되며 group size 반환.
+                            cast_key_to_category : bool, default True
+                                결과의 키 컬럼을 category 로 캐스팅(메모리 절감).
+                            treat_YN_as_bool : bool, default True
+                                문자열 'Y'/'N' 컬럼을 bool 처럼 취급하여 any/max, all/min 에서 기대대로 동작.
+
+                            Ultra-fast groupby using NumPy (lexsort + reduceat pattern)
+                            - FIX: reduceat 는 first_idx 가 오름차순이어야 하므로,
+                                집계는 정렬 인덱스(first_idx_sorted)로 수행하고,
+                                최종 결과만 '원본 등장 순서'로 재배열.
+                            Returns
+                            -------
+                            pd.DataFrame
+                                key_cols + list(aggs.keys()) 순서의 DataFrame
+                            """
+                            if df is None or df.empty:
+                                return pd.DataFrame(columns=[*key_cols, *aggs.keys()])    # ── 0) 키 → 카테고리 codes ───────────────────────────────────────────
+                            key_vals = []
+                            key_codes = []
+                            for col in key_cols:
+                                s = df[col]
+                                if s.dtype.name != 'category':
+                                    s = s.astype('category')
+                                key_vals.append(s.to_numpy())                    # 복원용 원본 값
+                                key_codes.append(s.cat.codes.to_numpy(np.int64)) # -1 포함(NA)
+
+                            # ── 1) lexsort 로 정렬 & 그룹 경계 ────────────────────────────────────
+                            order = np.lexsort(tuple(key_codes[::-1]))
+                            if order.size == 0:
+                                return pd.DataFrame(columns=[*key_cols, *aggs.keys()])
+
+                            codes_sorted = np.vstack([kc[order] for kc in key_codes]).T  # (N,K)
+                            change = np.any(np.diff(codes_sorted, axis=0) != 0, axis=1)
+                            first_idx_sorted = np.concatenate(([0], np.flatnonzero(change) + 1))
+                            end_idx_sorted   = np.empty_like(first_idx_sorted)
+                            end_idx_sorted[:-1] = first_idx_sorted[1:]
+                            end_idx_sorted[-1]  = codes_sorted.shape[0]
+
+                            # ★ 결과 표시 순서(원본 등장 순서) 계산 — 집계 인덱스는 건드리지 않음
+                            rep_rows_sorted = order[first_idx_sorted]                 # 각 그룹 대표행(원본 인덱스)
+                            rep_order = np.argsort(rep_rows_sorted, kind='mergesort') # 원본 등장 순서로의 재배열 인덱스
+                            rep_rows  = rep_rows_sorted[rep_order]
+
+                            # 결과 키 복원 (최종 출력 순서 = 원본 등장 순서)
+                            result = pd.DataFrame({col: key_vals[i][rep_rows] for i, col in enumerate(key_cols)})
+
+                            # ── 2) dtype 헬퍼 ────────────────────────────────────────────────────
+                            def _as_ndarray(x):
+                                return x.to_numpy() if isinstance(x, pd.Series) else np.asarray(x)
+
+                            def _is_numeric_dtype(dt) -> bool:
+                                return (np.issubdtype(dt, np.integer) or
+                                        np.issubdtype(dt, np.unsignedinteger) or
+                                        np.issubdtype(dt, np.floating) or
+                                        np.issubdtype(dt, np.bool_))
+
+                            def _is_YN_array(arr: np.ndarray) -> bool:
+                                if arr.dtype == object or arr.dtype.kind in ('U', 'S'):
+                                    u = pd.unique(arr)
+                                    if u.size == 0:
+                                        return False
+                                    u = u[pd.notna(u)]
+                                    if u.size == 0:
+                                        return False
+                                    return set(map(str, u)).issubset({'Y', 'N'})
+                                return False
+
+                            # ── 3) 집계 계산 (★ reduceat 는 오름차순 first_idx_sorted 사용) ───────
+                            for tgt_col, how in aggs.items():
+                                how_l = how.lower()
+                                col_sorted = _as_ndarray(df[tgt_col])[order]
+
+                                restore_YN = False
+                                if how_l in ('any', 'all', 'max', 'min'):
+                                    if np.issubdtype(col_sorted.dtype, np.bool_):
+                                        arr = col_sorted.view(np.int8)
+                                    elif treat_YN_as_bool and _is_YN_array(col_sorted):
+                                        arr = (col_sorted == 'Y').astype(np.int8, copy=False)
+                                        # 원래 동작 유지: 'max'/'min' 에 한해 Y/N 복구
+                                        restore_YN = (how_l in ('max', 'min'))
+                                    elif _is_numeric_dtype(col_sorted.dtype):
+                                        arr = col_sorted
+                                    else:
+                                        arr = pd.to_numeric(pd.Series(col_sorted), errors='raise').to_numpy()
+                                elif how_l in ('sum', 'first', 'last', 'count'):
+                                    if how_l == 'sum':
+                                        if np.issubdtype(col_sorted.dtype, np.bool_):
+                                            arr = col_sorted.view(np.int8)
+                                        elif _is_numeric_dtype(col_sorted.dtype):
+                                            arr = col_sorted
+                                        else:
+                                            arr = pd.to_numeric(pd.Series(col_sorted), errors='raise').to_numpy()
+                                    else:
+                                        arr = col_sorted
+                                else:
+                                    raise ValueError(f"[ultra_fast_groupby_numpy_general] Unsupported agg: {how}")
+
+                                # 그룹별 집계 (오름차순 인덱스)
+                                if how_l == 'sum':
+                                    out_vals_sorted = np.add.reduceat(arr, first_idx_sorted)
+                                elif how_l in ('any', 'max'):
+                                    out_vals_sorted = np.maximum.reduceat(arr, first_idx_sorted)
+                                elif how_l in ('all', 'min'):
+                                    out_vals_sorted = np.minimum.reduceat(arr, first_idx_sorted)
+                                elif how_l == 'first':
+                                    out_vals_sorted = arr[first_idx_sorted]
+                                elif how_l == 'last':
+                                    out_vals_sorted = arr[end_idx_sorted - 1]
+                                elif how_l == 'count':
+                                    out_vals_sorted = (end_idx_sorted - first_idx_sorted).astype(np.int64)
+                                else:
+                                    raise ValueError(f"[ultra_fast_groupby_numpy_general] Unsupported agg: {how}")
+
+                                # ★ 최종 출력 순서(원본 등장 순서)로 재배열
+                                out_vals = out_vals_sorted[rep_order]
+
+                                # 'Y'/'N' 복구 (0/1 → 'N'/'Y') — max/min 한정
+                                if restore_YN:
+                                    out_vals = np.where(out_vals >= 1, 'Y', 'N')
+
+                                result[tgt_col] = out_vals
+
+                            # ── 4) 키 컬럼 category 캐스팅 (옵션) ────────────────────────────────
+                            if cast_key_to_category and not result.empty:
+                                result[key_cols] = result[key_cols].astype('category')
+
+                            # 안전장치: reduceat 인덱스 정렬 위반 방지용 (개발 시 검증)
+                            # assert np.all(first_idx_sorted[:-1] < first_idx_sorted[1:]), "first_idx must be strictly increasing"
+
+                            return result
+
+
+
+        
+        Script Parameter
+            - Version
+                CWV_DP
+
+        Input Tables (*)
+
+            (Input 1) df_in_Forecast_Rule. Forecast Rule 정보
+                - Query
+                    Select (
+                    [Version].[Version Name].[CWV_DP]
+                    * [Item].[Product Group] 
+                    * [Sales Domain].[Ship To] )  on row, // 2,3LV구성
+                    ( { 
+                        Measure.[FORECAST_RULE GC FCST], 
+                        Measure.[FORECAST_RULE AP2 FCST], 
+                        Measure.[FORECAST_RULE AP1 FCST], 
+                        Measure.[FORECAST_RULE AP0 FCST],
+                        Measure.[FORECAST_RULE ISVALID] 
+                    } ) on column 
+                    where {Measure.[FORECAST_RULE ISVALID]  == "Y"};
+
+
+                Version.[Version Name],Item.[Product Group],Sales Domain.[Ship To],FORECAST_RULE GC FCST,FORECAST_RULE AP2 FCST,FORECAST_RULE AP1 FCST,FORECAST_RULE AP0 FCST,FORECAST_RULE ISVALID
+                CWV_DP,REF,SU000118,3,5,6,,Y
+
+
+
+            (Input 2) df_in_Sales_Domain_Dimension. Sales Domian Master 정보
+                - Query
+                    Select (
+                    [Sales Domain].[Sales Std1]
+                    * [Sales Domain].[Sales Std2] 
+                    * [Sales Domain].[Sales Std3] 
+                    * [Sales Domain].[Sales Std4] 
+                    * [Sales Domain].[Sales Std5] 
+                    * [Sales Domain].[Sales Std6] 
+                    * [Sales Domain].[Ship To] );
+
+
+
+                Sales Domain.[Sales Std1],Sales Domain.[Sales Std2],Sales Domain.[Sales Std3],Sales Domain.[Sales Std4],Sales Domain.[Sales Std5],Sales Domain.[Sales Std6],Sales Domain.[Ship To]
+                RH000206,RH000206,RH000206,RH000206,RH000206,RH000206,RH000206
+                RH000206,SU000133,SU000133,SU000133,SU000133,SU000133,SU000133
+                RH000206,SU000133,CO000710,CO000710,CO000710,CO000710,CO000710
+                RH000206,SU000133,CO000710,CT007431,CT007431,CT007431,CT007431
+                RH000206,SU000133,CO000710,CT000877,CT000877,CT000877,CT000877
+                RH000206,SU000133,CO000710,CT002435,CT002435,CT002435,CT002435
+                RH000206,SU000133,CO000710,CT008473,CT008473,CT008473,CT008473
+                RH000226,SU000118,CO000710,CT007431,CH018113,CH018113,CH018113
+                RH000226,SU000118,CO000710,CT000877,CH016583,CH016583,CH016583
+                RH000226,SU000118,CO000710,CT002435,CH019794,CH019794,CH019794
+                RH000226,SU000118,CO000710,CT008473,CH022355,CH022355,CH022355
+
+
+            (Input 3) df_in_Sales_Product_ASN. Sales Product ASN 정보
+                - Query
+                    Select (
+                        [Version].[Version Name].[CWV_DP]
+                        * [Sales Domain].[Ship To]
+                        * Item.[Item]
+                        * [Location].[Location] 
+                    )  on row, 
+                    ( { Measure.[Sales Product ASN] } ) on column
+                    where { 
+                        Measure.[Sales Product ASN] == "Y",  
+                        Measure.[Sales Product ASN Leaf Flag] == "Y" 
+                    };
+
+                Version.[Version Name],Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN
+                CWV_DP,CH018113,RF29BB8600QLAA,S377,Y
+                CWV_DP,CH016583,RF29BB8600QLAA,S377,Y
+                CWV_DP,CH019794,RF29BB8600QLAA,S377,Y
+                CWV_DP,CH022355,RF29BB8600QLAA,S341,Y
+
+
+
+            (Input 4) df_in_Item_Master. MST_Item 정보
+                - Query
+                    Select (
+                        [Item].[Item GBM]
+                        * [Item].[Product Group]
+                        * [Item].[Item]
+                    );
+
+                - Data
+                    Item.[Item GBM],Item.[Product Group],Item.[Item]
+                    SHA,REF,RF29BB8600QLAA
+
+            (Input 5) df_in_Sales_Domain_Estore. E-Store 정보
+                
+                    Select ( 
+                        [Sales Domain].[Ship To].filter(#.[eStore Account YN] == True) 
+                    );
+
+
+                - Data
+                    Sales Domain.[Ship To]
+                    CH022355
+
+            (Input 6) df_in_Sell_Out_Simul_Master. Sell-Out Simul. Master 정보 (TO-BE : 7LV)
+                - Query
+                    Select (
+                    [Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Product Group] )  on row, 
+                    ( {Measure.[S/Out Master Status] } ) on column;
+
+                - Data
+                    Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Status
+                    CWV_DP,CH018113,REF,CON
+                    CWV_DP,CH016583,REF,CON
+                    CWV_DP,CH019794,REF,CON
+                    CWV_DP,CH022355,REF,CON
+
+            (Input 7) df_in_Sell_Out_Simul_Master_Delta. Sell-Out Simul. Master Delta 정보 
+                - Query
+                    Select (
+                    [Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Product Group] )  on row, 
+                    ({
+                        Measure.[S/Out Master Cutoff Delta], 
+                        Measure.[S/Out Master Status Delta], 
+                        Measure.[S/Out Master Delta Init Time], 
+                        Measure.[S/Out Master Delta Up Time]  
+                    }) on column;
+
+                
+                - Data
+                    Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff Delta,S/Out Master Status Delta,S/Out Master Delta Init Time,S/Out Master Delta Up Time
+                    CWV_DP,CH018113,REF,TEST,TEST,TEST,TEST
+
+
+
+
+        Output Tables (*)
+
+
+                    Logic 간략 설명
+
+
+
+
+
+
+            (Output 1) Output_SOut_Assortment_GC
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_GC] } ) on column ;
+
+
+            (Output 2) Output_SOut_Assortment_AP2
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_AP2] } ) on column ;
+
+
+            (Output 3) Output_SOut_Assortment_AP1
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_AP1] } ) on column ;
+
+
+
+
+            (Output 4) Output_SOut_Assortment_Local
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To] 
+                    * [Item].[Item] 
+                    * [Location].[Location]) on row, 
+                    ( { Measure.[S/Out FCST Assortment_Local] } ) on column ;
+
+
+            (Output 8) Output_Sell_Out_Simul_Master
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Product Group] )  on row, 
+                    ( {Measure.[S/Out Master Cutoff], Measure.[S/Out Master Status] } ) on column;
+
+
+            (Output 9) Output_Sell_Out_Simul_Master_Delta
+                
+                    Select ([Version].[Version Name]
+                    * [Sales Domain].[Ship To]
+                    * [Item].[Product Group] )  on row, 
+                    ( {Measure.[S/Out Master Cutoff Delta], Measure.[S/Out Master Status Delta] } ) on column;
+
+
+        주요 로직 (*)
+
+
+            Step 0)  Sell_Out_Simul_Master Delta 처리
+                Step 0-1)  Sell_Out_Simul_Master Delta 처리
+                    
+                    - df_in_Sell_Out_Simul_Master_Delta
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff Delta,S/Out Master Status Delta
+                        CWV_DP,CH018113,REF,TEST,TEST
+
+                    - df_in_Sell_Out_Simul_Master
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Status
+                        CWV_DP,CH018113,REF,CON
+                        CWV_DP,CH016583,REF,CON
+                        CWV_DP,CH019794,REF,CON
+                        CWV_DP,CH022355,REF,CON
+
+                    - Result
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Status
+                        CWV_DP,CH018113,REF,TEST
+                        CWV_DP,CH016583,REF,CON
+                        CWV_DP,CH019794,REF,CON
+                        CWV_DP,CH022355,REF,CON
+                    
+                    - process
+                        - df_in_Sell_Out_Simul_Master 의 S/Out Master Status 값을  df_in_Sell_Out_Simul_Master_Delta 의 S/Out Master Status Delta 로 Update를 한다.
+                        - return df_step0_1_Sell_Out_Simul_Master
+
+                Step 0-2)  Sell_Out_Simul_Master Output 생성 -> Output 8. (12.18 변경)
+                    - df_in_Sell_Out_Simul_Master_Delta
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff Delta,S/Out Master Status Delta,S/Out Master Delta Init Time,S/Out Master Delta Up Time
+                        CWV_DP,CH018113,REF,TEST,TEST,TEST,TEST
+
+                    - Result
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff,S/Out Master Status,S/Out Master Init Time,S/Out Master Up Time
+                        CWV_DP,CH018113,REF,TEST,TEST,TEST,TEST
+
+                    - process
+                        - df_in_Sell_Out_Simul_Master_Delta 의 Measure 의 이름을 바꾼다. 
+                            - S/Out Master Cutoff Delta -> S/Out Master Cutoff 
+                            - S/Out Master Status Delta -> S/Out Master Status
+                            - S/Out Master Delta Init Time -> S/Out Master Init Time
+                            - S/Out Master Delta Up Time -> S/Out Master Up Time
+
+
+                        - Output_Sell_Out_Simul_Master 으로 생성
+
+                Step 0-3)  Sell_Out_Simul_Master_Delta Output 생성 -> Output 9. (12.18 변경)
+                    - df_in_Sell_Out_Simul_Master_Delta
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff Delta,S/Out Master Status Delta,S/Out Master Delta Init Time,S/Out Master Delta Up Time
+                        CWV_DP,CH018113,REF,TEST,TEST,TEST,TEST
+
+                    - Result
+                        Version.[Version Name],Sales Domain.[Ship To],Item.[Product Group],S/Out Master Cutoff,S/Out Master Status,S/Out Master Delta Init Time,S/Out Master Delta Up Time
+                        CWV_DP,CH018113,REF,,,,
+                    
+                    - process
+                        - df_in_Sell_Out_Simul_Master_Delta 의 Measure 의 값을 Null로 변경한다.
+                        - Output_Sell_Out_Simul_Master_Delta 으로 생성
+
+                Step 0-4) 하위 Assortment 생성 로직에서 Delta만 반영하기 위해 df_in_Sell_Out_Simul_Master_Delta 의 Product Group 추출
+                    - Result : [REF]
+                    - process
+                        - load
+                            - df_in_Sell_Out_Simul_Master_Delta
+                        - df_in_Sell_Out_Simul_Master_Delta 에서 unique 한 Product Group 리스트 추출
+                        - return arr_step0_4_product_group                            
+                            - 하위 로직에서 arr_step0_4_product_group 만 로직 수행
+                        
+
+
+            Step 1) Ship-To Dimension LUT 구성
+                - 참고
+                    PYForecastCreateSellInAndSellOutAssortment 의 step01_load_shipto_dimension 참조
+                - process
+                    - load 
+                        - df_in_Sales_Domain_Dimension (Sales Domian Master 정보)
+                        - level 구성
+                        - return df_fn_shipto_dim 
+                            
+
+
+            Step 2) Sales Product ASN(df_in_Sales_Product_ASN) 전처리
+                - 참고 
+                    - PYForecastCreateSellInAndSellOutAssortment 의 step02_preprocess_asn 참조
+                - result
+                        Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out Assortment Flag
+                        CH018113,RF29BB8600QLAA,S377,Y,False
+                        CH016583,RF29BB8600QLAA,S377,Y,True
+                        CH019794,RF29BB8600QLAA,S377,Y,True
+                        CH022355,RF29BB8600QLAA,S377,Y,False
+
+                - process
+                    - load
+                        - df_in_Sales_Product_ASN
+                        - df_in_Item_Master
+                        - df_step0_1_Sell_Out_Simul_Master
+                            - df_in_Sell_Out_Simul_Master 를 사용안하고 step0-1) 의 결과를 사용한다.
+                        - df_in_Sales_Domain_Estore
+                        - df_fn_shipto_dim 
+                            - Step 1) Step-01 LUT 의 결과
+                        - arr_step0_4_product_group 
+                            - Step0-4) 의 결과
+                    - PYForecastCreateSellInAndSellOutAssortment 의 step02_preprocess_asn 를 참조하여 전처리한다.
+                        - 차이점은 아래의 Parameter 가 다르다.
+                            - df_step0_1_Sell_Out_Simul_Master
+                                - PYForecastCreateSellInAndSellOutAssortment 에서는 df_in_Sell_Out_Simul_Master
+                            - arr_step0_4_product_group
+                                - PYForecastCreateSellInAndSellOutAssortment 에서는 없었던것.
+                                - 해당 Item.[Product Group] 에 해당되는 것만 Filtering 한다.
+
+                    - return df_fn_sales_product_asn
+
+            Step 3) Forecast Rule에 따른 Data 생성 (GC,AP2,AP1, AP0에 대해서 각각 진행)
+                - result
+                        Item.[Item],Location.[Location],Sales Domain.[Ship To],S/In FCST Assortment_AP2,Sales Product ASN,S/Out Assortment Flag
+                        RF29BB8600QLAA,S377,CT007431,Y,1,False
+                        RF29BB8600QLAA,S377,CT000877,Y,1,True
+                        RF29BB8600QLAA,S377,CT002435,Y,1,True
+                        RF29BB8600QLAA,S377,CT008473,Y,1,False
+
+                
+                - process
+                    - load
+                        - df_fn_sales_product_asn ( Step2 의 결과) 
+                        - df_in_Forecast_Rule
+                        - df_fn_shipto_dim
+
+                    - PYForecastCreateSellInAndSellOutAssortment 의 step03_create_sellin_assortments 를 참조하여 처리한다.
+                        - 거의 같은로직임.
+
+                    - return df_sin_dict
+                        - 아래의 item 들이 들어있다.
+                            - Output_SIn_Assortment_GC
+                            - Output_SIn_Assortment_AP2
+                            - Output_SIn_Assortment_AP1
+                            - Output_SIn_Assortment_Local
+                        - 참고 
+                            - PYForecastCreateSellInAndSellOutAssortment 에서는 S/In FCST(GI) Assortment_Local(GC,AP1,AP2) 의 필드를 사용했다.
+                                - 여기서는 S/In FCST Assortment_Local(GC,AP1,AP2) 의 필드를 사용한다.
+                                
+
+            Step 4) Forecast Rule에 따른 S/Out Assortment Column 및 Data 생성 (GC,AP2,AP1,AP0에 대해서 각각 진행)
+                - result
+                    Sales Domain.[Ship To],Item.[Item],Location.[Location],Sales Product ASN,S/Out Assortment Flag,S/Out FCST Assortment_AP2
+                    CT007431,RF29BB8600QLAA,-,Y,False,
+                    CT000877,RF29BB8600QLAA,-,Y,True,1
+                    CT002435,RF29BB8600QLAA,-,Y,True,1
+                    CT008473,RF29BB8600QLAA,-,Y,False,
+
+                - process
+                    - load
+                        - df_sin_dict
+                    - PYForecastCreateSellInAndSellOutAssortment 의 step04_create_sellout_assortments 를 참조하여 처리한다.
+                        - 차이점 : 
+                            - S/Out FCST Assortment_AP2 값 생성. 
+                                - S/Out Assortment Flag == False -> Null
+                                    - PYForecastCreateSellInAndSellOutAssortment 에서는 0 이었음.
+                                    - S/Out FCST Assortment_AP2(AP1,GP,Local) 의 type을 float32 로 처리해야함.
+                                        - int8 은 NULL 이 허용이 안되므로 
+
+                                - S/Out Assortment Flag == True -> 1
+                    - return df_sout_dict
+                    
+                
+
+            Step 5) 최종 Output 구성
+                - 참고 
+                    - PYForecastCreateSellInAndSellOutAssortment 의 fn_output_formatter 를 참고한다.
+                    - 다만, 여기서는 df_sout_dict 를 활용해서 4개의 output 만 생성한다.
+                - process
+                    - load
+                        - Version
+                        - df_sout_dict
+                    - Version.[Version Name] = CWV_DP 추가
+                        - type 을 category 로 한다.
+                    - 4개의 Output 구성
+                    
+                
+
+
+        Validation (*)
+
+
+
+
+        호출 (*)
+
+            EXEC plugin instance [PYForecastMasterSelloutDelta]
+            for measures {
+                // Output_Sell_Out_Simul_Master
+                Measure.[S/Out Master Cutoff], 
+                Measure.[S/Out Master Status], 
+                Measure.[S/Out Master Init Time], 
+                Measure.[S/Out Master Up Time], 
+                // Output_Sell_Out_Simul_Master_Delta
+                Measure.[S/Out Master Cutoff Delta], 
+                Measure.[S/Out Master Status Delta], 
+                Measure.[S/Out Master Delta Init Time], 
+                Measure.[S/Out Master Delta Up Time], 
+                Measure.[S/Out FCST Assortment_GC] , 
+                Measure.[S/Out FCST Assortment_AP2] , 
+                Measure.[S/Out FCST Assortment_AP1], 
+                Measure.[S/Out FCST Assortment_Local] 
+            } 
+            using scope (
+                [Version].[Version Name].[CWV_DP] 
+                * [Sales Domain].[Ship To] 
+                * [Item].[Item] 
+                * [Location].[Location])
+            using arguments {  
+                (ExecutionMode, "MediumWeight") 
+                ,(IncludeNullrows, False)
+            }
+            ;
+
+
+        Test Case Query (*)
+
+
+        그 외 특이사항
+
+
+
+
+
+
