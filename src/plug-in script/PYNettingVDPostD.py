@@ -1,0 +1,152 @@
+import gc
+import traceback as tb
+
+import pandas as pd
+
+import netting_util.NSCMCommon as nscm
+from netting_util.util import overrange_to_datetime
+from daily_netting.vd_post_process.accessor import Accessor
+from daily_netting.vd_post_process.processor import Processor
+
+nscm.logging.basicConfig(level=nscm.logging.DEBUG)
+logger = nscm.G_Logger('VD Post Process D')
+logger.Start()
+
+if nscm.G_IS_Local:
+    # local 환경에서 data 가져오기
+    import os
+    from daily_netting.vd_post_process.constant.dim_constant import NettingSales as NS
+    from daily_netting.vd_post_process.constant.dim_constant import Item as I
+    from daily_netting.vd_post_process.constant.dim_constant import NettingSalesLevel as NSL
+    from daily_netting.vd_post_process.constant.dim_constant import Location as L
+    from daily_netting.vd_post_process.constant.general_constant import DFAllocMap as DFAM
+    from daily_netting.vd_post_process.constant.general_constant import DFItemSite as DFIS
+    from daily_netting.vd_post_process.constant.general_constant import CustomerRank as CR
+    from daily_netting.vd_post_process.constant.general_constant import ProductRank as ProdR
+    from daily_netting.vd_post_process.constant.general_constant import DemandTypeConv as DTC
+    from daily_netting.vd_post_process.constant.general_constant import AccountInfo as AI
+    from daily_netting.vd_post_process.constant.general_constant import BOD as BOD
+    from daily_netting.vd_post_process.constant.general_constant import SSCalendarD as SSC_
+    from daily_netting.vd_post_process.constant.general_constant import Association as A
+    from daily_netting.vd_post_process.constant.general_constant import SalesOrderLP as SOLP
+    from daily_netting.vd_post_process.constant.ods_constant import PlanD as P_
+    from daily_netting.vd_post_process.constant.ods_constant import PlanOptionD as PO_
+    from daily_netting.vd_post_process.constant.ods_constant import PriorityRankD as PR_
+    from daily_netting.vd_post_process.constant.ods_constant import PreDemandD as PD_
+    from daily_netting.vd_post_process.constant.ods_constant import AP1DeliveryPlanD as AP1DP_
+    from daily_netting.vd_post_process.constant.ods_constant import AP1ShortReasonD as AP1SR_
+    from daily_netting.vd_post_process.constant.ods_constant import ArcNettedDemandD as AND_
+    from daily_netting.vd_post_process.constant.ods_constant import NettedDemandD as ND_
+    from daily_netting.vd_post_process.constant.ods_constant import NettedDemandLogD as NDL_
+    from daily_netting.vd_post_process.constant.vd_constant import DIRNetting as DIRN
+    from daily_netting.vd_post_process.constant.vd_constant import BAT as BAT
+    from daily_netting.vd_post_process.constant.vd_constant import BATAlt as BATA
+    from daily_netting.vd_post_process.constant.vd_constant import BATItem as BATI
+    from daily_netting.vd_post_process.constant.vd_constant import LocalSwapOut as LSwO
+    from daily_netting.vd_post_process.constant.vd_constant import VDPreferenceRank as VDPR
+    from daily_netting.vd_post_process.constant.vd_constant import TotalBODLT as TBODLT
+    from daily_netting.vd_post_process.constant.vd_constant import ProfitRank as ProfR
+    from daily_netting.vd_post_process.constant.vd_constant import CreditAlloc as CA
+    from daily_netting.vd_post_process.constant.vd_constant import SalesOrder as SO
+    from daily_netting.vd_post_process.constant.vd_constant import SalesOrderLine as SOL
+    from daily_netting.vd_post_process.constant.vd_constant import TWOSSales as TWOSS
+
+    additional_path = '202604_DP_VD_US_SA'
+    current_path = os.path.dirname(__file__)
+
+    # 데이터 가져오기
+    # dim
+    df_dim_item = pd.read_csv(f'{current_path}\\{additional_path}\\df_dim_item.csv', dtype=object)
+    df_dim_location = pd.read_csv(f'{current_path}\\{additional_path}\\df_dim_location.csv', dtype=object)
+    df_dim_netting_sales = pd.read_csv(f'{current_path}\\{additional_path}\\df_dim_netting_sales.csv', dtype=object)
+    df_dim_netting_sales_level = pd.read_csv(f'{current_path}\\{additional_path}\\df_dim_netting_sales_level.csv', dtype=object)
+    df_dim_netting_lp_plan_batch = pd.read_csv(f'{current_path}\\{additional_path}\\df_dim_netting_lp_plan_batch.csv', dtype=object)
+
+    # ods
+    df_pre_demand = pd.read_csv(f'{current_path}\\{additional_path}\\df_pre_demand.csv', dtype=object)
+    df_plan = pd.read_csv(f'{current_path}\\{additional_path}\\df_plan.csv', dtype=object)
+    df_plan_option = pd.read_csv(f'{current_path}\\{additional_path}\\df_plan_option.csv', dtype=object)
+    df_priority_rank = pd.read_csv(f'{current_path}\\{additional_path}\\df_priority_rank.csv', dtype=object)
+
+    # general
+    df_sales_order_lp = pd.read_csv(f'{current_path}\\{additional_path}\\df_sales_order_lp.csv', dtype=object)
+
+    print('csv load 완료')
+    print('df type변환 시작')
+    # dim
+    # ods
+    df_plan = df_plan.astype({
+        P_.PLANHORIZON: 'float64',
+        P_.STARTDATE: 'datetime64[ns]',
+        P_.ENDDATE: 'datetime64[ns]',
+        P_.CLOSEDATE: 'datetime64[ns]',
+    })
+    df_plan_option = df_plan_option.astype({
+    })
+    df_priority_rank = df_priority_rank.astype({
+        PR_.DIGIT: 'float64',
+        PR_.ORDER: 'float64',
+    })
+    df_pre_demand = df_pre_demand.astype({
+        PD_.QTYPROMISED: 'float64',
+        PD_.ACCSHORTQTY: 'float64',
+        PD_.AP1SHORTQTY: 'float64',
+        PD_.AP2SHORTQTY: 'float64',
+        PD_.GCSHORTQTY: 'float64',
+        PD_.SHORTQTY: 'float64',
+    })
+    # general
+    df_sales_order_lp = df_sales_order_lp.astype({
+        SOLP.QTY: 'float64',
+    })
+    print('df_type 변환 완료')
+
+try:
+    df_list = [
+        ('df_dim_item', df_dim_item),  ('df_dim_location', df_dim_location),  ('df_dim_netting_sales', df_dim_netting_sales), 
+        ('df_dim_netting_sales_level', df_dim_netting_sales_level),  ('df_pre_demand', df_pre_demand),  ('df_plan', df_plan), 
+        ('df_plan_option', df_plan_option),  ('df_priority_rank', df_priority_rank), ('df_dim_netting_lp_plan_batch', df_dim_netting_lp_plan_batch),
+        ('df_sales_order_lp', df_sales_order_lp),
+    ]
+    for name, df in df_list:
+        logger.Note(f'{name} has {len(df)} rows', 20)
+
+    # accessor에 데이터 담기, plan data
+    accessor = Accessor(
+        df_dim_item, df_dim_location, df_dim_netting_sales,
+        df_dim_netting_sales_level, df_pre_demand, df_plan,
+        df_plan_option, df_priority_rank,
+        df_dim_netting_lp_plan_batch,
+        df_sales_order_lp,
+    ) # 모든 df 데이터 가져가기
+
+    # 전역 레퍼런스 삭제, gc 비우기
+    del df_dim_item, df_dim_location, df_dim_netting_sales,
+    df_dim_netting_sales_level, df_pre_demand, df_plan,
+    df_plan_option, df_priority_rank,
+    # df_dim_netting_lp_plan_batch,
+    # df_sales_order_lp,
+
+    gc.collect()
+
+    processor = Processor(accessor, logger)
+
+    # pd.set_option('display.max_columns', None)
+    processor.process_lp_order_netting()
+
+    df_out_ap1_delivery_plan = accessor.df_ap1_delivery_plan
+    df_out_ap1_short_reason = accessor.df_ap1_short_reason
+    df_out_demand_log = processor.concat_demand_log()
+    df_out_demand = processor.make_final_demand()
+except Exception as e:
+    logger.error(tb.format_exc())
+    raise e
+
+logger.Finish()
+logger.Note('Meaningless log to avoid log missing problem', 30)
+
+if nscm.G_IS_Local:
+    # df_out_demand.to_csv(f'demand.csv', index=False)
+    # df_out_demand_log.to_csv(f'demand_log.csv', index=False)
+    pass
+
