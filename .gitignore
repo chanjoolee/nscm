@@ -4,3 +4,7 @@ venv/
 venv310/
 __pycache__
 .DS_Store
+
+.env.github
+.env
+*.token
