@@ -8,7 +8,7 @@ import base64
 import json
 import os
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Iterator, Optional
 from urllib.parse import quote
 
@@ -31,6 +31,16 @@ TEXT_EXTENSIONS = {
 
 def join_repo_path(*parts: str) -> str:
     return "/".join([p.strip("/") for p in parts if p and p.strip("/")])
+
+def normalize_repo_path(path: str) -> str:
+    return str(PurePosixPath(path.strip().replace("\\", "/"))).strip("/")
+
+
+def default_staging_path_from_publish_path(publish_path: str) -> str:
+    publish = PurePosixPath(normalize_repo_path(publish_path))
+    parent = publish.parent
+    stem = Path(publish.name).stem
+    return join_repo_path(str(parent), ".ai_staging", stem)
 
 
 def is_probably_text(file_path: Path, mode: str) -> bool:
@@ -273,21 +283,18 @@ def upload_direct_file(
     owner: str,
     repo: str,
     branch: str,
-    repo_dir: str,
-    root_name: str,
-    target_name: str,
+    publish_path: str,
     local_file: Path,
 ) -> None:
-    target_path = join_repo_path(repo_dir, root_name, target_name)
     client.upsert_bytes(
         owner=owner,
         repo=repo,
-        repo_path=target_path,
+        repo_path=publish_path,
         content_bytes=local_file.read_bytes(),
         branch=branch,
-        commit_message=f"upload {target_name}",
+        commit_message=f"upload {Path(publish_path).name}",
     )
-    print(f"Uploaded direct file: {target_path}")
+    print(f"Uploaded direct file: {publish_path}")
 
 
 def upload_chunked_text_file(
@@ -295,20 +302,17 @@ def upload_chunked_text_file(
     owner: str,
     repo: str,
     branch: str,
-    repo_dir: str,
-    root_name: str,
-    target_name: str,
+    publish_path: str,
+    staging_path: str,
     local_file: Path,
     max_bytes: int,
     sleep_secs: float,
     dispatch_after_upload: bool,
     dispatch_workflow: str,
 ) -> None:
-    base_path = join_repo_path(repo_dir, root_name)
-    parts_dir = join_repo_path(base_path, "parts")
-    manifest_path = join_repo_path(base_path, "manifest.json")
-    index_path = join_repo_path(base_path, "INDEX.md")
-    final_file_path = join_repo_path(base_path, target_name)
+    parts_dir = join_repo_path(staging_path, "parts")
+    manifest_path = join_repo_path(staging_path, "manifest.json")
+    index_path = join_repo_path(staging_path, "INDEX.md")
 
     old_manifest = load_old_manifest(client, owner, repo, manifest_path, branch)
     old_part_files = set((old_manifest or {}).get("part_files", []))
@@ -325,7 +329,7 @@ def upload_chunked_text_file(
             repo_path=repo_part_path,
             content_bytes=chunk.encode("utf-8"),
             branch=branch,
-            commit_message=f"upload {target_name} part {part_no}",
+            commit_message=f"upload {Path(publish_path).name} part {part_no}",
         )
         new_part_files.append(repo_part_path)
         print(f"Uploaded part: {repo_part_path}")
@@ -345,11 +349,11 @@ def upload_chunked_text_file(
         print(f"Deleted stale part: {stale_path}")
 
     manifest = {
-        "root_name": root_name,
+        "root_name": Path(publish_path).stem,
         "source_file_name": local_file.name,
         "encoding": "utf-8",
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "target_full_path": final_file_path,
+        "target_full_path": publish_path,
         "index_path": index_path,
         "parts_dir": parts_dir,
         "part_files": new_part_files,
@@ -365,7 +369,7 @@ def upload_chunked_text_file(
         repo_path=manifest_path,
         content_bytes=manifest_text.encode("utf-8"),
         branch=branch,
-        commit_message=f"upload manifest for {target_name}",
+        commit_message=f"upload manifest for {Path(publish_path).name}",
     )
     print(f"Uploaded manifest: {manifest_path}")
 
@@ -388,9 +392,9 @@ def main():
     ap.add_argument("--branch", default="main")
 
     ap.add_argument("--file", required=True, help="Local file path")
-    ap.add_argument("--repo-dir", default="mobile_uploads")
-    ap.add_argument("--root-name", default=None)
-    ap.add_argument("--target-name", default=None)
+    ap.add_argument("--publish-path", required=True, help="Final repo path, e.g. src/daily_netting/mx_post_process/processor.py")
+    ap.add_argument("--staging-path", default=None, help="Optional staging repo path. Default: sibling .ai_staging/<file_stem>")
+    ap.add_argument("--target-name", default=None, help="Optional override for final repo filename. Usually omit this.")
 
     ap.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
     ap.add_argument("--sleep-secs", type=float, default=0.0)
@@ -418,8 +422,11 @@ def main():
     if not local_file.exists():
         raise SystemExit(f"ERROR: file not found: {local_file}")
 
-    root_name = args.root_name or local_file.stem
-    target_name = args.target_name or local_file.name
+    publish_path = normalize_repo_path(args.publish_path)
+    if args.target_name:
+        publish_path_obj = PurePosixPath(publish_path)
+        publish_path = join_repo_path(str(publish_path_obj.parent), args.target_name)
+    staging_path = normalize_repo_path(args.staging_path) if args.staging_path else default_staging_path_from_publish_path(publish_path)
 
     client = GitHubContentsClient(
         token=args.token,
@@ -433,9 +440,10 @@ def main():
     file_size = local_file.stat().st_size
 
     print(f"Local file     : {local_file}")
-    print(f"Repo dir       : {args.repo_dir}")
-    print(f"Root name      : {root_name}")
-    print(f"Target name    : {target_name}")
+    print(f"Publish path   : {publish_path}")
+    print(f"Staging path   : {staging_path}")
+    print(f"CA bundle      : {args.ca_bundle if args.ca_bundle else '(not set)'}")
+    print(f"Verify TLS     : {args.verify_tls}")
     print(f"Detected text  : {is_text}")
     print(f"File size      : {file_size}")
 
@@ -447,9 +455,8 @@ def main():
             owner=args.owner,
             repo=args.repo,
             branch=args.branch,
-            repo_dir=args.repo_dir,
-            root_name=root_name,
-            target_name=target_name,
+            publish_path=publish_path,
+            staging_path=staging_path,
             local_file=local_file,
             max_bytes=args.max_bytes,
             sleep_secs=args.sleep_secs,
@@ -464,9 +471,7 @@ def main():
             owner=args.owner,
             repo=args.repo,
             branch=args.branch,
-            repo_dir=args.repo_dir,
-            root_name=root_name,
-            target_name=target_name,
+            publish_path=publish_path,
             local_file=local_file,
         )
 
