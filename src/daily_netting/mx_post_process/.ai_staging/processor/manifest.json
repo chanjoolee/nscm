@@ -1,0 +1,14 @@
+{
+  "root_name": "processor",
+  "source_file_name": "processor.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-17 23:45:17",
+  "target_full_path": "src/daily_netting/mx_post_process/processor.py",
+  "index_path": "src/daily_netting/mx_post_process/.ai_staging/processor/INDEX.md",
+  "parts_dir": "src/daily_netting/mx_post_process/.ai_staging/processor/parts",
+  "part_files": [
+    "src/daily_netting/mx_post_process/.ai_staging/processor/parts/PART_001.txt"
+  ],
+  "part_count": 1,
+  "max_bytes": 45000
+}
