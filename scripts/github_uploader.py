@@ -32,15 +32,45 @@ TEXT_EXTENSIONS = {
 def join_repo_path(*parts: str) -> str:
     return "/".join([p.strip("/") for p in parts if p and p.strip("/")])
 
+
 def normalize_repo_path(path: str) -> str:
     return str(PurePosixPath(path.strip().replace("\\", "/"))).strip("/")
 
 
 def default_staging_path_from_publish_path(publish_path: str) -> str:
     publish = PurePosixPath(normalize_repo_path(publish_path))
-    parent = publish.parent
+    parent = "" if str(publish.parent) == "." else str(publish.parent)
     stem = Path(publish.name).stem
-    return join_repo_path(str(parent), ".ai_staging", stem)
+    return join_repo_path(parent, ".ai_staging", stem)
+
+
+def estimate_base64_len(raw_bytes_len: int) -> int:
+    """
+    Base64 인코딩 후 길이(문자 수) 대략 계산
+    """
+    return ((raw_bytes_len + 2) // 3) * 4
+
+
+def effective_raw_bytes_for_github(
+    max_payload_bytes: int,
+    json_overhead_bytes: int = 2048,
+    min_raw_bytes: int = 1024,
+) -> int:
+    """
+    GitHub Contents API 요청 시:
+    - content는 base64 문자열로 들어가고
+    - branch/message/sha/json wrapper 오버헤드가 붙는다.
+
+    따라서 사용자가 넣은 max_payload_bytes를
+    '실제 안전한 원본 바이트 한도'로 환산한다.
+    """
+    usable = max_payload_bytes - json_overhead_bytes
+    if usable <= 0:
+        return min_raw_bytes
+
+    # base64는 대략 4/3배
+    raw_bytes = (usable // 4) * 3
+    return max(min_raw_bytes, raw_bytes)
 
 
 def is_probably_text(file_path: Path, mode: str) -> bool:
@@ -61,6 +91,11 @@ def is_probably_text(file_path: Path, mode: str) -> bool:
 
 
 def iter_utf8_chunks(file_path: str, max_bytes: int) -> Iterator[str]:
+    """
+    - max_bytes 이내에서 가능하면 마지막 개행 기준으로 자름
+    - UTF-8 경계 안전하게 맞춤
+    - 각 chunk 끝에 개행 1개 보장
+    """
     data = Path(file_path).read_bytes()
     i = 0
     n = len(data)
@@ -132,7 +167,13 @@ class GitHubContentsClient:
         encoded_path = quote(repo_path.strip("/"), safe="/")
         return f"{self.base_url}/repos/{owner}/{repo}/contents/{encoded_path}"
 
-    def get_file_metadata(self, owner: str, repo: str, repo_path: str, branch: str) -> Optional[dict]:
+    def get_file_metadata(
+        self,
+        owner: str,
+        repo: str,
+        repo_path: str,
+        branch: str,
+    ) -> Optional[dict]:
         r = self.session.get(
             self._url(owner, repo, repo_path),
             params={"ref": branch},
@@ -145,7 +186,13 @@ class GitHubContentsClient:
             raise GitHubContentsError(f"GET failed: {r.status_code} / {r.text}")
         return r.json()
 
-    def get_file_text(self, owner: str, repo: str, repo_path: str, branch: str) -> Optional[str]:
+    def get_file_text(
+        self,
+        owner: str,
+        repo: str,
+        repo_path: str,
+        branch: str,
+    ) -> Optional[str]:
         meta = self.get_file_metadata(owner, repo, repo_path, branch)
         if not meta:
             return None
@@ -199,7 +246,14 @@ class GitHubContentsClient:
 
         return r.json()
 
-    def delete_file(self, owner: str, repo: str, repo_path: str, branch: str, commit_message: str) -> Optional[dict]:
+    def delete_file(
+        self,
+        owner: str,
+        repo: str,
+        repo_path: str,
+        branch: str,
+        commit_message: str,
+    ) -> Optional[dict]:
         existing = self.get_file_metadata(owner, repo, repo_path, branch)
         if not existing:
             return None
@@ -236,7 +290,10 @@ class GitHubContentsClient:
         ref: str,
         inputs: dict,
     ) -> None:
-        url = f"{self.base_url}/repos/{owner}/{repo}/actions/workflows/{quote(workflow_id, safe='')}/dispatches"
+        url = (
+            f"{self.base_url}/repos/{owner}/{repo}/actions/workflows/"
+            f"{quote(workflow_id, safe='')}/dispatches"
+        )
         payload = {
             "ref": ref,
             "inputs": inputs,
@@ -392,9 +449,21 @@ def main():
     ap.add_argument("--branch", default="main")
 
     ap.add_argument("--file", required=True, help="Local file path")
-    ap.add_argument("--publish-path", required=True, help="Final repo path, e.g. src/daily_netting/mx_post_process/processor.py")
-    ap.add_argument("--staging-path", default=None, help="Optional staging repo path. Default: sibling .ai_staging/<file_stem>")
-    ap.add_argument("--target-name", default=None, help="Optional override for final repo filename. Usually omit this.")
+    ap.add_argument(
+        "--publish-path",
+        required=True,
+        help="Final repo path, e.g. src/daily_netting/mx_post_process/processor.py",
+    )
+    ap.add_argument(
+        "--staging-path",
+        default=None,
+        help="Optional staging repo path. Default: sibling .ai_staging/<file_stem>",
+    )
+    ap.add_argument(
+        "--target-name",
+        default=None,
+        help="Optional override for final repo filename. Usually omit this.",
+    )
 
     ap.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
     ap.add_argument("--sleep-secs", type=float, default=0.0)
@@ -425,8 +494,14 @@ def main():
     publish_path = normalize_repo_path(args.publish_path)
     if args.target_name:
         publish_path_obj = PurePosixPath(publish_path)
-        publish_path = join_repo_path(str(publish_path_obj.parent), args.target_name)
-    staging_path = normalize_repo_path(args.staging_path) if args.staging_path else default_staging_path_from_publish_path(publish_path)
+        parent = "" if str(publish_path_obj.parent) == "." else str(publish_path_obj.parent)
+        publish_path = join_repo_path(parent, args.target_name)
+
+    staging_path = (
+        normalize_repo_path(args.staging_path)
+        if args.staging_path
+        else default_staging_path_from_publish_path(publish_path)
+    )
 
     client = GitHubContentsClient(
         token=args.token,
@@ -438,6 +513,7 @@ def main():
 
     is_text = is_probably_text(local_file, args.mode)
     file_size = local_file.stat().st_size
+    effective_max_bytes = effective_raw_bytes_for_github(args.max_bytes)
 
     print(f"Local file     : {local_file}")
     print(f"Publish path   : {publish_path}")
@@ -446,8 +522,10 @@ def main():
     print(f"Verify TLS     : {args.verify_tls}")
     print(f"Detected text  : {is_text}")
     print(f"File size      : {file_size}")
+    print(f"Max payload    : {args.max_bytes}")
+    print(f"Safe raw bytes : {effective_max_bytes}")
 
-    should_chunk = is_text and (args.always_chunk_text or file_size > args.max_bytes)
+    should_chunk = is_text and (args.always_chunk_text or file_size > effective_max_bytes)
 
     if should_chunk:
         upload_chunked_text_file(
@@ -458,14 +536,14 @@ def main():
             publish_path=publish_path,
             staging_path=staging_path,
             local_file=local_file,
-            max_bytes=args.max_bytes,
+            max_bytes=effective_max_bytes,
             sleep_secs=args.sleep_secs,
             dispatch_after_upload=args.dispatch_after_upload,
             dispatch_workflow=args.dispatch_workflow,
         )
     else:
-        if (not is_text) and file_size > args.max_bytes:
-            print("WARNING: binary file is larger than max-bytes, but direct upload will still be attempted.")
+        if (not is_text) and file_size > effective_max_bytes:
+            print("WARNING: binary file is larger than safe raw limit, but direct upload will still be attempted.")
         upload_direct_file(
             client=client,
             owner=args.owner,
