@@ -1,0 +1,66 @@
+    df_exp_sopromise_merge_join = df_exp_sopromise_merge_join.astype({
+        ND_.WEEKRANK:int,
+        ESIS.STOCKTRANSITTIME:int
+    })
+
+    df_exp_sopromise_merge_join['WEEK_NEW'] = np.where(
+        df_exp_sopromise_merge_join[ND_.WEEKRANK] - df_exp_sopromise_merge_join[ESIS.STOCKTRANSITTIME] < 0, 
+        0, 
+        df_exp_sopromise_merge_join[ND_.WEEKRANK] - df_exp_sopromise_merge_join[ESIS.STOCKTRANSITTIME]).astype(str)
+
+
+    df_exp_sopromise_merge_join['NEW_DEMANDPRIORITY'] = df_exp_sopromise_merge_join['WEEK_NEW'].str.zfill(digit)
+
+    df_exp_sopromise_merge_join['NEW_LOCALPRIORITY'] = (df_exp_sopromise_merge_join[ND_.LOCALPRIORITY].str[:start_pos] 
+                                                        + df_exp_sopromise_merge_join['NEW_DEMANDPRIORITY'] 
+                                                        + df_exp_sopromise_merge_join[ND_.LOCALPRIORITY].str[next_pos:])
+    
+    df_exp_sopromise_merge_join['NEW_GLOBALPRIORITY'] = (df_exp_sopromise_merge_join[ND_.GLOBALPRIORITY].str[:start_pos] 
+                                                        + df_exp_sopromise_merge_join['NEW_DEMANDPRIORITY'] 
+                                                        + df_exp_sopromise_merge_join[ND_.GLOBALPRIORITY].str[next_pos:])
+    
+    df_exp_sopromise_merge_join['NEW_DEMANDPRIORITY'] = (df_exp_sopromise_merge_join[ND_.DEMANDPRIORITY].str[:start_pos] 
+                                                        + df_exp_sopromise_merge_join['NEW_DEMANDPRIORITY'] 
+                                                        + df_exp_sopromise_merge_join[ND_.DEMANDPRIORITY].str[next_pos:])
+
+    ### ON ~ UPATE
+    df_exp_sopromise_result = pd.merge(
+        df_exp_sopromise,
+        df_exp_sopromise_merge_join[[ND_.SALESORDERID, ND_.SOLINENUM, 'WEEK_NEW', 'NEW_DEMANDPRIORITY', 'NEW_GLOBALPRIORITY', 'NEW_LOCALPRIORITY']],
+        how='left', on=[ND_.SALESORDERID, ND_.SOLINENUM], suffixes=('', '_U')
+    )
+
+    #WEEK = B.NEW_WEEK
+    df_exp_sopromise_result.loc[~df_exp_sopromise_result['WEEK_NEW_U'].isna(), ND_.WEEKRANK] = df_exp_sopromise_result['WEEK_NEW_U']
+
+    df_exp_sopromise_result.loc[~df_exp_sopromise_result['NEW_LOCALPRIORITY'].isna(), ND_.LOCALPRIORITY] = df_exp_sopromise_result['NEW_LOCALPRIORITY']
+    df_exp_sopromise_result.loc[~df_exp_sopromise_result['NEW_GLOBALPRIORITY'].isna(), ND_.GLOBALPRIORITY] = df_exp_sopromise_result['NEW_GLOBALPRIORITY']
+    df_exp_sopromise_result.loc[~df_exp_sopromise_result['NEW_DEMANDPRIORITY'].isna(), ND_.DEMANDPRIORITY] = df_exp_sopromise_result['NEW_DEMANDPRIORITY']
+
+    df_exp_sopromise_result = df_exp_sopromise_result.drop(df_exp_sopromise_result.filter(regex='_U$').columns, axis=1)
+
+
+    #결과 형식 맞추기
+    df_exp_sopromise_result[ND_.WEEKRANK] = df_exp_sopromise_result[ND_.WEEKRANK].str.zfill(2)
+    df_exp_sopromise_result[ND_.OPTION_CODE] = pd.to_numeric(df_exp_sopromise_result[ND_.OPTION_CODE], errors='coerce').astype('Int32')
+    df_exp_sopromise_result[ND_.QTYPROMISED] = pd.to_numeric(df_exp_sopromise_result[ND_.QTYPROMISED], errors='coerce').astype('Int32')
+    
+
+    # demand modify에 들어갈 estore sales order 컬럼 이름 변경
+    df_mst_estore_salesorder.rename(columns={
+        ND_.SALESORDERID: 'SALESORDERID',
+        ND_.SOLINENUM: 'SOLINENUM',
+        ND_.DEMANDPRIORITY: 'DEMANDPRIORITY',
+        'WEEK_NEW': 'WEEK_NEW',
+        'WEEK_ORG': 'WEEK_ORG',
+        ND_.PROMISEDDELDATE: 'PROMISEDDELDATE',
+        'PROMISEDDELDATE_START': 'PROMISEDDELDATE_START',
+        'ALLOWWEEK': 'ALLOWWEEK',
+        ESIS.TARGETDATEEARLINESS: 'TARGETDATEEARLINESS',
+        'MAPPINGTYPE': 'MAPPINGTYPE',
+    }, inplace=True)
+
+    logger.Step(1, 'End eStore Netting')
+    return df_exp_sopromise_result[idx_exp_sopromise], df_mst_estore_salesorder
+
+
