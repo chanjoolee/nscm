@@ -1,0 +1,264 @@
+                appQty = np.trunc(appAcnt)
+                #-----------------------------------------------------------------------------------------
+
+                #insert --무조건 수량 상관없이 update, insert 한다. 나중에 N빵 수량 맞추려면 0이라도 row 있어야 함
+                insert_row = mydata_row.copy()
+                insert_row[idx_fcst_SOLINENUM] += 99
+                insert_row[idx_fcst_QTYPROMISED] = appQty #np.trunc(R_QTY * insert_row[idx_fcst_RATIO])
+                insert_row[idx_fcst_UPBY] = 'NEWINSERT2'
+                list_insert.append(insert_row)
+
+                #update
+                update_row = mydata_row.copy()
+                update_row[idx_fcst_QTYPROMISED] -= appQty #np.trunc(R_QTY * update_row[idx_fcst_RATIO])
+                update_row[idx_fcst_UPBY] = 'NEWUPDATE2'
+                #update_row = np.append(update_row, [update_row[idx_fcst_SOLINENUM]])  #이 열이 수정되지 않지만 다른 조건에서 추가되므로 열맞추기 위해 추가
+                list_update.append(update_row)
+
+                STEP_R_QTY = STEP_R_QTY - appQty #np.trunc(R_QTY * mydata_row[idx_fcst_RATIO])
+                FARE_SHARE = FARE_SHARE + appQty #np.trunc(R_QTY * mydata_row[idx_fcst_RATIO])
+
+
+                #--N빵처리후 마지막 ROW에서 남는 수량 1,2,3..FARE SHARE를 위해 다시한번
+                if mydata_row[idx_fcst_CHRK] == 1 and  R_QTY > FARE_SHARE:
+                    #mydata_T(페어쉐어)를 위한 리스트 생성 : R_QTY, FARE_SHARE 변수 값을 데이터프레임에 같이 넣어 놓고, 나중에 사용하다.
+                    fare_share_row = mydata_row.copy()
+                    fare_share_row = np.append(fare_share_row, [R_QTY, FARE_SHARE])
+                    list_FARE_SHARE.append(fare_share_row)
+                    
+                    STEP_R_QTY = 0
+
+
+
+    # %%
+    #일괄 업데이트, 인써트 반영
+
+    #일단 리스트를 원본(머지된테이블)과 동일하게 컬럼을 맞추어 데이터프레임으로 생성한다.
+    df_result_insert = pd.DataFrame(list_insert, columns=df_mst_newfcstnetting_join.columns)
+
+    #업데이트할 때 change solinenum 열이 추가되어서 컬럼 추가 작업 추가
+    ndarr_update_col = df_mst_newfcstnetting_join.columns.values
+    ndarr_update_col_result = np.append(ndarr_update_col, ['CHG_SOLINENUM']) #앞에서 추가된 열에 대한  컬럼명 추가
+    df_result_update = pd.DataFrame(list_update, columns=ndarr_update_col_result)
+
+    #다시 업데이트 대상 테이블과 동일하게 컬럼, 데이터타입 맞춘다.
+    dict_exp_sopromisesrc_dtype = df_exp_sopromisesrc.dtypes.to_dict()
+    df_result_insert = df_result_insert[df_exp_sopromisesrc.columns].astype(dict_exp_sopromisesrc_dtype)
+
+    #업데이트에 필요한 열만 발췌
+    df_result_update = df_result_update[[ND_.SALESORDERID, ND_.SOLINENUM, ND_.QTYPROMISED, 'UPBY', 'CHG_SOLINENUM']]
+
+
+    #Insert : 추가되는 데이터이므로 그냥 합쳐버림(정렬에 맞춰야 돼는지 다시 확인)
+    df_exp_sopromisesrc = pd.concat([df_exp_sopromisesrc, df_result_insert], ignore_index=True)
+
+    #업데이트 : left outer join 후 값 변경 처리
+    df_exp_sopromisesrc = pd.merge(df_exp_sopromisesrc.astype({ND_.SOLINENUM:int}), df_result_update.astype({ND_.SOLINENUM:int}), how='left', on=[ND_.SALESORDERID, ND_.SOLINENUM], suffixes=('', '_U'))
+    df_exp_sopromisesrc.loc[~df_exp_sopromisesrc['UPBY_U'].isna(), 'UPBY'] = df_exp_sopromisesrc['UPBY_U']
+    df_exp_sopromisesrc.loc[~df_exp_sopromisesrc[ND_.QTYPROMISED + '_U'].isna(), ND_.QTYPROMISED] = df_exp_sopromisesrc[ND_.QTYPROMISED + '_U']
+    df_exp_sopromisesrc.loc[~df_exp_sopromisesrc['CHG_SOLINENUM'].isna(), ND_.SOLINENUM] = df_exp_sopromisesrc['CHG_SOLINENUM']
+
+    df_exp_sopromisesrc = df_exp_sopromisesrc.drop(df_exp_sopromisesrc.filter(regex='_U$').columns, axis=1)
+
+
+    # %%
+    #3 --N빵처리후 마지막 ROW에서 남는 수량 1,2,3..FARE SHARE를 위해 다시한번 (세번째 루트 작업 시작)
+    #IF MYDATA(J).CHRK = 1 AND  R_QTY > FARE_SHARE THEN
+
+    #FARE_SHARE 하기 위한 리스트를 df로 변경하는 작업
+    #컬럼 맞추기(순서, 갯수) R_QTY, FARE_SHARE 컬럼 추가)
+    ndarr_fcst_col = df_mst_newfcstnetting_join.columns.values
+    ndarr_fcst_col_result = np.append(ndarr_fcst_col, ['R_QTY', 'FARE_SHARE'])
+
+    #기존 데이터프레임과 컬럼 데이터 타입을 맞추려고
+    dict_mydata_fare_share_dtype = df_mst_newfcstnetting_join.dtypes.to_dict()
+
+    df_mydata_fare_share = pd.DataFrame(list_FARE_SHARE, columns=ndarr_fcst_col_result).astype(dict_mydata_fare_share_dtype)
+
+    #추가 컬럼 데이터 타입 맞추기(R_QTY, FARE_SHARE)
+    df_mydata_fare_share = df_mydata_fare_share.astype({
+        'R_QTY' : 'int32',
+        'FARE_SHARE' : 'int32',
+    })
+
+
+
+
+    # %%
+    #mydata_T select쿼리 작업 : 쿼리상 컬럼은 많지만 사용하는 것만 추가
+
+    #R_QTY, FARE_SHARE 컬럼 추가하기 위해 조인 먼저
+    # 페어쉐어 건만 대상이 아니라, 페어쉐어 건의 item, site, week 그룹 포함(쿼리로직상 페어쉐어 그룹 중 위에부터 rownum순으로 잘라가면서 처리됨)
+    # 나중에 FOR k IN mydata_T.first .. (R_QTY - FARE_SHARE ) 부분에서 (R_QTY - FARE_SHARE)를 계산하기 편하게 하기 위한 작업
+    df_exp_sopromisesrc_join2 = pd.merge(df_exp_sopromisesrc, df_mydata_fare_share
+                                        , left_on=[ND_.ITEMID, ND_.SITEID, ND_.AP2ID, 'PROMISEDDELWEEK']
+                                        , right_on=[ND_.ITEMID, ND_.SITEID, 'SALESID', 'WEEK'], suffixes=('', '_x2'))
+    #df_exp_sopromisesrc_join2 = pd.merge(df_exp_sopromisesrc, df_mydata_fare_share, on=[ND_.SALESORDERID, ND_.SOLINENUM], suffixes=('', '_x2')) #이건 안됨
+    df_exp_sopromisesrc_join2 = df_exp_sopromisesrc_join2.drop(df_exp_sopromisesrc_join2.filter(regex='_x2$').columns, axis=1)
+
+    df_exp_sopromisesrc_sub3 = df_exp_sopromisesrc_join2[
+        (df_exp_sopromisesrc_join2[ND_.SOLINENUM].astype(int) >= 100) &
+
+        #RATIO별로 FIX된 것 중
+        (df_exp_sopromisesrc_join2['UPBY'] == 'NEWINSERT2') &
+
+        ~pd.MultiIndex.from_frame(df_exp_sopromisesrc_join2[[ND_.ITEMID, ND_.SITEID, ND_.SALESID]]).isin(idx_mves_itemsite)
+    ]
+
+    #WITH DATA AS
+    df_exp_sopromisesrcnew_sub = pd.merge(df_exp_sopromisesrcnew, df_mydata_fare_share
+                                        , left_on=[ND_.ITEMID, ND_.SITEID, ND_.AP2ID, 'PROMISEDDELWEEK']
+                                        , right_on=[ND_.ITEMID, ND_.SITEID, 'SALESID', 'WEEK'], suffixes=('', '_x2'))
+    df_exp_sopromisesrcnew_sub = df_exp_sopromisesrcnew_sub.drop(df_exp_sopromisesrcnew_sub.filter(regex='_x2$').columns, axis=1)
+
+    df_exp_sopromisesrcnew_sub = df_exp_sopromisesrcnew_sub[[ND_.SALESORDERID, ND_.ITEMID, ND_.SITEID, ND_.SALESID, ND_.QTYPROMISED]]
+    df_exp_sopromisesrcnew_sub = df_exp_sopromisesrcnew_sub.groupby([ND_.SALESORDERID, ND_.ITEMID, ND_.SALESID, ND_.SITEID]).agg({
+        ND_.QTYPROMISED: 'sum'
+    }).reset_index()
+
+    #FROM      EXP_SOPROMISESRC A, data B
+    df_exp_sopromisesrc_join3 = pd.merge(df_exp_sopromisesrc_sub3, df_exp_sopromisesrcnew_sub
+                                        , on=[ND_.SALESORDERID, ND_.ITEMID, ND_.SITEID], suffixes=('', '_B'))
+
+
+    # %%
+    #BULK COLLECT INTO mydata_T 에서 필요 컬럼 추가 * ITEM, SITEID, SALESID, WEEK 별 RK or ROWNUMBER 순서 정렬이 잘 되어야함
+
+    #--N빵직전 INS NETTING후
+    df_exp_sopromisesrc_join3['PROD'] = df_exp_sopromisesrc_join3.groupby([ND_.ITEMID, ND_.SITEID, ND_.SALESID, ND_.WEEKRANK, ND_.SALESORDERID])[ND_.QTYPROMISED].transform('sum').astype(int)
+    #--INS NETTING전
+    df_exp_sopromisesrc_join3['DEV'] = df_exp_sopromisesrc_join3.groupby([ND_.ITEMID, ND_.SITEID, ND_.SALESID, ND_.WEEKRANK, ND_.SALESORDERID])[ND_.QTYPROMISED + '_B'].transform('sum').astype(int)
+
+    df_exp_sopromisesrc_join3 = df_exp_sopromisesrc_join3.drop(df_exp_sopromisesrc_join3.filter(regex='_B$').columns, axis=1)
+
+    #--NETTING 전보다 데이터가 작아야만 PLUS 해도 상관없음, 같은거는 PLUS 되면 처음 DEMAND보다 많아지므로 안됨
+    df_exp_sopromisesrc_join4 = df_exp_sopromisesrc_join3[
+        df_exp_sopromisesrc_join3['DEV'] > df_exp_sopromisesrc_join3['PROD']
+    ]
+
+
+    #ROWNUM 순서 맞추기 위해 쏘팅함 'ITEM', 'SITEID','WEEK', 'RK', 'DEMANDPRIORITY', 'QTYPROMISED'까지 같은 경우까지 커버
+    #df_exp_sopromisesrc_join4 = df_exp_sopromisesrc_join4.sort_values(by=['ITEM', 'SITEID','WEEK', 'RK', 'DEMANDPRIORITY', 'QTYPROMISED', 'SALESID'], ascending=[True, True, True, True, False, True, True])
+
+    df_exp_sopromisesrc_join4['RK'] = df_exp_sopromisesrc_join4.groupby([ND_.ITEMID, ND_.SITEID, ND_.SALESID, ND_.WEEKRANK])[ND_.DEMANDPRIORITY].rank(method='dense', ascending=False)
+    #ITEM, SITEID, WEEK 그룹별 ROWNUM
+    df_exp_sopromisesrc_join4['ROWNUMBER'] = (df_exp_sopromisesrc_join4.sort_values(by=['ITEM', 'SITEID', 'SALESID', 'WEEK', 'RK', ND_.QTYPROMISED, ND_.SALESID], ascending=[True, True, True, True, True, True, True]).groupby(['ITEM', 'SITEID', 'SALESID', 'WEEK']).cumcount() + 1)
+
+    # #정렬
+    df_exp_sopromisesrc_join4 = df_exp_sopromisesrc_join4.sort_values(by=['ITEM', 'SITEID', 'SALESID','WEEK', 'RK', 'ROWNUMBER'], ascending=[True, True, True, True, True, True])
+
+
+
+
+    # %%
+    #페어쉐어 대상 중 대상별 그룹(ITEM,SITE,WEEK)을 구하고(mydata_T), 그룹별 목록에서 ROWNUM이 (R_QTY - FARE_SHARE)값에 해당하는 데이터만 발췌
+    #(페어쉐어 대상 자체를 업뎃하는 게 아니라, 페어쉐어 대상 그룹 중 상위에 있는 데이터를 업뎃하기 때문에 동순위 CHRK=1이 아니라도 처리된다.)
+    df_exp_sopromisesrc_join5 = df_exp_sopromisesrc_join4[
+        df_exp_sopromisesrc_join4['ROWNUMBER'] <= (df_exp_sopromisesrc_join4['R_QTY'] - df_exp_sopromisesrc_join4['FARE_SHARE'])
+    ]
+
+    df_exp_sopromisesrc_join5 = df_exp_sopromisesrc_join5.astype({
+        ND_.QTYPROMISED:int,
+        ND_.SOLINENUM:int,
+    })
+
+    #SALESORDERID, SOLINENUM키가 걸리기 때문에 그냥 업데이트하면됨
+    df_exp_sopromisesrc_join5['UPBY'] += '_PLUS'
+    df_exp_sopromisesrc_join5[ND_.QTYPROMISED] += 1
+
+    # _MINUS 대상 발췌
+    df_exp_sopromisesrc_minus = df_exp_sopromisesrc[
+        (df_exp_sopromisesrc[ND_.SOLINENUM] < 100) &
+        (df_exp_sopromisesrc[ND_.QTYPROMISED] > 0)
+    ]
+
+    df_exp_sopromisesrc_minus = pd.merge(df_exp_sopromisesrc_minus, df_exp_sopromisesrc_join5, on=[ND_.SALESORDERID], suffixes=('', '_M'))
+    df_exp_sopromisesrc_minus = df_exp_sopromisesrc_minus[
+        (df_exp_sopromisesrc_minus[ND_.PREFERENCERANK] == df_exp_sopromisesrc_minus[ND_.PREFERENCERANK + '_M'])
+    ]
+    df_exp_sopromisesrc_minus = df_exp_sopromisesrc_minus.drop(df_exp_sopromisesrc_minus.filter(regex='_M$').columns, axis=1)
+
+    # # rownum = 1 조건 추가
+    # df_exp_sopromisesrc_minus['rownum'] = df_exp_sopromisesrc_minus.sort_values(by=[ND_.SALESORDERID, ND_.SOLINENUM]
+    #                                     ).groupby([ND_.SALESORDERID])[ND_.SOLINENUM].rank(method='min').astype(int)
+    # df_exp_sopromisesrc_minus = df_exp_sopromisesrc_minus[
+    #     df_exp_sopromisesrc_minus['rownum'] == 1
+    # ]
+
+    df_exp_sopromisesrc_minus['UPBY'] += '_MINUS'
+    df_exp_sopromisesrc_minus[ND_.QTYPROMISED] -= 1
+
+    df_exp_sopromisesrc_plus = df_exp_sopromisesrc_join5[[ND_.SALESORDERID, ND_.SOLINENUM, ND_.QTYPROMISED, 'UPBY' ]]
+    df_exp_sopromisesrc_minus = df_exp_sopromisesrc_minus[[ND_.SALESORDERID, ND_.SOLINENUM, ND_.QTYPROMISED, 'UPBY' ]]
+
+    df_exp_sopromisesrc_plus = df_exp_sopromisesrc_plus.astype({
+        ND_.QTYPROMISED:int,
+        ND_.SOLINENUM:int,
+    })
+    df_exp_sopromisesrc_minus = df_exp_sopromisesrc_minus.astype({
+        ND_.QTYPROMISED:int,
+        ND_.SOLINENUM:int,
+    })
+
+    # _PLUS 반영
+    df_exp_sopromisesrc = pd.merge(df_exp_sopromisesrc, df_exp_sopromisesrc_plus, how='left', on=[ND_.SALESORDERID, ND_.SOLINENUM], suffixes=('', '_PLUS'))
+    df_exp_sopromisesrc.loc[(~df_exp_sopromisesrc['UPBY_PLUS'].isna()) , 'UPBY'] = df_exp_sopromisesrc['UPBY_PLUS']
+    df_exp_sopromisesrc.loc[(~df_exp_sopromisesrc[ND_.QTYPROMISED + '_PLUS'].isna()), ND_.QTYPROMISED] = df_exp_sopromisesrc[ND_.QTYPROMISED + '_PLUS']
+
+    df_exp_sopromisesrc = df_exp_sopromisesrc.drop(df_exp_sopromisesrc.filter(regex='_PLUS$').columns, axis=1)
+
+    # _MINUS 반영
+    df_exp_sopromisesrc = pd.merge(df_exp_sopromisesrc, df_exp_sopromisesrc_minus, how='left', on=[ND_.SALESORDERID, ND_.SOLINENUM], suffixes=('', '_MINUS'))
+    df_exp_sopromisesrc.loc[(~df_exp_sopromisesrc['UPBY_MINUS'].isna()) , 'UPBY'] = df_exp_sopromisesrc['UPBY_MINUS']
+    df_exp_sopromisesrc.loc[(~df_exp_sopromisesrc[ND_.QTYPROMISED + '_MINUS'].isna()), ND_.QTYPROMISED] = df_exp_sopromisesrc[ND_.QTYPROMISED + '_MINUS']
+
+    df_exp_sopromisesrc = df_exp_sopromisesrc.drop(df_exp_sopromisesrc.filter(regex='_MINUS$').columns, axis=1)
+
+
+    # %%
+    #UPDATE_FLAG 조건과 수요 수량 조건, WEEK 조건 3가지로 Delete 수행
+    #--필요없는 row는 날린다
+    # 조건에 맞는 행 삭제
+    df_exp_sopromisesrc_del = df_exp_sopromisesrc[
+        (df_exp_sopromisesrc['PROMISEDDELWEEK'].astype(int).between(int(v_week1), int(v_week4))) &
+        (df_exp_sopromisesrc['UPBY'].fillna('').str.startswith('NEW')) &
+        (df_exp_sopromisesrc[ND_.QTYPROMISED] == 0)
+    ]
+    df_exp_sopromisesrc = df_exp_sopromisesrc.drop(df_exp_sopromisesrc_del.index)
+
+    # %%
+    # 현재 로직은 4번째 자리의 값을 8로 변경하는 것인데, 
+    # 이 부분은 demand type 우선순위에 해당하는 위치를 찾아내서 8 로 변경하는 것으로 로직 수정
+
+    # -- 우선순위는 4주이내 mpdp에 대해서 DEMAND TYPE PRIORITY = 8 만들어줌, 나머진 기존값
+    # -- NEW FCST는 SOLINENUM >= 100 인 것으로 구분한다.
+
+    #소수점이 붙어 있는 경우 에러가 나거나, 소수점 문자열 그대로 변경될 수 있어 float -> int -> str 순으로 변경
+    df_exp_sopromisesrc[ND_.DEMANDPRIORITY] = df_exp_sopromisesrc[ND_.DEMANDPRIORITY].astype(float).astype(int).astype(str)
+
+    start_pos, next_pos, total_length = find_priority_position('G_R001::1', 'DEMANDTYPERANK')
+    digit = next_pos - start_pos
+
+    condition = (
+            (df_exp_sopromisesrc[ND_.SOLINENUM] >= 100)
+            & ( df_exp_sopromisesrc[ND_.ITEMID] + df_exp_sopromisesrc[ND_.SITEID] ).isin(
+                    df_v_mta_sellermap[SM.ITEM] + df_v_mta_sellermap[SM.SITEID] )
+        )
+    
+    df_exp_sopromisesrc.loc[condition, ND_.DEMANDPRIORITY] = ( 
+            df_exp_sopromisesrc[ND_.DEMANDPRIORITY].str[0: start_pos] 
+            + '8'.zfill(digit) 
+            + df_exp_sopromisesrc[ND_.DEMANDPRIORITY].str[next_pos:] 
+        )
+    
+    #[데이터 생성 완료]##################################################
+
+    #실행 종료 시간 
+    #end_time = time.time()
+    #print("코드 실행 시간: {:.6f}초".format(end_time - start_time))
+
+    df_exp_sopromisesrc_result = df_exp_sopromisesrc[idx_exp_sopromisesrc]
+
+    logger.Note('End NEW FCST Netting_SELL', 20)
+
+    return df_exp_sopromisesrc_result
