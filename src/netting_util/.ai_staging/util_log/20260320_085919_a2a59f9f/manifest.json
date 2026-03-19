@@ -1,0 +1,15 @@
+{
+  "root_name": "util_log",
+  "source_file_name": "util_log.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-20 08:59:33",
+  "target_full_path": "src/netting_util/util_log.py",
+  "staging_path": "src/netting_util/.ai_staging/util_log/20260320_085919_a2a59f9f",
+  "parts_dir": "src/netting_util/.ai_staging/util_log/20260320_085919_a2a59f9f/parts",
+  "part_files": [
+    "src/netting_util/.ai_staging/util_log/20260320_085919_a2a59f9f/parts/PART_001.txt",
+    "src/netting_util/.ai_staging/util_log/20260320_085919_a2a59f9f/parts/PART_002.txt"
+  ],
+  "part_count": 2,
+  "max_bytes": 24714
+}
