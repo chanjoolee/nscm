@@ -1,0 +1,456 @@
+                # --! INSERT 중복시 예외 처리 !-- 끝
+                
+                i_qtypromise = s_row[ND_.SUM_DEMAND_IDX] - V_AVAILQTY
+
+                row = s_row[:count_using_column].copy()
+                row[ND_.ROWA_IDX] = 0
+                row[ND_.SOLINENUM_IDX] = V_SOLINENUM
+                row[ND_.QTYPROMISED_IDX] = i_qtypromise
+                list_Outbound_loop_insert_s = np.append(list_Outbound_loop_insert_s, [row], axis=0)
+        
+        # --! 주차가 끝나는 시점에서 사용되고 남은 가용량 차주로 Move !--
+        if(s_row[ND_.PART_CNT_IDX] == s_row[ND_.PART2_CNT_IDX]):
+            if((V_AVAILQTY - s_row[ND_.SUM_DEMAND_IDX]) < 0):
+                V_REMAINQTY = 0
+            else:
+                V_REMAINQTY = V_AVAILQTY - s_row[ND_.SUM_DEMAND_IDX]
+
+    #위에 부분 list_Outbound_loop_insert_s, list_Outbound_loop_update_s, list_Outbound_loop_update2_s 소스 df_demand00에 머지
+    df_outbound_loop_insert_s  = pd.DataFrame(list_Outbound_loop_insert_s)
+    df_outbound_loop_update_s  = pd.DataFrame(list_Outbound_loop_update_s)
+    df_outbound_loop_update2_s = pd.DataFrame(list_Outbound_loop_update2_s)
+
+
+    df_outbound_loop_insert_s.columns = df_Outbound1.columns
+    df_outbound_loop_update_s.columns = ['ROWA','OPTION_CODE_NEW','UPBY_NEW']
+    df_outbound_loop_update2_s.columns = ['ROWA','OPTION_CODE_NEW','QTYPROMISED_NEW','UPDTTM_NEW','UPBY_NEW']
+
+    df_outbound_loop_update_s = df_outbound_loop_update_s.astype({'ROWA':str, 'OPTION_CODE_NEW':'str', 'UPBY_NEW':'str'})
+    df_outbound_loop_update2_s = df_outbound_loop_update2_s.astype({'ROWA':str, 'OPTION_CODE_NEW':'str', 'QTYPROMISED_NEW':'int32','UPDTTM_NEW':'str','UPBY_NEW':'str'})
+
+    df_demand001 = df_demand00.merge(df_outbound_loop_update_s, on=['ROWA'], how='left')
+    df_demand001.loc[~df_demand001['OPTION_CODE_NEW'].isna(),ND_.OPTION_CODE] = df_demand001['OPTION_CODE_NEW']
+    df_demand001 = df_demand001.drop(columns=['OPTION_CODE_NEW','UPBY_NEW'])
+
+    df_demand001 = df_demand001.merge(df_outbound_loop_update2_s, on=['ROWA'], how='left')
+    df_demand001.loc[~df_demand001['OPTION_CODE_NEW'].isna(),ND_.OPTION_CODE] = df_demand001['OPTION_CODE_NEW']
+    df_demand001.loc[~df_demand001['QTYPROMISED_NEW'].isna(),ND_.QTYPROMISED] = df_demand001['QTYPROMISED_NEW']
+    df_demand001 = df_demand001.drop(columns=['OPTION_CODE_NEW','QTYPROMISED_NEW','UPDTTM_NEW','UPBY_NEW'])
+
+    df_demand001 = pd.concat([df_demand001, df_outbound_loop_insert_s], axis=0, ignore_index=True)
+    #concat(insert) 후에 ROWA 다시 설정 2025-06-17
+    df_demand001['ROWA'] = df_demand001.index.astype(str)
+    logger.Step(3, '재고(가용량) 감안하여 CH_STOCK SHORT 수량 살림 End')
+    #endregion logger.Step(3, '재고(가용량) 감안하여 CH_STOCK SHORT 수량 살림')
+
+    #region logger.Step(4, '3,4 레벨 버퍼수량 전량 C/Stock Short')
+    logger.Step(4, '3,4 레벨 버퍼수량 전량 C/Stock Short Start')
+
+    # --! 3,4 레벨 버퍼수량 전량 C/Stock Short !--
+
+    df_demand01 = df_demand001.copy(deep=True)
+
+    gui_saleshierarchy = df_in_gui_saleshierarchy.loc[df_in_gui_saleshierarchy[NS.LEVELID]=='5']
+    exp_dpguide_aa = pd.merge(df_in_exp_dpguide, gui_saleshierarchy, how='inner',
+                    left_on=[DPG.SALESID], right_on=[NS.SALESID])
+    df_demand01['PROMISEDDELDATE2'] = common.convert_dt_to_week(pd.to_datetime(df_demand01[ND_.PROMISEDDELDATE]))
+
+    df_demand01 = df_demand01.loc[
+        (df_demand01[ND_.AP2ID] + df_demand01['PROMISEDDELDATE2'] + df_demand01[ND_.ITEMID]).isin(
+            exp_dpguide_aa[NS.AP2ID] + exp_dpguide_aa[DPG.SWEEK]+ exp_dpguide_aa[DPG.UDAITEM]
+        )
+    ]
+
+
+    # AND SALESID NOT LIKE '5%' 
+    df_demand01 = df_demand01[~(df_demand01[ND_.SALESID].str.startswith('5'))]
+
+    # AND A.SITEID NOT IN (SELECT CODE1 FROM MTA_CODEMAP WHERE CATEGORY='HC_WL_DP_CHSTOCK_EXCEPT')
+    df_demand01 = df_demand01.loc[
+            ~(df_demand01[ND_.SITEID]).isin(
+                df_in_netting_code_map.loc[
+                    df_in_netting_code_map[CM.CODEMAPKEY].str.startswith('HC_WL_DP_CHSTOCK_EXCEPT')
+                ][CM.CODE1]
+            )
+        ]
+
+    #AND NOT EXISTS (SELECT 'X' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.ITEM AND ISVALID = 'Y')
+    df_demand01 = df_demand01.loc[
+        ~(df_demand01[ND_.ITEMID]+'Y').isin(
+            df_in_Netting_Custom_Model_Map_ODS_W[CMM.CUSTOMITEM] + df_in_Netting_Custom_Model_Map_ODS_W[CMM.ISVALID]
+        )
+    ]
+
+    # AND NOT EXISTS (SELECT ITEM, SITEID, SALESID FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SITEID = A.SITEID AND SALESID = A.SALESID)
+    df_MVES_ITEMSITE = df_in_Netting_ES_Item_Site_ODS_W
+    df_demand01 = df_demand01.loc[
+            ~(df_demand01[ND_.ITEMID] + df_demand01[ND_.SALESID] + df_demand01[ND_.SITEID]).isin(
+                df_MVES_ITEMSITE[ESIS.ITEM]+df_MVES_ITEMSITE[ESIS.SALESID]+df_MVES_ITEMSITE[ESIS.SITEID]
+            )
+        ]
+
+    df_demand01[ND_.OPTION_CODE] = np.where(
+        df_demand01[ND_.OPTION_CODE].isna(),
+        0,
+        np.where(df_demand01[ND_.OPTION_CODE]=='','0',df_demand01[ND_.OPTION_CODE])
+    )
+    df_demand01[ND_.OPTION_CODE] = df_demand01[ND_.OPTION_CODE].astype('int32')
+
+    df_demand01['OPTION_CODE_NEW'] = df_demand01[ND_.OPTION_CODE] + 1
+    df_demand01['UPBY_NEW'] = 'C/Stock_Upper'
+    df_demand01 = df_demand01[['ROWA','OPTION_CODE_NEW','UPBY_NEW']]
+
+    df_demand001 = df_demand001.merge(df_demand01, on=['ROWA'], how='left')
+    df_demand001.loc[~df_demand001['OPTION_CODE_NEW'].isna(),ND_.OPTION_CODE] = df_demand001['OPTION_CODE_NEW']
+    df_demand001 = df_demand001.drop(columns=['OPTION_CODE_NEW','UPBY_NEW'])
+
+    #concat(insert) 후에 ROWA 다시 설정 2025-06-17
+    df_demand001['ROWA'] = df_demand001.index.astype(str)
+
+    logger.Step(4, '3,4 레벨 버퍼수량 전량 C/Stock Short End')
+    #endregion logger.Step(4, '3,4 레벨 버퍼수량 전량 C/Stock Short')
+
+    #region logger.Step(5, 'DP_GUDIE가 4레벨일때, 3레벨 전량 Short')
+    logger.Step(5, 'DP_GUDIE가 4레벨일때, 3레벨 전량 Short Start')
+
+    # --! DP_GUDIE가 4레벨일때, 3레벨 전량 Short !--
+    df_demand02 = df_demand001.copy(deep=True)
+
+    gui_saleshierarchy = df_in_gui_saleshierarchy.loc[df_in_gui_saleshierarchy[NS.LEVELID]=='4']
+    exp_dpguide_aa = pd.merge(df_in_exp_dpguide, gui_saleshierarchy, how='inner',
+                    left_on=[DPG.SALESID], right_on=[NS.SALESID])
+    df_demand02['PROMISEDDELDATE2'] = common.convert_dt_to_week(pd.to_datetime(df_demand02[ND_.PROMISEDDELDATE]))
+
+    df_demand02 = df_demand02.loc[
+        (df_demand02[ND_.SALESID] + df_demand02['PROMISEDDELDATE2'] + df_demand02[ND_.ITEMID]).isin(
+            exp_dpguide_aa[NS.AP2ID] + exp_dpguide_aa[DPG.SWEEK]+ exp_dpguide_aa[DPG.UDAITEM]
+        )
+    ]
+
+    # AND A.SITEID NOT IN (SELECT CODE1 FROM MTA_CODEMAP WHERE CATEGORY='HC_WL_DP_CHSTOCK_EXCEPT')
+    df_demand02 = df_demand02.loc[
+            ~(df_demand02[ND_.SITEID]).isin(
+                df_in_netting_code_map.loc[
+                    df_in_netting_code_map[CM.CODEMAPKEY].str.startswith('HC_WL_DP_CHSTOCK_EXCEPT')
+                ][CM.CODE1]
+            )
+        ]
+
+    # AND NOT EXISTS (SELECT 'X' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.ITEM AND ISVALID = 'Y')
+    df_demand02 = df_demand02.loc[
+        ~(df_demand02[ND_.ITEMID]+'Y').isin(
+            df_in_Netting_Custom_Model_Map_ODS_W[CMM.CUSTOMITEM] + df_in_Netting_Custom_Model_Map_ODS_W[CMM.ISVALID]
+        )
+    ]
+    # AND NOT EXISTS (SELECT ITEM, SITEID, SALESID FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SITEID = A.SITEID AND SALESID = A.SALESID)
+    df_demand02 = df_demand02.loc[
+            ~(df_demand02[ND_.ITEMID] + df_demand02[ND_.SALESID] + df_demand02[ND_.SITEID]).isin(
+                df_MVES_ITEMSITE[ESIS.ITEM]+df_MVES_ITEMSITE[ESIS.SALESID]+df_MVES_ITEMSITE[ESIS.SITEID]
+            )
+        ]
+
+    df_demand02[ND_.OPTION_CODE] = np.where(df_demand02[ND_.OPTION_CODE].isna(),0,np.where(df_demand02[ND_.OPTION_CODE]=='','0',df_demand02[ND_.OPTION_CODE]))
+    df_demand02[ND_.OPTION_CODE] = df_demand02[ND_.OPTION_CODE].astype('int32')
+
+    df_demand02['OPTION_CODE_NEW'] = df_demand02[ND_.OPTION_CODE] + 1
+    df_demand02['UPBY_NEW'] = 'C/Stock_Upper'
+    df_demand02 = df_demand02[['ROWA','OPTION_CODE_NEW','UPBY_NEW']]
+
+    df_demand001 = df_demand001.merge(df_demand02, on=['ROWA'], how='left')
+    df_demand001.loc[~df_demand001['OPTION_CODE_NEW'].isna(),ND_.OPTION_CODE] = df_demand001['OPTION_CODE_NEW']
+    df_demand001 = df_demand001.drop(columns=['OPTION_CODE_NEW','UPBY_NEW'])
+
+    logger.Step(5, 'DP_GUDIE가 4레벨일때, 3레벨 전량 Short End')
+    #endregion logger.Step(5, 'DP_GUDIE가 4레벨일때, 3레벨 전량 Short')
+
+    # 잔여 C/Stock 중 COM_ORD & NEW_ORD인 DEMAND 제외 처리 부분 로직 제외(2025-07-09)
+    df_demand002 = df_demand001.copy(deep=True)
+    #region logger.Step(6, 'COM_ORD 일 경우 C/Stock 제외 (최종 결과에서 COM_ORD가 짤렸을 경우 다시 살려줌)')
+    # logger.Step(6, 'COM_ORD 일 경우 C/Stock 제외 (최종 결과에서 COM_ORD가 짤렸을 경우 다시 살려줌) Start')
+    # # --SEA 이외 법인은 구간 상관없이 C/Stock 제외 17.02.02
+    # # --SEA는 제외 로직에서 해제 하였으나 VZW 거래선만 적용 HC_WL_DP_COMNEW_CHSTOCK_ACNT 추가 19.07.22
+
+    # df_demand03 = df_demand001.copy(deep=True)
+
+    # # (s_row[S.OPTION_CODE_IDX] % 2) == 1
+    # df_demand03['OPTION_CODE2'] = df_demand03[ND_.OPTION_CODE]
+    # df_demand03.loc[df_demand03['OPTION_CODE2'].isna() ,'OPTION_CODE2'] = '0'
+    # df_demand03.loc[df_demand03['OPTION_CODE2']=='','OPTION_CODE2'] = '0'
+    # df_demand03['OPTION_CODE2'] = df_demand03['OPTION_CODE2'].astype('int32')
+    # df_demand03['OPTION_CODE2'] = df_demand03['OPTION_CODE2'].mod(2)
+    # df_demand03 = df_demand03.loc[df_demand03['OPTION_CODE2'] == 1]
+
+
+    # # AND A.AP2ID NOT IN (SELECT CODE1 FROM MTA_CODEMAP WHERE CATEGORY = 'HC_WL_DP_COMNEW_CHSTOCK')
+    # df_demand03 = df_demand03.loc[
+    #         ~(df_demand03[ND_.AP2ID]).isin(
+    #             df_in_netting_code_map.loc[
+    #                 df_in_netting_code_map[CM.CODEMAPKEY].str.startswith('HC_WL_DP_COMNEW_CHSTOCK')
+    #             ][CM.CODE1]
+    #         )
+    #     ]
+
+    # # AND A.SALESID NOT IN (SELECT CODE1 FROM MTA_CODEMAP WHERE CATEGORY = 'HC_WL_DP_COMNEW_CHSTOCK_ACNT')
+    # df_demand03 = df_demand03.loc[
+    #         ~(df_demand03[ND_.SALESID]).isin(
+    #             df_in_netting_code_map.loc[
+    #                 df_in_netting_code_map[CM.CODEMAPKEY].str.startswith('HC_WL_DP_COMNEW_CHSTOCK_ACNT')
+    #             ][CM.CODE1]
+    #         )
+    #     ]
+
+    # # AND FN_EXTRACT(A.SALESORDERID, '::',1) IN ( 'COM_ORD','NEW_ORD')
+    # df_demand03['SALESORDERID2'] = df_demand03[ND_.SALESORDERID].str.split('::').str[0]
+    # df_demand03 = df_demand03.loc[df_demand03['SALESORDERID2'].isin(['COM_ORD','NEW_ORD'])]
+
+    # # AND NOT EXISTS (SELECT 'X' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.ITEM AND ISVALID = 'Y')
+    # df_demand03 = df_demand03.loc[
+    #     ~(df_demand03[ND_.ITEMID]+'Y').isin(
+    #         df_in_Netting_Custom_Model_Map_ODS_W[CMM.CUSTOMITEM] + df_in_Netting_Custom_Model_Map_ODS_W[CMM.ISVALID]
+    #     )
+    # ]
+    # # AND NOT EXISTS (SELECT ITEM, SITEID, SALESID FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SITEID = A.SITEID AND SALESID = A.SALESID)
+    # df_demand03 = df_demand03.loc[
+    #         ~(df_demand03[ND_.ITEMID] + df_demand03[ND_.SALESID] + df_demand03[ND_.SITEID]).isin(
+    #             df_MVES_ITEMSITE[ESIS.ITEM]+df_MVES_ITEMSITE[ESIS.SALESID]+df_MVES_ITEMSITE[ESIS.SITEID]
+    #         )
+    #     ]
+
+    # df_demand03[ND_.OPTION_CODE] = df_demand03[ND_.OPTION_CODE].astype('int32')
+
+    # df_demand03['OPTION_CODE_NEW'] = df_demand03[ND_.OPTION_CODE] - 1
+    # df_demand03['UPBY_NEW'] = 'C/Stock_COM_ORD'
+
+    # df_demand03 = df_demand03[['ROWA','OPTION_CODE_NEW','UPBY_NEW']]
+
+    # df_demand001 = df_demand001.merge(df_demand03, on=['ROWA'], how='left')
+    # df_demand001.loc[~df_demand001['OPTION_CODE_NEW'].isna(),ND_.OPTION_CODE] = df_demand001['OPTION_CODE_NEW']
+    # df_demand001 = df_demand001.drop(columns=['OPTION_CODE_NEW','UPBY_NEW'])
+
+    # # --2018.12.03 수정(V PLAN 시 당주기준으로 PROMISEDDELDATE 변경)
+
+    # df_demand04 = df_demand001.copy(deep=True)
+
+    # # MOD(NVL(OPTION_CODE,0), 2) = 1
+    # df_demand04['OPTION_CODE2'] = df_demand04[ND_.OPTION_CODE]
+    # df_demand04.loc[df_demand04['OPTION_CODE2'].isna() ,'OPTION_CODE2'] = '0'
+    # df_demand04.loc[df_demand04['OPTION_CODE2']=='','OPTION_CODE2'] = '0'
+    # df_demand04['OPTION_CODE2'] = df_demand04['OPTION_CODE2'].astype('int32')
+    # df_demand04['OPTION_CODE2'] = df_demand04['OPTION_CODE2'].mod(2)
+    # df_demand04 = df_demand04.loc[df_demand04['OPTION_CODE2'] == 1]
+
+
+    # # AND    A.AP2ID = CODE1   
+    # # AND    B.CATEGORY = 'HC_WL_DP_COMNEW_CHSTOCK'
+    # dfMTA_CODEMAP =  df_in_netting_code_map.loc[
+    #     df_in_netting_code_map[CM.CODEMAPKEY].str.startswith('HC_WL_DP_COMNEW_CHSTOCK')
+    # ]
+    # dfMTA_CODEMAP = dfMTA_CODEMAP[[CM.CODE1,CM.NUM1,]]
+
+    # df_demand04[ND_.PROMISEDDELDATE]  = df_demand04[ND_.PROMISEDDELDATE].astype('datetime64[ns]')
+
+    # df_demand04 = df_demand04.merge(dfMTA_CODEMAP, how='inner',
+    #                 left_on=[ND_.AP2ID], right_on=[CM.CODE1])
+    # df_demand04[CM.NUM1] = df_demand04[CM.NUM1].astype('float').astype('int32')
+    # df_demand04['PROMISEDDELDATE_DELTA'] = datetime.now() + pd.to_timedelta(((df_demand04[CM.NUM1]+V_NUM)*7), unit='D')
+
+    # # AND    PROMISEDDELDATE < SYSDATE + ((NUM1+V_NUM)*7)
+    # df_demand04.loc[df_demand04[ND_.PROMISEDDELDATE] < df_demand04['PROMISEDDELDATE_DELTA']]
+
+
+    # # AND FN_EXTRACT(A.SALESORDERID, '::',1) IN ( 'COM_ORD','NEW_ORD')
+    # df_demand04['SALESORDERID2'] = df_demand04[ND_.SALESORDERID].str.split('::').str[0]
+    # df_demand04 = df_demand04.loc[df_demand04['SALESORDERID2'].isin(['COM_ORD','NEW_ORD'])]
+
+    # # AND NOT EXISTS (SELECT 'X' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.ITEM AND ISVALID = 'Y')
+    # df_demand04 = df_demand04.loc[
+    #     ~(df_demand04[ND_.ITEMID]+'Y').isin(
+    #         df_in_Netting_Custom_Model_Map_ODS_W[CMM.CUSTOMITEM] + df_in_Netting_Custom_Model_Map_ODS_W[CMM.ISVALID]
+    #     )
+    # ]
+    # # AND NOT EXISTS (SELECT ITEM, SITEID, SALESID FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SITEID = A.SITEID AND SALESID = A.SALESID)
+    # df_demand04 = df_demand04.loc[
+    #         ~(df_demand04[ND_.ITEMID] + df_demand04[ND_.SALESID] + df_demand04[ND_.SITEID]).isin(
+    #             df_MVES_ITEMSITE[ESIS.ITEM]+df_MVES_ITEMSITE[ESIS.SALESID]+df_MVES_ITEMSITE[ESIS.SITEID]
+    #         )
+    #     ]
+
+    # df_demand04[ND_.OPTION_CODE] = df_demand04[ND_.OPTION_CODE].astype('int32')
+
+    # df_demand04['OPTION_CODE_NEW'] = df_demand04[ND_.OPTION_CODE] - 1
+    # df_demand04['UPBY_NEW'] = 'C/Stock_COM_ORD'
+
+    # df_demand04 = df_demand04[['ROWA','OPTION_CODE_NEW','UPBY_NEW']]
+
+    # df_demand001 = df_demand001.merge(df_demand04, on=['ROWA'], how='left')
+    # df_demand001.loc[~df_demand001['OPTION_CODE_NEW'].isna(),ND_.OPTION_CODE] = df_demand001['OPTION_CODE_NEW']
+    # df_demand001 = df_demand001.drop(columns=['OPTION_CODE_NEW','UPBY_NEW'])
+
+    # # -- SEA는 제외 로직에서 해제 하였으나 VZW 거래선만 적용 HC_WL_DP_COMNEW_CHSTOCK_ACNT 추가 19.07.22
+    # # -- 위 AP2ID와 중복되는 데이터 있으면 안됨
+
+    # df_demand05 = df_demand001.copy(deep=True)
+
+    # # MOD(NVL(OPTION_CODE,0), 2) = 1
+    # df_demand05['OPTION_CODE2'] = df_demand05[ND_.OPTION_CODE]
+    # df_demand05.loc[df_demand05['OPTION_CODE2'].isna() ,'OPTION_CODE2'] = '0'
+    # df_demand05.loc[df_demand05['OPTION_CODE2']=='','OPTION_CODE2'] = '0'
+    # df_demand05['OPTION_CODE2'] = df_demand05['OPTION_CODE2'].astype('int32')
+    # df_demand05['OPTION_CODE2'] = df_demand05['OPTION_CODE2'].mod(2)
+    # df_demand05 = df_demand05.loc[df_demand05['OPTION_CODE2'] == 1]
+
+
+    # # AND    A.AP2ID = CODE1   
+    # # AND    B.CATEGORY = 'HC_WL_DP_COMNEW_CHSTOCK'
+    # dfMTA_CODEMAP =  df_in_netting_code_map.loc[
+    #     df_in_netting_code_map[CM.CODEMAPKEY].str.startswith('HC_WL_DP_COMNEW_CHSTOCK_ACNT')
+    # ]
+    # dfMTA_CODEMAP = dfMTA_CODEMAP[[CM.CODE1,CM.NUM1,]]
+
+    # df_demand05[ND_.PROMISEDDELDATE]  = df_demand05[ND_.PROMISEDDELDATE].astype('datetime64[ns]')
+
+    # df_demand05 = df_demand05.merge(dfMTA_CODEMAP, how='inner',
+    #                 left_on=[ND_.AP2ID], right_on=[CM.CODE1])
+    # df_demand05[CM.NUM1] = df_demand05[CM.NUM1].astype('float').astype('int32')
+    # df_demand05['PROMISEDDELDATE_DELTA'] = datetime.now() + pd.to_timedelta(((df_demand05[CM.NUM1]+V_NUM)*7), unit='D')
+
+    # # AND    PROMISEDDELDATE < SYSDATE + ((NUM1+V_NUM)*7)
+    # df_demand05.loc[df_demand05[ND_.PROMISEDDELDATE] < df_demand05['PROMISEDDELDATE_DELTA']]
+
+
+    # # AND FN_EXTRACT(A.SALESORDERID, '::',1) IN ( 'COM_ORD','NEW_ORD')
+    # df_demand05['SALESORDERID2'] = df_demand05[ND_.SALESORDERID].str.split('::').str[0]
+    # df_demand05 = df_demand05.loc[df_demand05['SALESORDERID2'].isin(['COM_ORD','NEW_ORD'])]
+
+    # # AND NOT EXISTS (SELECT 'X' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.ITEM AND ISVALID = 'Y')
+    # df_demand05 = df_demand05.loc[
+    #     ~(df_demand05[ND_.ITEMID]+'Y').isin(
+    #         df_in_Netting_Custom_Model_Map_ODS_W[CMM.CUSTOMITEM] + df_in_Netting_Custom_Model_Map_ODS_W[CMM.ISVALID]
+    #     )
+    # ]
+    # # AND NOT EXISTS (SELECT ITEM, SITEID, SALESID FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SITEID = A.SITEID AND SALESID = A.SALESID)
+    # df_demand05 = df_demand05.loc[
+    #         ~(df_demand05[ND_.ITEMID] + df_demand05[ND_.SALESID] + df_demand05[ND_.SITEID]).isin(
+    #             df_MVES_ITEMSITE[ESIS.ITEM]+df_MVES_ITEMSITE[ESIS.SALESID]+df_MVES_ITEMSITE[ESIS.SITEID]
+    #         )
+    #     ]
+
+    # df_demand05[ND_.OPTION_CODE] = df_demand05[ND_.OPTION_CODE].astype('int32')
+
+    # df_demand05['OPTION_CODE_NEW'] = df_demand05[ND_.OPTION_CODE] - 1
+    # df_demand05['UPBY_NEW'] = 'C/Stock_COM_ORD'
+
+    # df_demand05 = df_demand05[['ROWA','OPTION_CODE_NEW','UPBY_NEW']]
+
+    # df_demand001 = df_demand001.merge(df_demand05, on=['ROWA'], how='left')
+    # df_demand001.loc[~df_demand001['OPTION_CODE_NEW'].isna(),ND_.OPTION_CODE] = df_demand001['OPTION_CODE_NEW']
+    # # df_demand001.loc[~df_demand001['UPBY_NEW'].isna(),'UPBY'] = df_demand001['UPBY_NEW']
+    # df_demand001 = df_demand001.drop(columns=['OPTION_CODE_NEW','UPBY_NEW'])
+
+    # logger.Step(6, 'COM_ORD 일 경우 C/Stock 제외 (최종 결과에서 COM_ORD가 짤렸을 경우 다시 살려줌) End')
+    #endregion logger.Step(6, 'COM_ORD 일 경우 C/Stock 제외 (최종 결과에서 COM_ORD가 짤렸을 경우 다시 살려줌)')
+
+    # UNF_ORD 살리는 작업 제외 (2025-07-09)
+    #region logger.Step(7, 'CH.STOCK으로 잘린 것들 UNF_ORD 수량만큼 살려준다 2016.06.08')
+    # logger.Step(7, 'CH.STOCK으로 잘린 것들 UNF_ORD 수량만큼 살려준다 2016.06.08 Start')
+
+
+    # # AND B.CATEGORY(+) IN ( 'HC_WL_DP_UNFORD_CHSTOCK','HC_WL_DP_UNFORD_CHSTOCK_ACNT')
+    # dfMTA_CODEMAP = df_in_netting_code_map.loc[
+    #     df_in_netting_code_map[CM.CODEMAPKEY].str.startswith((
+    #         'HC_WL_DP_UNFORD_CHSTOCK', 'HC_WL_DP_UNFORD_CHSTOCK_ACNT'
+    #     ))
+    # ]
+
+    # #    AND DECODE(B.CATEGORY(+),'HC_WL_DP_UNFORD_CHSTOCK' 
+    # #                            , REGEXP_SUBSTR(A.SALESORDERID, '[^::]+', 1, 5)
+    # #                            ,'HC_WL_DP_UNFORD_CHSTOCK_ACNT'
+    # #                            , REGEXP_SUBSTR(A.SALESORDERID, '[^::]+', 1, 6)) = B.CODE1(+)
+    # dfMTA_CODEMAP = dfMTA_CODEMAP[[CM.CODEMAPKEY,CM.CODE1,CM.CODE2_NUM,]]
+
+    # df_shortreason = df_exp_ap1_shortreason.copy(deep=True)
+
+    # df_shortreason['GUBUN'] = df_shortreason[AP1SR_.SALESORDERID].str.split('::').str[0]
+    # df_shortreason['SALESID'] = df_shortreason[AP1SR_.SALESORDERID].str.split('::').str[4]
+    # df_shortreason['SALESID2'] = df_shortreason[AP1SR_.SALESORDERID].str.split('::').str[5]
+
+    # # AND REGEXP_SUBSTR(A.SALESORDERID, '[^::]+', 1, 1) = 'UNF_ORD'
+    # df_shortreason = df_shortreason.loc[df_shortreason['GUBUN'] == 'UNF_ORD']
+
+    # # MTA_CODEMAP 정의
+    # dfMTA_CODEMAP = df_in_netting_code_map.loc[
+    #     df_in_netting_code_map[CM.CODEMAPKEY].str.startswith((
+    #         'HC_WL_DP_UNFORD_CHSTOCK', 'HC_WL_DP_UNFORD_CHSTOCK_ACNT'
+    #     ))
+    # ]
+    # dfMTA_CODEMAP = dfMTA_CODEMAP[[CM.CODEMAPKEY,CM.CODE1,CM.CODE2_NUM,]]
+
+    # # #    AND DECODE(B.CATEGORY(+),'HC_WL_DP_UNFORD_CHSTOCK' 
+    # # #                            , REGEXP_SUBSTR(A.SALESORDERID, '[^::]+', 1, 5)
+    # # #                            ,'HC_WL_DP_UNFORD_CHSTOCK_ACNT'
+    # # #                            , REGEXP_SUBSTR(A.SALESORDERID, '[^::]+', 1, 6)) = B.CODE1(+)
+    # # dfMTA_CODEMAP = dfMTA_CODEMAP[['CATEGORY','CODE1','CODE2_NUM']]
+    # # df_shortreason['JOIN_KEY'] = df_shortreason.apply(lambda row:row['SALESID'] if 'HC_WL_DP_UNFORD_CHSTOCK' in dfMTA_CODEMAP['CATEGORY'].values else row['SALESID2'], axis=1)
+    # # df_shortreason = df_shortreason.merge(dfMTA_CODEMAP, left_on='JOIN_KEY', right_on='CODE1', how='left')
+
+    # # 일단 위의 쿼리를 아래 쿼리로 단순화 하여 코딩함 
+    # # SELECT A.SITEID, A.ITEM , A.DUEDATE , A.SHORTQTY UNFORDQTY , 0 CHSTOCKQTY
+    # #   FROM EXP_AP1_SHORTREASON A, MTA_CODEMAP B
+    # #  WHERE A.PLANID = '202509_M'
+    # #    AND REGEXP_SUBSTR(A.SALESORDERID, '[^::]+', 1, 5) = B.CODE1(+)
+    # #    AND A.DUEDATE < SYSDATE + 7 * NVL(B.CODE2_NUM+0, 8) 
+
+    # df_shortreason = df_shortreason.merge(dfMTA_CODEMAP, how='left',left_on='SALESID', right_on=CM.CODE1 )
+
+
+    # # # AND A.DUEDATE < SYSDATE + 7 * NVL(B.CODE2_NUM+V_NUM, 8)
+    # df_shortreason[CM.CODE2_NUM] = df_shortreason[CM.CODE2_NUM].astype('str')
+    # df_shortreason[CM.CODE2_NUM] = df_shortreason.apply(
+    #     lambda row:'8' if np.isnan(float(row[CM.CODE2_NUM])) else str(float(row[CM.CODE2_NUM])+V_NUM), axis=1
+    # )
+    # df_shortreason[CM.CODE2_NUM] = df_shortreason[CM.CODE2_NUM].astype('float').astype('int32')
+
+    # dt_startdate = datetime.combine(date.fromisoformat(V_EFFSTARTDATE),datetime.min.time())
+
+    # # df_shortreason['DUEDATE_DELTA'] = datetime.now() + pd.to_timedelta(((df_shortreason[CM.CODE2_NUM]) *7), unit='D')
+    # df_shortreason['DUEDATE_DELTA'] = dt_startdate + pd.to_timedelta(((df_shortreason[CM.CODE2_NUM]) *7), unit='D')
+
+    # df_shortreason[AP1SR_.DUEDATE]  = df_shortreason[AP1SR_.DUEDATE].astype('datetime64[ns]')
+
+    # df_shortreason = df_shortreason.loc[df_shortreason[AP1SR_.DUEDATE] < df_shortreason['DUEDATE_DELTA']]
+
+    # # AND NOT EXISTS (SELECT 'X' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.REQITEM AND ISVALID = 'Y')
+    # df_shortreason = df_shortreason.loc[
+    #     ~(df_shortreason[AP1SR_.REQITEMID]+'Y').isin(
+    #         df_in_Netting_Custom_Model_Map_ODS_W[CMM.CUSTOMITEM] + df_in_Netting_Custom_Model_Map_ODS_W[CMM.ISVALID]
+    #     )
+    # ]
+
+    # df_shortreason = df_shortreason[['SALESID2',AP1SR_.SITEID,AP1SR_.ITEM,AP1SR_.DUEDATE,AP1SR_.SHORTQTY]]
+
+    # df_shortreason.rename(columns={
+    #     'SALESID2':'SALESID', AP1SR_.SHORTQTY:'UNFORDQTY',
+    # }, inplace=True)
+
+    # df_shortreason['CHSTOCKQTY'] = 0
+    # df_shortreason.columns = ['SALESID', 'SITEID', 'ITEM', 'DUEDATE', 'UNFORDQTY', 'CHSTOCKQTY']
+
+
+
+
+    # df_demandinner = df_demand001.copy(deep=True)
+
+    # # AND MOD(NVL(A.OPTION_CODE,0), 2) = 1
+    # df_demandinner['OPTION_CODE2'] = df_demandinner[ND_.OPTION_CODE]
+    # df_demandinner.loc[df_demandinner['OPTION_CODE2'].isna() ,'OPTION_CODE2'] = '0'
+    # df_demandinner.loc[df_demandinner['OPTION_CODE2']=='','OPTION_CODE2'] = '0'
+
+    # df_demandinner['OPTION_CODE2'] = df_demandinner['OPTION_CODE2'].astype('int32')
+    # df_demandinner['OPTION_CODE2'] = df_demandinner['OPTION_CODE2'].mod(2)
+    # df_demandinner = df_demandinner.loc[df_demandinner['OPTION_CODE2']==1]
+
+    # # AND A.SALESID LIKE '5%'
+    # df_demandinner = df_demandinner[df_demandinner[ND_.SALESID].str.startswith('5')]
+
+    # # # AND B.CATEGORY(+) IN ( 'HC_WL_DP_UNFORD_CHSTOCK','HC_WL_DP_UNFORD_CHSTOCK_ACNT')
+    # # dfMTA_CODEMAP = df_in_netting_code_map.loc[
