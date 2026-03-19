@@ -1,4 +1,4 @@
-## 데모용 여행사 ERD
+## 데모용 여행사 ERD 001
 아래와 같은 ERD 가 있는 경우를 가정했을 때 dependent select 기능이 필요하다. 
 
 ```mermaid
