@@ -1,0 +1,478 @@
+# import DPGuide as DPG    # EXP_DPGUIDE
+# import MXItemSellerMap as MXISM    # V_MTA_SELLERMAP
+# import CustomModelMap as CMM    # MTA_CUSTOMMODELMAP
+# import SalesBOMMap as SBOMM    # MTA_SALESBOMMAP
+# import ModelEOP as MEOP    # MST_MODELEOP
+# import InventoryD as Inv_D    # MST_INVENTORY
+# import IntransitD as Int_D    # MST_INTRANSIT
+# import InventorySellD as InvS_D    # MST_INVENTORY_SELL
+# import IntransitSellD as IntS_D    # MST_INTRANSIT_SELL
+# import DeliveryPlanD as DP_D    # EXP_DELIVERYPLAN
+# import ShortReasonD as SR_D    # EXP_SHORTREASON
+# import DistributionOrdersD as DO_D    # MST_DISTRIBUTIONORDERS
+# import DistributionOrdersSellD as DOS_D    # MST_DISTRIBUTIONORDERS_SELL
+# import CodeMap as CM    # MTA_CODEMAP
+# import AvailableResourceD as AR_D    # MST_INVENTORY_FNE
+# import ESItemSite as ESIS    # MVES_ITEMSITE
+# import SalesResult as SR    # GUI_SALESRESULTSMM
+# import DemandSOPPegging as DSOPP    # BUF_DEMANDSOPPEG
+# import BOMComponent as BOMC    # MST_BOMCOMPONENT
+# import ChannelStockMaster as CSM    # MST_CHSTOCK
+# import ChannelStockAP2Master as CSAP2M    # MST_CHSTOCK_AP2
+# import EStoreReplenishment as ESR    # MVUI_ES_REPLENISHMENT or DYN_ES_REPLENISHMENT_CLOSING@SCMTF
+# import EStoreTWOS as ESTWOS    # MTA_ESTORE_TWOS_WEEK
+# import PackageSite as PS    # MST_PACKSITE
+# import Prebuild as P    # MST_PREBUILD
+# import AgingInventory60 as AI60    # DYN_INVENTORYAGING
+# import PrebuildException as PE    # MST_PREBUILD_EXCP
+# import NewFCSTPeriod as NFP    # MTA_NEWFCSTNETTING
+# import RBMaster as RBM
+# import ShortReasonDPGuide as SRDPG
+# import EOPDemandD as EOPD_D
+
+class DPGuide:
+    ''' Constants of SIG Result GI D '''
+
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 0
+    UDAITEM = 'Item.[Item]'                                               ;    UDAITEM_IDX = 1
+    SWEEK = 'Time.[Week]'                                                 ;    SWEEK_IDX = 2
+    QTY = 'SIG C Result GI W'                                        ;    QTY_IDX = 3
+
+    LIST_COLUMN = [
+        SALESID, UDAITEM, SWEEK, QTY,
+    ]
+
+class MXItemSellerMap:
+    ''' Constants of Netting IF MX Item Seller Map '''
+
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 0
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 1
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 2
+    WEEK = 'Netting MX Item Seller Map Week'                              ;    WEEK_IDX = 3
+
+    LIST_COLUMN = [
+        SALESID, SITEID, ITEM, WEEK,
+    ]
+
+class CustomModelMap:
+    ''' Constants of Netting IF Custom Model Map '''
+
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 0
+    BASICITEM = 'Item.[Item]'                                             ;    BASICITEM_IDX = 1
+    CUSTOMITEM = 'To Item.[To Item]'                                      ;    CUSTOMITEM_IDX = 2
+    ISVALID = 'Netting Custom Model Map Valid Flag'                       ;    ISVALID_IDX = 3
+
+    LIST_COLUMN = [
+        SALESID, BASICITEM, CUSTOMITEM, ISVALID,
+    ]
+
+class SalesBOMMap:
+    ''' Constants of Netting IF Sales BOM Map '''
+
+    HEADSITEID = 'Location.[Location]'                                    ;    HEADSITEID_IDX = 0
+    HEADSKU = 'Item.[Item]'                                               ;    HEADSKU_IDX = 1
+    SITEID = 'To Location.[To Location]'                                  ;    SITEID_IDX = 2
+    MAINSKU = 'Netting Sales BOM Map Main SKU'                            ;    MAINSKU_IDX = 3
+    REPMAINSKU = 'Netting Sales BOM Map Rep Main SKU'                     ;    REPMAINSKU_IDX = 4
+    PRIORITY = 'Netting Sales BOM Map Priority'                           ;    PRIORITY_IDX = 5
+    ISPOSTPONEMENT = 'Netting Sales BOM Map Postponement Flag'            ;    ISPOSTPONEMENT_IDX = 6
+    STATUS = 'Netting Sales BOM Map Status Flag'                          ;    STATUS_IDX = 7
+
+    LIST_COLUMN = [
+        HEADSITEID, HEADSKU, SITEID, MAINSKU, REPMAINSKU,
+        PRIORITY, ISPOSTPONEMENT, STATUS,
+    ]
+
+class ModelEOP:
+    ''' Constants of Netting IF Model EOP '''
+
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 0
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 1
+    STATUS = 'Netting Model EOP Status'                                   ;    STATUS_IDX = 2
+    EOP_INIT_DATE = 'Netting Model EOP Init Date'                         ;    EOP_INIT_DATE_IDX = 3
+    EOP_COM_DATE = 'Netting Model EOP Com Date'                           ;    EOP_COM_DATE_IDX = 4
+    EOP_CHG_DATE = 'Netting Model EOP Chg Date'                           ;    EOP_CHG_DATE_IDX = 5
+
+    LIST_COLUMN = [
+        ITEM, SITEID, STATUS, EOP_INIT_DATE, EOP_COM_DATE,
+        EOP_CHG_DATE,
+    ]
+
+class InventoryD:
+    ''' Constants of Netting IF Inventory D '''
+
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 0
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 1
+    ONHANDDATE = 'Time.[Day]'                                             ;    ONHANDDATE_IDX = 2
+    TOSITEID = 'To Location.[To Location]'                                ;    TOSITEID_IDX = 3
+    AVAILQTY = 'Netting Inventory Qty D'                                  ;    AVAILQTY_IDX = 4
+    BOHADDQTY = 'Netting Inventory BOH Add Qty D'                         ;    BOHADDQTY_IDX = 5
+    W0BOHADDQTY = 'Netting Inventory W0 BOH Add Qty D'                    ;    W0BOHADDQTY_IDX = 6
+
+    LIST_COLUMN = [
+        SITEID, ITEM, ONHANDDATE, TOSITEID, AVAILQTY,
+        BOHADDQTY, W0BOHADDQTY,
+    ]
+
+class IntransitD:
+    ''' Constants of Netting IF Intransit D '''
+
+    TOSITEID = 'Location.[Location]'                                      ;    TOSITEID_IDX = 0
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 1
+    SCMETA = 'Time.[Day]'                                                 ;    SCMETA_IDX = 2
+    INTRANSITQTY = 'Netting Intransit Qty D'                              ;    INTRANSITQTY_IDX = 3
+
+    LIST_COLUMN = [
+        TOSITEID, ITEM, SCMETA, INTRANSITQTY,
+    ]
+
+class InventorySellD:
+    ''' Constants of Netting IF Inventory Sell D '''
+
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 0
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 1
+    ONHANDDATE = 'Time.[Day]'                                             ;    ONHANDDATE_IDX = 2
+    TOSITEID = 'To Location.[To Location]'                                ;    TOSITEID_IDX = 3
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 4
+    AVAILQTY = 'Netting Inventory Sell Qty D'                             ;    AVAILQTY_IDX = 5
+    BOHADDQTY = 'Netting Inventory Sell BOH Add Qty D'                    ;    BOHADDQTY_IDX = 6
+    W0BOHADDQTY = 'Netting Inventory Sell W0 BOH Add Qty D'               ;    W0BOHADDQTY_IDX = 7
+
+    LIST_COLUMN = [
+        SITEID, ITEM, ONHANDDATE, TOSITEID, SALESID,
+        AVAILQTY, BOHADDQTY, W0BOHADDQTY,
+    ]
+
+class IntransitSellD:
+    ''' Constants of Netting IF Intransit Sell D '''
+
+    TOSITEID = 'Location.[Location]'                                      ;    TOSITEID_IDX = 0
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 1
+    SCMETA = 'Time.[Day]'                                                 ;    SCMETA_IDX = 2
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 3
+    INTRANSITQTY = 'Netting Intransit Sell Qty D'                         ;    INTRANSITQTY_IDX = 4
+
+    LIST_COLUMN = [
+        TOSITEID, ITEM, SCMETA, SALESID, INTRANSITQTY,
+    ]
+
+class DeliveryPlanD:
+    ''' Constants of Netting IF Delivery Plan D '''
+
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 0
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 1
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 2
+    PROMISEDSHIPPINGDATE = 'Time.[Day]'                                   ;    PROMISEDSHIPPINGDATE_IDX = 3
+    QTYOPEN = 'Netting Delivery Plan Demand Qty D'                        ;    QTYOPEN_IDX = 4
+
+    LIST_COLUMN = [
+        SITEID, ITEM, SALESID, PROMISEDSHIPPINGDATE, QTYOPEN,
+    ]
+
+class ShortReasonD:
+    ''' Constants of Netting IF Short Reason D '''
+
+    REQSITEID = 'Location.[Location]'                                     ;    REQSITEID_IDX = 0
+    REQITEM = 'Item.[Item]'                                               ;    REQITEM_IDX = 1
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 2
+    DUEDATE = 'Time.[Day]'                                                ;    DUEDATE_IDX = 3
+    PROBLEMID = 'Netting Short Reason Problem ID D'                       ;    PROBLEMID_IDX = 4
+    PROBLEMTYPE = 'Netting Short Reason Problem Type D'                   ;    PROBLEMTYPE_IDX = 5
+    SHORTQTY = 'Netting Short Reason Short Qty D'                         ;    SHORTQTY_IDX = 6
+
+    LIST_COLUMN = [
+        REQSITEID, REQITEM, SALESID, DUEDATE, PROBLEMID,
+        PROBLEMTYPE, SHORTQTY,
+    ]
+
+class DistributionOrdersD:
+    ''' Constants of Netting IF Distribution Orders D '''
+
+    FROMSITEID = 'Location.[Location]'                                    ;    FROMSITEID_IDX = 0
+    TOSITEID = 'To Location.[To Location]'                                ;    TOSITEID_IDX = 1
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 2
+    SCHEDULEDDELIVERYDATE = 'Time.[Day]'                                  ;    SCHEDULEDDELIVERYDATE_IDX = 3
+    BODNAME = 'Netting BOD.[BOD Name]'                                    ;    BODNAME_IDX = 4
+    QTY = 'Netting Distribution Order Qty D'                              ;    QTY_IDX = 5
+
+    LIST_COLUMN = [
+        FROMSITEID, TOSITEID, ITEM, SCHEDULEDDELIVERYDATE, BODNAME,
+        QTY,
+    ]
+
+class DistributionOrdersSellD:
+    ''' Constants of Netting IF Distribution Orders Sell D '''
+
+    FROMSITEID = 'Location.[Location]'                                    ;    FROMSITEID_IDX = 0
+    TOSITEID = 'To Location.[To Location]'                                ;    TOSITEID_IDX = 1
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 2
+    SCHEDULEDDELIVERYDATE = 'Time.[Day]'                                  ;    SCHEDULEDDELIVERYDATE_IDX = 3
+    BODNAME = 'Netting BOD.[BOD Name]'                                    ;    BODNAME_IDX = 4
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 5
+    QTY = 'Netting Distribution Order Sell Qty D'                         ;    QTY_IDX = 6
+
+    LIST_COLUMN = [
+        FROMSITEID, TOSITEID, ITEM, SCHEDULEDDELIVERYDATE, BODNAME,
+        SALESID, QTY,
+    ]
+
+class CodeMap:
+    ''' Constants of Netting IF Code Map '''
+
+    CODEMAPKEY = 'Netting Code Map.[Code Map Key]'                        ;    CODEMAPKEY_IDX = 0
+    CODE1 = 'Netting Code Map Code1'                                      ;    CODE1_IDX = 1
+    CODE2_TXT = 'Netting Code Map Code2'                                  ;    CODE2_TXT_IDX = 2
+    CODE2_NUM = 'Netting Code Map Code3'                                  ;    CODE2_NUM_IDX = 3
+    TXT1 = 'Netting Code Map Text1'                                       ;    TXT1_IDX = 4
+    TXT2 = 'Netting Code Map Text2'                                       ;    TXT2_IDX = 5
+    TXT3 = 'Netting Code Map Text3'                                       ;    TXT3_IDX = 6
+    NUM1 = 'Netting Code Map Number1'                                     ;    NUM1_IDX = 7
+    NUM2 = 'Netting Code Map Number2'                                     ;    NUM2_IDX = 8
+    NUM3 = 'Netting Code Map Number3'                                     ;    NUM3_IDX = 9
+    DATE1 = 'Netting Code Map Date1'                                      ;    DATE1_IDX = 10
+    DATE2 = 'Netting Code Map Date2'                                      ;    DATE2_IDX = 11
+    DATE3 = 'Netting Code Map Date3'                                      ;    DATE3_IDX = 12
+    ISVALID = 'Netting Code Map Valid Flag'                               ;    ISVALID_IDX = 13
+
+    LIST_COLUMN = [
+        CODEMAPKEY, CODE1, CODE2_TXT, CODE2_NUM, TXT1,
+        TXT2, TXT3, NUM1, NUM2, NUM3,
+        DATE1, DATE2, DATE3, ISVALID,
+    ]
+
+class AvailableResourceD:
+    ''' Constants of Netting IF Available Resource D '''
+
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 0
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 1
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 2
+    WEEK = 'Time.[Week]'                                                  ;    WEEK_IDX = 3
+    QTY = 'Netting Available Resource Qty D'                              ;    QTY_IDX = 4
+
+    LIST_COLUMN = [
+        ITEM, SITEID, SALESID, WEEK, QTY,
+    ]
+
+class ESItemSite:
+    ''' Constants of Netting IF ES Item Site '''
+
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 0
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 1
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 2
+    TWOS = 'Netting ES Item Site TWOS'                                    ;    TWOS_IDX = 3
+    MODELTYPE = 'Netting ES Item Site Model Type'                         ;    MODELTYPE_IDX = 4
+    TARGETDATEEARLINESS = 'Netting ES Item Site Target Date Earliness'    ;    TARGETDATEEARLINESS_IDX = 5
+    CUSTOMMODEL = 'Netting ES Item Site Custom Model'                     ;    CUSTOMMODEL_IDX = 6
+    STOCKTRANSITTIME = 'Netting ES Item Site Stock Transit Time'          ;    STOCKTRANSITTIME_IDX = 7
+
+    LIST_COLUMN = [
+        SALESID, ITEM, SITEID, TWOS, MODELTYPE,
+        TARGETDATEEARLINESS, CUSTOMMODEL, STOCKTRANSITTIME,
+    ]
+
+class SalesResult:
+    ''' Constants of Netting IF Sales Result '''
+
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 0
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 1
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 2
+    WEEK = 'Time.[Week]'                                                  ;    WEEK_IDX = 3
+    QTY_RTF = 'Netting Sales Result RTF Qty'                              ;    QTY_RTF_IDX = 4
+    QTY_GI = 'Netting Sales Result GI Qty'                                ;    QTY_GI_IDX = 5
+    # 확장 컬럼
+    AP2ID = 'Sales Result AP2ID'
+
+    LIST_BASE_COLUMN = [
+        ITEM, SALESID, SITEID, WEEK, QTY_RTF,
+        QTY_GI,
+    ]
+
+    LIST_COLUMN = LIST_BASE_COLUMN + [AP2ID]
+
+class DemandSOPPegging:
+    ''' Constants of Netting IF Demand SOP Pegging '''
+
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 0
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 1
+    DEMANDWEEK = 'Time.[Week]'                                            ;    DEMANDWEEK_IDX = 2
+    BODNAME = 'Netting BOD.[BOD Name]'                                    ;    BODNAME_IDX = 3
+    QTY = 'Netting Demand SOP Pegging Qty D'                              ;    QTY_IDX = 4
+
+    LIST_COLUMN = [
+        ITEM, SITEID, DEMANDWEEK, BODNAME, QTY,
+    ]
+
+class BOMComponent:
+    ''' Constants of Netting IF BOM Component '''
+
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 0
+    BOMID = 'Netting BOM.[BOM ID]'                                        ;    BOMID_IDX = 1
+    CONSUMEPART = 'Item.[Item]'                                           ;    CONSUMEPART_IDX = 2
+    COMPONENTSITEID = 'Netting BOM Component Site ID'                     ;    COMPONENTSITEID_IDX = 3
+
+    LIST_COLUMN = [
+        SITEID, BOMID, CONSUMEPART, COMPONENTSITEID,
+    ]
+
+class ChannelStockMaster:
+    ''' Constants of Netting IF Channel Stock Master '''
+
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 0
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 1
+    EFFSTARTDATE = 'Netting Channel Stock Effective Start Date'           ;    EFFSTARTDATE_IDX = 2
+    EFFENDDATE = 'Netting Channel Stock Effective End Date'               ;    EFFENDDATE_IDX = 3
+    TOBE = 'Netting Channel Stock Period'                                 ;    TOBE_IDX = 4
+
+    LIST_COLUMN = [
+        SALESID, ITEM, EFFSTARTDATE, EFFENDDATE, TOBE,
+    ]
+
+class ChannelStockAP2Master:
+    ''' Constants of Netting IF Channel Stock AP2 Master '''
+
+    AP2ID = 'Sales Domain.[Ship To]'                                      ;    AP2ID_IDX = 0
+    PRODUCTGROUP = 'Item.[Product Group]'                                 ;    PRODUCTGROUP_IDX = 1
+    ASIS = 'Netting Channel Stock AP2 Period'                             ;    ASIS_IDX = 2
+
+    LIST_COLUMN = [
+        AP2ID, PRODUCTGROUP, ASIS,
+    ]
+
+class EStoreReplenishment:
+    ''' Constants of Netting IF eStore Replenishment '''
+
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 0
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 1
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 2
+    PLANNEDSTARTDATE = 'Time.[Day]'                                       ;    PLANNEDSTARTDATE_IDX = 3
+    PLANNEDENDDATE = 'Netting eStore Replenishment End Date'              ;    PLANNEDENDDATE_IDX = 4
+    REPLENISHMENTQTY = 'Netting eStore Replenishment Qty'                 ;    REPLENISHMENTQTY_IDX = 5
+
+    LIST_COLUMN = [
+        SALESID, ITEM, SITEID, PLANNEDSTARTDATE, PLANNEDENDDATE,
+        REPLENISHMENTQTY,
+    ]
+
+class EStoreTWOS:
+    ''' Constants of Netting IF eStore TWOS '''
+
+    PRODUCTGROUP = 'Item.[Product Group]'                                 ;    PRODUCTGROUP_IDX = 0
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 1
+    ATTB09 = 'Netting eStore TWOS Attb'                                   ;    ATTB09_IDX = 2
+    WEEK = 'Netting eStore TWOS Week'                                     ;    WEEK_IDX = 3
+    ISVALID = 'Netting eStore TWOS Valid Flag'                            ;    ISVALID_IDX = 4
+
+    LIST_COLUMN = [
+        PRODUCTGROUP, SITEID, ATTB09, WEEK, ISVALID,
+    ]
+
+class PackageSite:
+    ''' Constants of Netting IF Package Site '''
+
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 0
+    TYPE = 'Netting Package Site Type'                                    ;    TYPE_IDX = 1
+
+    LIST_COLUMN = [
+        SITEID, TYPE,
+    ]
+
+class Prebuild:
+    ''' Constants of Netting IF Prebuild  '''
+
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 0
+    BASICNAME = 'Item.[Basic Name]'                                       ;    BASICNAME_IDX = 1
+    WEEK = 'Time.[Week]'                                                  ;    WEEK_IDX = 2
+    BUILDAHEADTIME = 'Netting Prebuild BAT'                               ;    BUILDAHEADTIME_IDX = 3
+    FLAG = 'Netting Prebuild Flag'                                        ;    FLAG_IDX = 4
+
+    LIST_COLUMN = [
+        SITEID, BASICNAME, WEEK, BUILDAHEADTIME, FLAG,
+    ]
+
+class AgingInventory60:
+    ''' Constants of Netting IF Aging Inventory 60 '''
+
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 0
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 1
+    WEEK = 'Time.[Week]'                                                  ;    WEEK_IDX = 2
+    QTY = 'Netting Aging Inventory 60 Qty'                                ;    QTY_IDX = 3
+
+    LIST_COLUMN = [
+        ITEM, SITEID, WEEK, QTY,
+    ]
+
+class PrebuildException:
+    ''' Constants of Netting IF Prebuild Exception '''
+
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 0
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 1
+    FROMWEEK = 'Netting Prebuild Exception From Week'                     ;    FROMWEEK_IDX = 2
+    TOWEEK = 'Netting Prebuild Exception To Week'                         ;    TOWEEK_IDX = 3
+
+    LIST_COLUMN = [
+        SITEID, ITEM, FROMWEEK, TOWEEK,
+    ]
+
+class NewFCSTPeriod:
+    ''' Constants of Netting IF New FCST Period '''
+
+    PRODUCTGROUP = 'Item.[Product Group]'                                 ;    PRODUCTGROUP_IDX = 0
+    SITEID = 'Location.[Location]'                                        ;    SITEID_IDX = 1
+    ENDWEEK = 'Netting New FCST Period End Week'                          ;    ENDWEEK_IDX = 2
+
+    LIST_COLUMN = [
+        PRODUCTGROUP, SITEID, ENDWEEK,
+    ]
+
+class RBMaster:
+    ''' Constants of Netting IF RB Master '''
+
+    ITEM = 'Item.[Item]'                                                  ;    ITEM_IDX = 0
+    TOITEM = 'To Item.[To Item]'                                          ;    TOITEM_IDX = 1
+    SALESID = 'Sales Domain.[Ship To]'                                    ;    SALESID_IDX = 2
+    FLAG = 'Netting RB Master Flag'                                       ;    FLAG_IDX = 3
+
+    LIST_COLUMN = [
+        ITEM, TOITEM, SALESID, FLAG,
+    ]
+
+class ShortReasonDPGuide:
+    ''' Constants of Netting IF Export Short Reason Guide Plan '''
+
+    DEMANDID = 'Exp Short Reason Guide Pln_Demand ID'                     ;    DEMANDID_IDX = 0
+    PROBLEMTYPE = 'Exp Short Reason Guide Pln_Problem Type'               ;    PROBLEMTYPE_IDX = 1
+    SALESID = 'Exp Short Reason Guide Pln_Sales ID'                       ;    SALESID_IDX = 2
+    ITEM = 'Exp Short Reason Guide Pln_Item'                              ;    ITEM_IDX = 3
+    SITEID = 'Exp Short Reason Guide Pln_Site ID'                         ;    SITEID_IDX = 4
+    WEEK = 'Exp Short Reason Guide Pln_Demand Week'                       ;    WEEK_IDX = 5
+    SHORTQTY = 'Exp Short Reason Guide Pln_Short Qty'                     ;    SHORTQTY_IDX = 6
+
+    LIST_COLUMN = [
+        DEMANDID, PROBLEMTYPE, SALESID, ITEM, SITEID,
+        WEEK, SHORTQTY,
+    ]
+
+class EOPDemandD:
+    ''' Constants of Netting EOP Demand ODS D '''
+
+    VERSIONNAME = 'Version.[Version Name]'
+    SEQUENCE = 'Sequence.[Sequence]'
+    PLANID = 'Netting EOP Demand Plan ID D'
+    SALESORDERID = 'Netting EOP Demand Sales Order ID D'
+    SOLINENUM = 'Netting EOP Demand SO Linenum D'
+    ITEM = 'Netting EOP Demand Item D'
+    QTYPROMISED = 'Netting EOP Demand Promised Qty D'
+    INV_QTY = 'Netting EOP Demand Inv Qty D'
+    MODIFY_QTY = 'Netting EOP Demand Modify Qty D'
+    WEEK = 'Netting EOP Demand Week D'
+    EOPWEEK = 'Netting EOP Demand EOP Week D'
+    SITEID = 'Netting EOP Demand Site ID D'
+    SALESID = 'Netting EOP Demand Sales ID D'
+    DEMANDPRIORITY = 'Netting EOP Demand Demand Priority D'
+    GC = 'Netting EOP Demand GC D'
+
+    LIST_COLUMN = [
+        VERSIONNAME, SEQUENCE, PLANID, SALESORDERID, SOLINENUM,
+        ITEM, QTYPROMISED, INV_QTY, MODIFY_QTY, WEEK,
+        EOPWEEK, SITEID, SALESID, DEMANDPRIORITY, GC,
+    ]
