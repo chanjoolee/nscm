@@ -1,0 +1,397 @@
+    df_DP = df_DP.astype({'RNK':'int32', 'EXCEPTQ':'int32', 'CUREXCEPT':'int32', ND_.SOLINENUM:'int32', ND_.QTYPROMISED:'int32', 'PROMISEDDELDATE2':'int32', 'RNUM':'int32', 'UPBY':'str'})
+
+    df_DPSalesCurexcept = df_DP[[ND_.SITEID,ND_.ITEMID,ND_.SALESID,'EXCEPTQ','CUREXCEPT']].drop_duplicates().copy()
+    df_DPSalesCurexcept['UPBY'] = ''
+    df_DPSalesCurexcept['UPBY'] = df_DPSalesCurexcept['UPBY'].astype('str')
+    df_DPSalesCurexcept['UPBY'] = df_DPSalesCurexcept['UPBY'].fillna('')
+
+    # list_Sales_loop_update를 dict로 변경
+    dict_dp_sales_curexcept = {}
+    for row in df_DPSalesCurexcept.values:
+        # key = SITE, ITEM, SALESID
+        key = row[0]+'::'+row[1]+'::'+row[2]
+        dict_dp_sales_curexcept[key] = [row[0], row[1], row[2], int(row[3]), int(row[4]), row[5]]
+
+    list_Outbound_loop_insert = np.empty((0,colcount), dtype=object)
+    list_Outbound_loop_update = np.empty((0,5), dtype=object)
+    list_Outbound_loop_update_sol = np.empty((0,5), dtype=object)
+    # list_Sales_loop_update = np.empty((0,6), dtype=object)
+    list_Ginet_loop_update = np.empty((0,6), dtype=object)
+
+    # -- 기여도 있는 sales 먼저 차감을 위해 for loop 추가  20220919 
+    # -- 아래 6가지 경우 발생 = 있고 없고는 경우가 더 많아져서 전부 = 조건 넣고 elseif로 연결
+    # -- 1. site.gidp >= qtypromised>= sales.gidp 
+    # -- 2. site.gidp >= sales.gidp >= qtypromised
+    # -- 3. qtypromised >= site.gidp >= sales.gidp
+    # -- 4. qtypromised >=sales.gidp >= site.gidp
+    # -- 5. sales.gidp >=qtypromised >= site.gidp
+    # -- 6. sales.gidp >= site.gidp >= qtypromised
+    # -- WEEK,SITE별 계산된 GIDP 먼저 한껀 불러냄  
+
+    dict_dp_inner = {}
+    for row in df_DP.values:
+        key = row[ND_.SITEID_IDX]+'::'+row[ND_.ITEMID_IDX]+'::'+str(row[ND_.PROMISEDDELDATE2_IDX])
+        value = tuple(row)
+        if key in dict_dp_inner:
+            dict_dp_inner[key].append(value)
+        else:
+            dict_dp_inner[key] = [value]
+
+
+
+    nparr_site = df_SITE.to_numpy()
+    for site_row in nparr_site:
+        # --해당 주차 GIDP로 넘어가는 누적 수량 
+        V_REMAINGIDP = 0 
+
+        # -- GIDP 남는 값 저장 
+        V_GIDP = int(site_row[SITE1.GIDP_IDX])
+
+        key = site_row[SITE1.SITEID_IDX] + '::' + site_row[SITE1.ITEM_IDX] + '::' + str(site_row[SITE1.WEEK_IDX])
+
+        if(key in dict_dp_inner):
+            dptuple = dict_dp_inner.get(key)
+            dplist = list(dptuple)
+
+            #for loop 안에 변화값
+            dict_dp_sales_curexcept2 = {}
+            
+            for dpinner in dplist:
+                dp_row = list(dpinner)
+
+                # SALES_CUREXCEPT 값
+                row_sales_curexcept = list(dict_dp_sales_curexcept.get(dp_row[ND_.SITEID_IDX]+'::'+dp_row[ND_.ITEMID_IDX]+'::'+dp_row[ND_.SALESID_IDX]))
+                
+                # AND    RK.EXCEPTQ > RK.CUREXCEPT
+                # if(int(dp_row[ND_.EXCEPTQ_IDX]) > int(dp_row[ND_.CUREXCEPT_IDX])):
+                if(int(row_sales_curexcept[3]) > int(row_sales_curexcept[4])):
+                # if(V_EXCEPTQ > 0):
+
+                    # -- 같은 WEEK, SALESID 내에서 남는값 저장
+                    # -- CUREXCEPT : 이전주차에서 해당 SALES의 GIDP로 넘어간 수량 
+                    if(dp_row[ND_.RNUM_IDX] == 1):
+                        #V_EXCEPTQ := DP.EXCEPTQ- DP.CUREXCEPT;
+                        # V_EXCEPTQ = int(dp_row[ND_.EXCEPTQ_IDX]) - int(dp_row[ND_.CUREXCEPT_IDX])
+                        V_EXCEPTQ = int(row_sales_curexcept[3]) - int(row_sales_curexcept[4])
+                        V_SALESID = dp_row[ND_.SALESID_IDX]
+                    
+                    if(V_SALESID != dp_row[ND_.SALESID_IDX]):
+                        # V_EXCEPTQ = int(dp_row[ND_.EXCEPTQ_IDX]) - int(dp_row[ND_.CUREXCEPT_IDX])
+                        V_EXCEPTQ = int(row_sales_curexcept[3]) - int(row_sales_curexcept[4])
+                        V_SALESID = dp_row[ND_.SALESID_IDX]
+
+                    dicSaleskey = dp_row[ND_.SITEID_IDX]+'::'+dp_row[ND_.ITEMID_IDX]+'::'+dp_row[ND_.SALESID_IDX]
+                    
+                    # --2,6번 case : 그냥 qtypromised 전부 GIDP로
+                    if(((V_GIDP >= V_EXCEPTQ) & (V_EXCEPTQ >= int(dp_row[ND_.QTYPROMISED_IDX])))
+                        | ((V_EXCEPTQ >= V_GIDP) & (V_GIDP >= int(dp_row[ND_.QTYPROMISED_IDX])))):
+                        # --GI DP로 전량 분류
+                            # SALESORDERID = DP.SALESORDERID
+                            # AND    PLANID       = DP.PLANID
+                            # AND    SOLINENUM    = DP.SOLINENUM;
+
+                        list_Outbound_loop_update_sol = np.append(list_Outbound_loop_update_sol, np.array([[dp_row[ND_.SALESORDERID_IDX], dp_row[ND_.PLANID_IDX], int(dp_row[ND_.SOLINENUM_IDX]), int(dp_row[ND_.SOLINENUM_IDX])+200,str(dp_row[ND_.UPBY_IDX]) + '_1']]), axis=0)
+
+                        if dicSaleskey in dict_dp_sales_curexcept2 :
+                            intTempCurexcept = int(dict_dp_sales_curexcept2[dicSaleskey][4])
+                            strTempUpby = str(dict_dp_sales_curexcept2[dicSaleskey][5])
+                            dict_dp_sales_curexcept2[dicSaleskey] = [dp_row[ND_.SITEID_IDX],dp_row[ND_.ITEMID_IDX],dp_row[ND_.SALESID_IDX],int(row_sales_curexcept[3]),intTempCurexcept + int(dp_row[ND_.QTYPROMISED_IDX]), strTempUpby+'_1']
+                        else:
+                            dict_dp_sales_curexcept2[dicSaleskey] = [dp_row[ND_.SITEID_IDX],dp_row[ND_.ITEMID_IDX],dp_row[ND_.SALESID_IDX],int(row_sales_curexcept[3]),int(row_sales_curexcept[4]) + int(dp_row[ND_.QTYPROMISED_IDX]), row_sales_curexcept[5]+'_1']
+                        # dict_dp_sales_curexcept[dp_row[ND_.SITEID_IDX]+'::'+dp_row[ND_.ITEMID_IDX]+'::'+dp_row[ND_.SALESID_IDX]] = [dp_row[ND_.SITEID_IDX],dp_row[ND_.ITEMID_IDX],dp_row[ND_.SALESID_IDX],int(row_sales_curexcept[3]),int(row_sales_curexcept[4]) + int(dp_row[ND_.QTYPROMISED_IDX]), row_sales_curexcept[5]+'_1']
+
+                        V_REMAINGIDP += int(dp_row[ND_.QTYPROMISED_IDX])
+                        # --남은 기여 수량 
+                        V_EXCEPTQ -= int(dp_row[ND_.QTYPROMISED_IDX])
+                        # --남은  SITE.GIDP
+                        V_GIDP -= int(dp_row[ND_.QTYPROMISED_IDX])
+
+                    # --4,5 case : site.gidp 만큼만 gidp 로 넘김
+                    elif(((V_EXCEPTQ >= int(dp_row[ND_.QTYPROMISED_IDX])) & (int(dp_row[ND_.QTYPROMISED_IDX]) >= V_GIDP))
+                        |((int(dp_row[ND_.QTYPROMISED_IDX]) >= V_EXCEPTQ) & (V_EXCEPTQ >= V_GIDP))):
+
+                        # -- 남은 SITEGIDP만큼만 넘어간다...
+                        list_Outbound_loop_update = np.append(list_Outbound_loop_update, np.array([[dp_row[ND_.SALESORDERID_IDX], dp_row[ND_.PLANID_IDX], int(dp_row[ND_.SOLINENUM_IDX]), int(dp_row[ND_.QTYPROMISED_IDX]) - int(V_GIDP), str(dp_row[ND_.UPBY_IDX]) + '_U2']]), axis=0)
+
+                        # --! 잔량만큼은 SOLINENUM 더해서 INSERT하여 GI Short 처리  !--
+                        
+                        # /**++SOLINENUM +200 분리++**/
+                        # /*++남은잔량만큼 INSERT*/
+                        dp_row[ND_.SOLINENUM_IDX] = int(dp_row[ND_.SOLINENUM_IDX])+200
+                        dp_row[ND_.QTYPROMISED_IDX] = int(V_GIDP)
+                        dp_row[ND_.UPBY_IDX] = str(dp_row[ND_.UPBY_IDX])+'_I2'
+                        dp_row_insert = dp_row[:colcount].copy()
+                        list_Outbound_loop_insert = np.append(list_Outbound_loop_insert, np.array([dp_row_insert]), axis=0)
+
+                        if dicSaleskey in dict_dp_sales_curexcept2 :
+                            intTempCurexcept = int(dict_dp_sales_curexcept2[dicSaleskey][4])
+                            strTempUpby = str(dict_dp_sales_curexcept2[dicSaleskey][5])
+                            dict_dp_sales_curexcept2[dicSaleskey] = [dp_row[ND_.SITEID_IDX],dp_row[ND_.ITEMID_IDX],dp_row[ND_.SALESID_IDX],int(row_sales_curexcept[3]),intTempCurexcept + int(V_GIDP), strTempUpby+'_2']
+                        else:
+                            dict_dp_sales_curexcept2[dp_row[ND_.SITEID_IDX]+'::'+dp_row[ND_.ITEMID_IDX]+'::'+dp_row[ND_.SALESID_IDX]] = [dp_row[ND_.SITEID_IDX],dp_row[ND_.ITEMID_IDX],dp_row[ND_.SALESID_IDX],int(row_sales_curexcept[3]),int(row_sales_curexcept[4]) + int(V_GIDP), row_sales_curexcept[5]+'_2']
+                        # dict_dp_sales_curexcept[dp_row[ND_.SITEID_IDX]+'::'+dp_row[ND_.ITEMID_IDX]+'::'+dp_row[ND_.SALESID_IDX]] = [dp_row[ND_.SITEID_IDX],dp_row[ND_.ITEMID_IDX],dp_row[ND_.SALESID_IDX],int(row_sales_curexcept[3]),int(row_sales_curexcept[4]) + int(V_GIDP), row_sales_curexcept[5]+'_2']
+                        # list_Sales_loop_update = np.append(list_Sales_loop_update, np.array([[V_PLANID, dp_row[DP.SITEID_IDX], dp_row[DP.ITEM_IDX], dp_row[DP.SALESID_IDX], int(dp_row[DP.CUREXCEPT_IDX]) + int(V_GIDP),'_2']]), axis=0)
+
+                        V_REMAINGIDP += int(V_GIDP)
+                        # --남은 기여 수량 
+                        V_EXCEPTQ -= int(V_GIDP)
+                        # --남은  SITE.GIDP
+                        V_GIDP = 0
+
+                    # --1,3 case : sales.gidp만큼만 넘긴다.
+                    elif(((int(V_GIDP) >= int(dp_row[ND_.QTYPROMISED_IDX])) & (int(dp_row[ND_.QTYPROMISED_IDX]) >= int(V_EXCEPTQ)))
+                        |((int(dp_row[ND_.QTYPROMISED_IDX]) >= int(V_GIDP)) & (int(V_GIDP) >= int(V_EXCEPTQ)))):
+
+                        # --!  그대로 둔다 !--
+                        list_Outbound_loop_update = np.append(list_Outbound_loop_update, np.array([[dp_row[ND_.SALESORDERID_IDX], dp_row[ND_.PLANID_IDX], int(dp_row[ND_.SOLINENUM_IDX]), int(dp_row[ND_.QTYPROMISED_IDX]) - int(V_EXCEPTQ),str(dp_row[ND_.UPBY_IDX]) + '_U3']]), axis=0)
+
+                        # # /*++남은잔량만큼 INSERT*/
+                        dp_row[ND_.SOLINENUM_IDX] = int(dp_row[ND_.SOLINENUM_IDX])+200
+                        dp_row[ND_.QTYPROMISED_IDX] = int(V_EXCEPTQ)
+                        dp_row[ND_.UPBY_IDX] = str(dp_row[ND_.UPBY_IDX])+'_I3'
+                        dp_row_insert = dp_row[:colcount].copy()
+
+                        list_Outbound_loop_insert = np.append(list_Outbound_loop_insert, np.array([dp_row_insert]), axis=0)
+
+                        if dicSaleskey in dict_dp_sales_curexcept2 :
+                            intTempCurexcept = int(dict_dp_sales_curexcept2[dicSaleskey][4])
+                            strTempUpby = str(dict_dp_sales_curexcept2[dicSaleskey][5])
+                            dict_dp_sales_curexcept2[dicSaleskey] = [dp_row[ND_.SITEID_IDX],dp_row[ND_.ITEMID_IDX],dp_row[ND_.SALESID_IDX],int(row_sales_curexcept[3]),intTempCurexcept + int(V_EXCEPTQ), strTempUpby+'_3']
+                        else:
+                            dict_dp_sales_curexcept2[dp_row[ND_.SITEID_IDX]+'::'+dp_row[ND_.ITEMID_IDX]+'::'+dp_row[ND_.SALESID_IDX]] = [dp_row[ND_.SITEID_IDX],dp_row[ND_.ITEMID_IDX],dp_row[ND_.SALESID_IDX],int(row_sales_curexcept[3]),int(row_sales_curexcept[4]) + int(V_EXCEPTQ), row_sales_curexcept[5]+'_3']
+                        # dict_dp_sales_curexcept[dp_row[ND_.SITEID_IDX]+'::'+dp_row[ND_.ITEMID_IDX]+'::'+dp_row[ND_.SALESID_IDX]] = [dp_row[ND_.SITEID_IDX],dp_row[ND_.ITEMID_IDX],dp_row[ND_.SALESID_IDX],int(row_sales_curexcept[3]),int(row_sales_curexcept[4]) + int(V_EXCEPTQ), row_sales_curexcept[5]+'_3']
+
+                        V_REMAINGIDP += int(V_EXCEPTQ)
+                        # --남은  SITE.GIDP
+                        V_GIDP -= int(V_EXCEPTQ)
+                        # --남은 기여 수량 
+                        V_EXCEPTQ = 0
+
+                    if(V_REMAINGIDP >= site_row[SITE1.GIDP_IDX]):
+                        break
+
+            for key, value in dict_dp_sales_curexcept2.items():
+                dict_dp_sales_curexcept[key] = value
+
+                
+            if(site_row[SITE1.GIDP_IDX] > 0):
+                list_Ginet_loop_update = np.append(list_Ginet_loop_update, 
+                    np.array([[V_PLANID, site_row[SITE1.SITEID_IDX], site_row[SITE1.ITEM_IDX], str(site_row[SITE1.WEEK_IDX]), int(max(0, int(site_row[SITE1.GIDP_IDX]) - V_REMAINGIDP)), 'Y']]), 
+                    axis=0)        
+
+
+    df_sales_update_temp = DF.from_dict(dict_dp_sales_curexcept, orient='index')
+
+    if(not df_sales_update_temp.empty) :
+        df_sales_update_temp.columns = ['SITEID','ITEM','SALESID','EXCEPTQ_NEW','CUREXCEPT_NEW','UPBY_NEW']
+        df_sales_update_temp['PLANID'] = V_PLANID
+        df_ginet_sales_update = df_sales_update_temp.astype({'PLANID':'str', 'SITEID':'str', 'ITEM':'str', 'SALESID':'str','EXCEPTQ_NEW':'int32', 'CUREXCEPT_NEW':'int32', 'UPBY_NEW':'str'})
+        # df_ginet_sales_update = df_ginet_sales_update.loc[df_ginet_sales_update['CUREXCEPT_NEW'] > 0]
+        df_ginet_sales_update = df_ginet_sales_update[['PLANID','SITEID','ITEM','SALESID','CUREXCEPT_NEW','UPBY_NEW']]
+
+
+    df_outbound_update      = pd.DataFrame(list_Outbound_loop_update)
+    df_outbound_update_sol  = pd.DataFrame(list_Outbound_loop_update_sol)
+    df_outbound_insert      = pd.DataFrame(list_Outbound_loop_insert)
+    # df_ginet_sales_update   = pd.DataFrame(list_Sales_loop_update)
+    df_ginet_update         = pd.DataFrame(list_Ginet_loop_update)
+
+    dfMST_GINETTING.columns = ['PLANID', 'SITEID', 'ITEM', 'WEEK', 'RTF', 'GI', 'EXCEPTQ', 'AVAIL', 'DP', 'CUREXCEPT', 'CURAVAIL', 'GIDP', 'MPDP', 'REMAINGIDP', 'UPDATEYN', 'RK']
+    dfMST_GINETTING = dfMST_GINETTING.astype({'PLANID':'str', 'SITEID':'str', 'ITEM':'str', 'WEEK':'str', 'RTF':'int32', 
+        'GI':'int32', 'EXCEPTQ':'int32', 'AVAIL':'int32', 'DP':'int32', 'CUREXCEPT':'int32', 
+        'CURAVAIL':'int32', 'GIDP':'int32', 'MPDP':'int32', 'REMAINGIDP':'float64', 'UPDATEYN':'str', 'RK':'int32'
+        })
+    # df_MST_GINETING_SALES['UPBY'] = ''
+    # df_MST_GINETING_SALES = df_MST_GINETING_SALES.astype({'UPBY':'str'})
+
+    df_outbound_update.columns = [ND_.SALESORDERID, ND_.PLANID, ND_.SOLINENUM, 'QTYPROMISED_NEW','UPBY_NEW']
+    df_outbound_update_sol.columns = [ND_.SALESORDERID, ND_.PLANID, ND_.SOLINENUM, 'SOLINENUM_NEW','UPBY_NEW']
+    df_outbound_insert.columns = ND_.LIST_COLUMN
+    # df_ginet_sales_update.columns = ['PLANID', 'SITEID', 'ITEM', 'SALESID', 'CUREXCEPT_NEW','UPBY_NEW']
+    df_ginet_update.columns = ['PLANID', 'SITEID', 'ITEM', 'WEEK', 'REMAINGIDP_NEW', 'UPDATEYN_NEW']
+
+
+    df_outbound_update = df_outbound_update.astype({ND_.SALESORDERID:'str', ND_.PLANID:'str', ND_.SOLINENUM:'int32', 'QTYPROMISED_NEW':'int32', 'UPBY_NEW':'str'})
+    df_outbound_update_sol = df_outbound_update_sol.astype({ND_.SALESORDERID:'str', ND_.PLANID:'str', ND_.SOLINENUM:'int32', 'SOLINENUM_NEW':'int32', 'UPBY_NEW':'str'})
+    # df_ginet_sales_update = df_ginet_sales_update.astype({'PLANID':'str', 'SITEID':'str', 'ITEM':'str', 'SALESID':'str', 'CUREXCEPT_NEW':'int32', 'UPBY_NEW':'str'})
+    df_ginet_update = df_ginet_update.astype({'PLANID':'str', 'SITEID':'str', 'ITEM':'str', 'WEEK':'str','REMAINGIDP_NEW':'float64', 'UPDATEYN_NEW':'str'})
+
+    # df_ginet_sales_update2 = df_ginet_sales_update.groupby(by=['PLANID','SITEID','ITEM','SALESID'])[['CUREXCEPT_NEW']].sum()
+
+    # df_MST_GINETING_SALES.rename(columns={
+    #     GUI_SALESRESULTSMM.ITEM:'ITEM',
+    #     GUI_SALESRESULTSMM.SALESID:'SALESID', 
+    #     GUI_SALESRESULTSMM.SITEID:'SITEID'
+    # }, inplace=True)
+
+
+    if(not df_ginet_sales_update.empty):
+        df_ginet_sales_merge = df_MST_GINETING_SALES.merge(df_ginet_sales_update, on=['PLANID', 'SITEID', 'ITEM', 'SALESID'], how='left') 
+        df_ginet_sales_merge.loc[~df_ginet_sales_merge['CUREXCEPT_NEW'].isna(),'CUREXCEPT'] = df_ginet_sales_merge['CUREXCEPT_NEW']
+        df_ginet_sales_merge.loc[~df_ginet_sales_merge['UPBY_NEW'].isna(),'UPBY'] = df_ginet_sales_merge['UPBY_NEW']
+        df_ginet_sales_merge = df_ginet_sales_merge.drop(columns=['CUREXCEPT_NEW','UPBY_NEW'])
+        df_MST_GINETING_SALES = df_ginet_sales_merge
+
+    df_outbound_mege = df_Outbound.merge(df_outbound_update, on=[ND_.SALESORDERID, ND_.PLANID, ND_.SOLINENUM], how='left')
+    df_outbound_mege.loc[~df_outbound_mege['QTYPROMISED_NEW'].isna(),ND_.QTYPROMISED] = df_outbound_mege['QTYPROMISED_NEW']
+    df_outbound_mege.loc[~df_outbound_mege['UPBY_NEW'].isna(),'UPBY'] = df_outbound_mege['UPBY_NEW']
+    df_outbound_mege = df_outbound_mege.drop(columns=['QTYPROMISED_NEW','UPBY_NEW'])
+    df_outbound_mege = df_outbound_mege.merge(df_outbound_update_sol, on=[ND_.SALESORDERID, ND_.PLANID, ND_.SOLINENUM], how='left')
+    df_outbound_mege.loc[~df_outbound_mege['SOLINENUM_NEW'].isna(),ND_.SOLINENUM] = df_outbound_mege['SOLINENUM_NEW']
+    df_outbound_mege.loc[~df_outbound_mege['UPBY_NEW'].isna(),'UPBY'] = df_outbound_mege['UPBY_NEW']
+    df_outbound_mege = df_outbound_mege.drop(columns=['SOLINENUM_NEW','UPBY_NEW'])
+
+    df_ginet_update2 = df_ginet_update.drop_duplicates()
+    df_ginet_merge = dfMST_GINETTING.merge(df_ginet_update2, how='left', on=['PLANID', 'SITEID', 'ITEM', 'WEEK']) 
+
+    # df_ginet_merge.loc[~df_ginet_merge['UPDATEYN_NEW'].isna(),'UPDATEYN'] = df_ginet_merge['UPDATEYN_NEW']
+    # df_ginet_merge.loc[~df_ginet_merge['REMAINGIDP_NEW'].isna(),'REMAINGIDP'] = df_ginet_merge['GIDP'] - df_ginet_merge['REMAINGIDP_NEW']
+    # df_ginet_merge['REMAINGIDP'] = df_ginet_merge['REMAINGIDP'].fillna(0).astype('int32')
+    # df_ginet_merge['REMAINGIDP_NEW'] = df_ginet_merge['REMAINGIDP_NEW'].fillna(0).astype('int32')
+    # # df_ginet_merge.loc[~df_ginet_merge['REMAINGIDP_NEW'].isna(),'REMAINGIDP'] = df_ginet_merge['REMAINGIDP_NEW']
+    # # df_ginet_merge.loc[~df_ginet_merge['UPDATEYN_NEW'].isna(),'UPDATEYN'] = df_ginet_merge['UPDATEYN_NEW']
+
+
+    # df_ginet_merge['REMAINGIDP'] = df_ginet_merge['REMAINGIDP'].fillna(df_ginet_merge['GIDP']).astype('int32')
+    df_ginet_merge.loc[~df_ginet_merge['UPDATEYN_NEW'].isna(),'UPDATEYN'] = df_ginet_merge['UPDATEYN_NEW']
+    df_ginet_merge.loc[~df_ginet_merge['REMAINGIDP_NEW'].isna(),'REMAINGIDP'] = df_ginet_merge['REMAINGIDP_NEW']
+    df_ginet_merge['REMAINGIDP'] = df_ginet_merge['REMAINGIDP'].fillna(df_ginet_merge['GIDP']).astype('int32')
+    # df_ginet_merge['REMAINGIDP'] = np.where(df_ginet_merge['GIDP'] >  df_ginet_merge['REMAINGIDP_NEW'], df_ginet_merge['GIDP'] - df_ginet_merge['REMAINGIDP_NEW'] , 0)
+
+
+    df_ginet_merge = df_ginet_merge.drop(columns=['REMAINGIDP_NEW'])
+    df_ginet_merge = df_ginet_merge.drop(columns=['UPDATEYN_NEW'])
+
+    # # df_Outbound_final_1 = pd.concat([df_Outbound, df_outbound_mege], axis=0, ignore_index=True)
+    df_Outbound_final_2 = pd.concat([df_outbound_mege, df_outbound_insert], axis=0, ignore_index=True)
+    # # df_MST_GINETING_SALES_final_1 = pd.concat([df_MST_GINETING_SALES, df_ginet_sales_merge], axis=0, ignore_index=True)
+    # # df_MST_GINETTING_final_1 = pd.concat([dfMST_GINETTING, df_ginet_merge], axis=0, ignore_index=True)
+
+    # , 'CUREXCEPT':'int32', 'RNK':'int32'
+    df_MST_GINETING_SALES = df_MST_GINETING_SALES.astype({'RATIOEXCEPTQ':'float64'})
+    df_MST_GINETING_SALES['CUREXCEPT'] = df_MST_GINETING_SALES['CUREXCEPT'].fillna(0).astype('int32')
+    df_MST_GINETING_SALES['RNK'] = df_MST_GINETING_SALES['RNK'].fillna(0).astype('int32')
+
+    df_MST_GINETING_SALES_final_1 = df_MST_GINETING_SALES
+    df_MST_GINETTING_final_1 = df_ginet_merge
+
+    logger.Step(4, 'SALES OPEN End')
+    #endregion logger.Step(4, 'SALES OPEN')
+    # print(f"SALES OPEN : {time.time() - sub_start_time_4:.5f} sec")
+    # sub_start_time_5 = time.time()
+    #region logger.Step(5, 'site OPEN')
+    logger.Step(5, 'site OPEN Start')
+
+    '''
+    5.site OPEN
+    '''
+    colcount = len(ND_.LIST_COLUMN)
+
+    list_Outbound_loop_insert = np.empty((0,colcount), dtype=object)
+    list_Outbound_loop_update = np.empty((0,5), dtype=object)
+
+
+    V_REXCEPT = 0
+    V_SOLINENUM = 0
+
+    df_R = df_MST_GINETTING_final_1.loc[df_MST_GINETTING_final_1['PLANID'] == V_PLANID]
+    df_R = df_R[['SITEID', 'ITEM', 'WEEK', 'RTF', 'GI', 'DP', 'GIDP', 'REMAINGIDP', 'MPDP']]
+    df_R = df_R.astype({'SITEID':'str', 'ITEM':'str', 'WEEK':'str', 'GI':'int32','DP':'int32', 'GIDP':'int32','MPDP':'int32'})
+    df_R = df_R[df_R['GIDP'] > 0]
+    # df_R['REMAINGIDP'] = df_R['REMAINGIDP'].astype('float').astype('int32')
+    df_R['GIDP'] = df_R['REMAINGIDP'].fillna(df_R['GIDP'])
+    df_R = df_R.sort_values(['SITEID', 'ITEM', 'WEEK'], ascending=[True,True,True])
+
+    df_Outbound_final_2 = df_Outbound_final_2.reset_index()
+    df_Outbound_final_2.rename(columns={'index':'ID'}, inplace=True)
+
+    df_DP1 = df_Outbound_final_2.copy(deep=True)
+
+
+
+
+    # # SOLINENUMMAX 구하기 --> 사용안함
+    # df_DP11 = df_DP1.loc[df_DP1['SOLINENUM'] < 300]
+    # df_DP12 = df_DP11.groupby('SALESORDERID')[['SOLINENUM']].max().reset_index()
+    # df_DP12.rename(columns={'SOLINENUM':'SOLINENUMMAX'}, inplace=True)
+
+
+    # # 형전환
+    df_DP1[ND_.QTYPROMISED] = df_DP1[ND_.QTYPROMISED].astype('float').astype('int32')
+    df_DP1[ND_.SOLINENUM] = df_DP1[ND_.SOLINENUM].fillna(0).astype('int32')
+
+    # # WHERE  A.PLANID = V_PLANID
+    # # AND    QTYPROMISED>0
+    # # AND    A.SOLINENUM < 200
+    df_DP1 = df_DP1.loc[(df_DP1[ND_.PLANID]==V_PLANID)&(df_DP1[ND_.QTYPROMISED] > 0)&(df_DP1[ND_.SOLINENUM] < 200)]
+
+    # AND    TO_CHAR(A.PROMISEDDELDATE,'IYYYIW') = SITE.WEEK
+    df_DP1['PROMISEDDELDATE2'] = pd.to_datetime(df_DP1[ND_.PROMISEDDELDATE]).dt.strftime('%G%V')
+    df_DP1['PROMISEDDELDATE2'] = df_DP1['PROMISEDDELDATE2'].astype('str')
+
+
+    df_DP2 = df_MST_GINETING_SALES_final_1.copy(deep=True)
+    df_DP2 = df_DP2.drop(columns=['UPBY'])
+
+
+    df_DP2.rename(columns={
+        'PLANID':ND_.PLANID,
+        'ITEM':ND_.ITEMID,
+        'SITEID':ND_.SITEID,
+        'SALESID':ND_.SALESID 
+    }, inplace=True)
+
+
+    df_DP3 = pd.merge(df_DP1, df_DP2, how='left',
+                                    left_on=[ND_.PLANID,ND_.ITEMID,ND_.SITEID,ND_.SALESID],
+                                    right_on=[ND_.PLANID,ND_.ITEMID,ND_.SITEID,ND_.SALESID])
+    df_DP3['RNK'] = df_DP3['RNK'].fillna(0)
+
+    additional_column = ['ID','RNK', 'EXCEPTQ','CUREXCEPT','PROMISEDDELDATE2']
+    df_DP3 = df_DP3[ND_.LIST_COLUMN+additional_column]
+
+    ND_.ID_IDX = df_DP3.columns.get_loc('ID')
+    ND_.RNK_IDX = df_DP3.columns.get_loc('RNK')
+    ND_.EXCEPTQ_IDX = df_DP3.columns.get_loc('EXCEPTQ')
+    ND_.CUREXCEPT_IDX = df_DP3.columns.get_loc('CUREXCEPT')
+    ND_.PROMISEDDELDATE2_IDX = df_DP3.columns.get_loc('PROMISEDDELDATE2')
+
+
+    #AND    NOT EXISTS (SELECT ''X'' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.ITEM AND ISVALID = ''Y'')
+    df_DP3 = df_DP3.loc[
+            ~(df_DP3[ND_.ITEMID]+'Y').isin(
+                    df_in_Netting_Custom_Model_Map_ODS_W[MTA_CUSTOMMODELMAP.CUSTOMITEM]+
+                            df_in_Netting_Custom_Model_Map_ODS_W[MTA_CUSTOMMODELMAP.ISVALID])
+        ]
+
+    # AND    NOT EXISTS (SELECT 'X' FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SALESID = A.SALESID AND SITEID = A.SITEID)
+    df_DP3 = df_DP3.loc[
+            ~(df_DP3[ND_.ITEMID] + df_DP3[ND_.SALESID] + df_DP3[ND_.SITEID]).isin(
+                df_in_Netting_ES_Item_Site_ODS_W[MVES_ITEMSITE.ITEM]+df_in_Netting_ES_Item_Site_ODS_W[MVES_ITEMSITE.SALESID]+df_in_Netting_ES_Item_Site_ODS_W[MVES_ITEMSITE.SITEID]
+            )
+        ]
+
+
+    # # # RANK() OVER (ORDER BY RK.RNK, A.SALESID, A.DEMANDPRIORITY DESC, A.QTYPROMISED DESC, ROWNUM ) RNUM, 
+    # # df_DP3['RNUM'] = df_DP3.groupby(by=['ITEM', 'SITEID', 'RNK', 'SALESID'])['DEMANDPRIORITY','QTYPROMISED'].rank(method='min',ascending=False)
+    df_DP3['RNK'] = df_DP3['RNK'].astype('float').astype('int32')
+
+    df_DP = df_DP3.sort_values([ND_.SITEID, ND_.ITEMID, 'PROMISEDDELDATE2', 'RNK', ND_.PROMISEDDELDATE, ND_.DEMANDPRIORITY, ND_.QTYPROMISED], ascending=[True,True,True,True,True,False,False])
+
+
+    df_Outbound_final_2[ND_.SOLINENUM] = df_Outbound_final_2[ND_.SOLINENUM].fillna(0).astype('int32')
+    df_dic = df_Outbound_final_2[[ND_.SALESORDERID,ND_.SOLINENUM]]
+
+    # dict 생성
+    dict_salesorder = {}
+    for row in df_dic.values:
+        soid = row[0]
+        solinenum = int(row[1])
+        if soid in dict_salesorder:
+            dict_salesorder[soid].add(solinenum)
+        else:
+            dict_salesorder[soid] = set((solinenum,))
+
+
+    #DP2를 OrderedDict으로 변경
+    dict_df_dp = OrderedDict()
