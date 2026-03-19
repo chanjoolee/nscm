@@ -199,7 +199,8 @@ class GitHubContentsClient:
         commit_message: str,
     ) -> dict:
         url = self._url(owner, repo, repo_path)
-        existing = self.get_file_metadata(owner, repo, repo_path, branch)
+        # existing = self.get_file_metadata(owner, repo, repo_path, branch)
+        existing = None
         sha = existing.get("sha") if existing else None
 
         payload = {
