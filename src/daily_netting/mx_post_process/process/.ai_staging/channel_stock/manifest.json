@@ -1,0 +1,17 @@
+{
+  "root_name": "channel_stock",
+  "source_file_name": "channel_stock.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-19 16:36:56",
+  "target_full_path": "src/daily_netting/mx_post_process/process/channel_stock.py",
+  "index_path": "src/daily_netting/mx_post_process/process/.ai_staging/channel_stock/INDEX.md",
+  "parts_dir": "src/daily_netting/mx_post_process/process/.ai_staging/channel_stock/parts",
+  "part_files": [
+    "src/daily_netting/mx_post_process/process/.ai_staging/channel_stock/parts/PART_001.txt",
+    "src/daily_netting/mx_post_process/process/.ai_staging/channel_stock/parts/PART_002.txt",
+    "src/daily_netting/mx_post_process/process/.ai_staging/channel_stock/parts/PART_003.txt",
+    "src/daily_netting/mx_post_process/process/.ai_staging/channel_stock/parts/PART_004.txt"
+  ],
+  "part_count": 4,
+  "max_bytes": 24714
+}
