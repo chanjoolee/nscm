@@ -11,6 +11,7 @@ import time
 from pathlib import Path, PurePosixPath
 from typing import Iterator, Optional
 from urllib.parse import quote
+from uuid import uuid4
 
 import requests
 
@@ -37,18 +38,20 @@ def normalize_repo_path(path: str) -> str:
     return str(PurePosixPath(path.strip().replace("\\", "/"))).strip("/")
 
 
-def default_staging_path_from_publish_path(publish_path: str) -> str:
+def make_unique_staging_path_from_publish_path(publish_path: str) -> str:
+    """
+    예:
+      publish_path:
+        src/daily_netting/mx_post_process/constant/general_constant.py
+
+      staging_path:
+        src/daily_netting/mx_post_process/constant/.ai_staging/general_constant/20260319_221530_ab12cd34
+    """
     publish = PurePosixPath(normalize_repo_path(publish_path))
     parent = "" if str(publish.parent) == "." else str(publish.parent)
     stem = Path(publish.name).stem
-    return join_repo_path(parent, ".ai_staging", stem)
-
-
-def estimate_base64_len(raw_bytes_len: int) -> int:
-    """
-    Base64 인코딩 후 길이(문자 수) 대략 계산
-    """
-    return ((raw_bytes_len + 2) // 3) * 4
+    run_id = f"{time.strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}"
+    return join_repo_path(parent, ".ai_staging", stem, run_id)
 
 
 def effective_raw_bytes_for_github(
@@ -58,11 +61,11 @@ def effective_raw_bytes_for_github(
 ) -> int:
     """
     GitHub Contents API 요청 시:
-    - content는 base64 문자열로 들어가고
-    - branch/message/sha/json wrapper 오버헤드가 붙는다.
+    - content는 base64 문자열
+    - branch/message/sha/json wrapper 오버헤드가 붙음
 
-    따라서 사용자가 넣은 max_payload_bytes를
-    '실제 안전한 원본 바이트 한도'로 환산한다.
+    사용자가 입력한 max_payload_bytes를
+    '안전한 원본 바이트 한도'로 환산한다.
     """
     usable = max_payload_bytes - json_overhead_bytes
     if usable <= 0:
@@ -186,32 +189,6 @@ class GitHubContentsClient:
             raise GitHubContentsError(f"GET failed: {r.status_code} / {r.text}")
         return r.json()
 
-    def get_file_text(
-        self,
-        owner: str,
-        repo: str,
-        repo_path: str,
-        branch: str,
-    ) -> Optional[str]:
-        meta = self.get_file_metadata(owner, repo, repo_path, branch)
-        if not meta:
-            return None
-
-        content = meta.get("content")
-        encoding = meta.get("encoding")
-        if content and encoding == "base64":
-            return base64.b64decode(content).decode("utf-8")
-
-        download_url = meta.get("download_url")
-        if download_url:
-            r = self.session.get(download_url, timeout=self.timeout)
-            if not r.ok:
-                self._debug_http_error(r, f"download({repo_path})")
-                raise GitHubContentsError(f"Download failed: {r.status_code} / {r.text}")
-            return r.text
-
-        return None
-
     def upsert_bytes(
         self,
         owner: str,
@@ -246,42 +223,6 @@ class GitHubContentsClient:
 
         return r.json()
 
-    def delete_file(
-        self,
-        owner: str,
-        repo: str,
-        repo_path: str,
-        branch: str,
-        commit_message: str,
-    ) -> Optional[dict]:
-        existing = self.get_file_metadata(owner, repo, repo_path, branch)
-        if not existing:
-            return None
-
-        payload = {
-            "message": commit_message,
-            "sha": existing["sha"],
-            "branch": branch,
-        }
-
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        headers = dict(self.session.headers)
-        headers["Content-Type"] = "application/json; charset=utf-8"
-
-        print(f"[DEBUG] DELETE {repo_path}")
-        r = self.session.delete(
-            self._url(owner, repo, repo_path),
-            data=body,
-            headers=headers,
-            timeout=self.timeout,
-        )
-
-        if not r.ok:
-            self._debug_http_error(r, f"delete_file({repo_path})")
-            raise GitHubContentsError(f"DELETE failed: {r.status_code} / {r.text}")
-
-        return r.json()
-
     def trigger_workflow_dispatch(
         self,
         owner: str,
@@ -294,6 +235,7 @@ class GitHubContentsClient:
             f"{self.base_url}/repos/{owner}/{repo}/actions/workflows/"
             f"{quote(workflow_id, safe='')}/dispatches"
         )
+
         payload = {
             "ref": ref,
             "inputs": inputs,
@@ -317,22 +259,6 @@ class GitHubContentsClient:
             print(r.text[:1000])
         except Exception:
             pass
-
-
-def load_old_manifest(
-    client: GitHubContentsClient,
-    owner: str,
-    repo: str,
-    manifest_path: str,
-    branch: str,
-) -> Optional[dict]:
-    text = client.get_file_text(owner, repo, manifest_path, branch)
-    if not text:
-        return None
-    try:
-        return json.loads(text)
-    except Exception:
-        return None
 
 
 def upload_direct_file(
@@ -369,10 +295,6 @@ def upload_chunked_text_file(
 ) -> None:
     parts_dir = join_repo_path(staging_path, "parts")
     manifest_path = join_repo_path(staging_path, "manifest.json")
-    index_path = join_repo_path(staging_path, "INDEX.md")
-
-    old_manifest = load_old_manifest(client, owner, repo, manifest_path, branch)
-    old_part_files = set((old_manifest or {}).get("part_files", []))
 
     new_part_files = []
 
@@ -394,24 +316,13 @@ def upload_chunked_text_file(
         if sleep_secs > 0:
             time.sleep(sleep_secs)
 
-    stale_files = sorted(old_part_files - set(new_part_files))
-    for stale_path in stale_files:
-        client.delete_file(
-            owner=owner,
-            repo=repo,
-            repo_path=stale_path,
-            branch=branch,
-            commit_message=f"delete stale part {Path(stale_path).name}",
-        )
-        print(f"Deleted stale part: {stale_path}")
-
     manifest = {
         "root_name": Path(publish_path).stem,
         "source_file_name": local_file.name,
         "encoding": "utf-8",
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "target_full_path": publish_path,
-        "index_path": index_path,
+        "staging_path": staging_path,
         "parts_dir": parts_dir,
         "part_files": new_part_files,
         "part_count": len(new_part_files),
@@ -457,7 +368,7 @@ def main():
     ap.add_argument(
         "--staging-path",
         default=None,
-        help="Optional staging repo path. Default: sibling .ai_staging/<file_stem>",
+        help="Optional explicit staging repo path. If omitted, a unique staging path is auto-generated.",
     )
     ap.add_argument(
         "--target-name",
@@ -492,16 +403,16 @@ def main():
         raise SystemExit(f"ERROR: file not found: {local_file}")
 
     publish_path = normalize_repo_path(args.publish_path)
+
     if args.target_name:
         publish_path_obj = PurePosixPath(publish_path)
         parent = "" if str(publish_path_obj.parent) == "." else str(publish_path_obj.parent)
         publish_path = join_repo_path(parent, args.target_name)
 
-    staging_path = (
-        normalize_repo_path(args.staging_path)
-        if args.staging_path
-        else default_staging_path_from_publish_path(publish_path)
-    )
+    if args.staging_path:
+        staging_path = normalize_repo_path(args.staging_path)
+    else:
+        staging_path = make_unique_staging_path_from_publish_path(publish_path)
 
     client = GitHubContentsClient(
         token=args.token,

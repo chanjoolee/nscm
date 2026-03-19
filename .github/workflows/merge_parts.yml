@@ -40,9 +40,36 @@ jobs:
           git status --short
 
           if git diff --cached --quiet; then
-            echo "No changes to commit."
+            echo "No merged-file changes to commit."
+          else
+            git commit -m "merge uploaded parts [skip ci]"
+            git push
+          fi
+
+      - name: Cleanup unique staging folder
+        run: |
+          set -euo pipefail
+
+          MANIFEST_PATH="${{ inputs.manifest_path }}"
+          STAGING_DIR=$(dirname "$MANIFEST_PATH")
+
+          echo "staging_dir=$STAGING_DIR"
+          rm -rf "$STAGING_DIR"
+
+      - name: Commit cleanup
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          git status --short
+
+          if git diff --cached --quiet; then
+            echo "No cleanup changes to commit."
             exit 0
           fi
 
-          git commit -m "merge uploaded parts [skip ci]"
+          git commit -m "cleanup unique staging folder [skip ci]"
           git push

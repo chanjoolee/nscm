@@ -25,12 +25,14 @@ def main():
 
     part_files = manifest["part_files"]
     target_full_path = Path(manifest["target_full_path"])
-    index_path = Path(manifest["index_path"])
-    root_name = manifest.get("root_name", target_full_path.parent.name)
+    index_path_value = manifest.get("index_path")
+    index_path = Path(index_path_value) if index_path_value else None
+    root_name = manifest.get("root_name", Path(target_full_path).stem)
 
     if not part_files:
         raise SystemExit(f"No part_files in manifest: {manifest_path}")
 
+    # 1) PART 합치기 (binary-safe)
     full_bytes = b""
     for part in part_files:
         part_path = Path(part)
@@ -47,40 +49,44 @@ def main():
     else:
         print(f"Merged file unchanged: {target_full_path}")
 
-    index_lines = [
-        f"# {root_name}",
-        "",
-        "## Files",
-        "",
-        f"- [{target_full_path.name}]({rel_link(index_path, target_full_path)})",
-        "",
-        "## Parts",
-        "",
-    ]
+    # 2) INDEX.md 생성 (선택)
+    if index_path:
+        index_lines = [
+            f"# {root_name}",
+            "",
+            "## Files",
+            "",
+            f"- [{target_full_path.name}]({rel_link(index_path, target_full_path)})",
+            "",
+            "## Parts",
+            "",
+        ]
 
-    for p in part_files:
-        p_path = Path(p)
-        index_lines.append(f"- [{p_path.name}]({rel_link(index_path, p_path)})")
+        for p in part_files:
+            p_path = Path(p)
+            index_lines.append(f"- [{p_path.name}]({rel_link(index_path, p_path)})")
 
-    index_lines.extend([
-        "",
-        "## Meta",
-        "",
-        f"- Manifest: `{manifest_path.as_posix()}`",
-        f"- Part count: `{len(part_files)}`",
-        f"- Encoding: `{manifest.get('encoding', 'utf-8')}`",
-        "",
-    ])
+        index_lines.extend([
+            "",
+            "## Meta",
+            "",
+            f"- Manifest: `{manifest_path.as_posix()}`",
+            f"- Part count: `{len(part_files)}`",
+            f"- Encoding: `{manifest.get('encoding', 'utf-8')}`",
+            "",
+        ])
 
-    new_index_text = "\n".join(index_lines) + "\n"
-    old_index_text = index_path.read_text(encoding="utf-8") if index_path.exists() else None
+        new_index_text = "\n".join(index_lines) + "\n"
+        old_index_text = index_path.read_text(encoding="utf-8") if index_path.exists() else None
 
-    if old_index_text != new_index_text:
-        index_path.parent.mkdir(parents=True, exist_ok=True)
-        index_path.write_text(new_index_text, encoding="utf-8")
-        print(f"Updated INDEX: {index_path}")
+        if old_index_text != new_index_text:
+            index_path.parent.mkdir(parents=True, exist_ok=True)
+            index_path.write_text(new_index_text, encoding="utf-8")
+            print(f"Updated INDEX: {index_path}")
+        else:
+            print(f"INDEX unchanged: {index_path}")
     else:
-        print(f"INDEX unchanged: {index_path}")
+        print("INDEX generation skipped (no index_path in manifest).")
 
 
 if __name__ == "__main__":
