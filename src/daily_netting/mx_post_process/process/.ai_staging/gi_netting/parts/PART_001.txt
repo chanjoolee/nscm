@@ -1,0 +1,511 @@
+from collections import OrderedDict
+
+import os, sys
+
+import pandas as pd
+import numpy as np
+import decimal as dc
+import time
+
+from daily_netting.mx_post_process.constant.ods_constant import NettedDemandD as ND_                 # EXP_SOPROMISE
+from daily_netting.mx_post_process.constant.dim_constant import Location as MST_SITE
+from daily_netting.mx_post_process.constant.mx_constant  import SalesResult as GUI_SALESRESULTSMM
+from daily_netting.mx_post_process.constant.mx_constant  import CustomModelMap as MTA_CUSTOMMODELMAP
+from daily_netting.mx_post_process.constant.mx_constant  import ESItemSite as MVES_ITEMSITE
+from daily_netting.mx_post_process.constant.mx_constant  import AvailableResourceD as MST_INVENTORY_FNE
+from daily_netting.mx_post_process.constant.mx_constant  import MXItemSellerMap as V_MTA_SELLERMAP
+from daily_netting.mx_post_process.utils.NSCMCommon import G_Logger
+from daily_netting.mx_post_process.utils.common import validate, convert_to_iyyyiw
+
+class GiNetConstant:
+    # 'PLANID', 'SITEID', 'ITEM', 'WEEK', 'RTF', 'GI', 'EXCEPTQ', 'AVAIL', 'DP', 'CUREXCEPT', 'CURAVAIL', 'GIDP', 'MPDP', 'REMAINGIDP', 'UPDATEYN', 'RK'
+    PLANID_IDX      =  0
+    SITEID_IDX      =  1
+    ITEM_IDX        =  2
+    WEEK_IDX        =  3
+    RTF_IDX         =  4
+    GI_IDX          =  5
+    EXCEPTQ_IDX     =  6
+    AVAIL_IDX       =  7
+    DP_IDX          =  8
+    CUREXCEPT_IDX   =  9
+    CURAVAIL_IDX    = 10
+    GIDP_IDX        = 11
+    MPDP_IDX        = 12
+    REMAINGIDP_IDX  = 13
+    UPDATEYN_IDX    = 14
+    RK_IDX          = 15
+
+class Site1Constant :
+    SITEID_IDX = 0
+    ITEM_IDX = 1
+    WEEK_IDX = 2
+    GIDP_IDX = 3
+
+class RConstant :
+    SITEID_IDX      =  0
+    ITEM_IDX        =  1
+    WEEK_IDX	    =  2
+    RTF_IDX         =  3
+    GI_IDX          =  4
+    DP_IDX          =  5
+    GIDP_IDX        =  6
+    MPDP_IDX        =  7
+
+
+'''
+전역변수정의
+'''
+V_PLANID = None
+V_PREPLANID = None
+V_PLANWEEK = None
+V_WEEK1 = None
+V_WEEK4 = None
+V_PREYEAR = None
+V_PREYWEEK = None
+
+V_EXCEPTQ = 0
+V_SALESID = ''
+
+find_priority_position = None
+
+'''
+Alias 정의
+'''
+DF = pd.DataFrame
+NA = np.array
+GINET = GiNetConstant
+SITE1 = Site1Constant
+R     = RConstant
+LOGGER = G_Logger
+
+
+def set_gi_env(accessor: object) -> None:
+    global V_PLANID, V_PREPLANID, V_PLANWEEK, V_WEEK1, V_WEEK4, V_PREYEAR, \
+        V_PREYWEEK, find_priority_position
+    
+    # plan 설정
+    V_PLANID = accessor.plan_id
+    V_PLANWEEK = accessor.plan_week
+    V_WEEK1 = accessor.plan_week
+
+    if accessor.plan_type == 'VPLAN':
+        V_PREPLANID = accessor.start_date.strftime('%G%V')
+        V_WEEK4 = (accessor.start_date + pd.Timedelta(weeks=4)).strftime('%G%V')
+    else:
+        V_PREPLANID = (accessor.start_date - pd.Timedelta(weeks=1)).strftime('%G%V')
+        V_WEEK4 = (accessor.start_date + pd.Timedelta(weeks=3)).strftime('%G%V')
+    
+    V_PREYEAR = V_PREPLANID[0:4]
+    V_PREYWEEK = V_PREPLANID[4:6]
+
+    # 자리수 확인 함수
+    find_priority_position = accessor.find_priority_position
+
+def do_gi_netting(
+        df_Inbound:DF, df_in_Netting_Seller_Map:DF, df_in_Netting_Available_Resource_ODS_W:DF, df_in_Netting_ES_Item_Site_ODS_W:DF,
+        df_in_Netting_Custom_Model_Map_ODS_W:DF, df_Sales_Result_Smm:DF, df_mst_site:DF, logger: LOGGER,
+    ) -> None:
+    global V_EXCEPTQ, V_SALESID
+
+    logger.Note('Start GI Netting', 20)
+    
+    # sub_start_time_1 = time.time()    
+    #region logger.Step(1, 'Data Summary')
+    logger.Step(1, 'Data Summary Start')
+    '''
+    mst_ginet 구성
+    '''
+    df_Outbound = df_Inbound.copy(deep=True)
+
+    df_Sales_Result_Smm[GUI_SALESRESULTSMM.QTY_RTF].fillna(0).astype('int32')
+    df_Sales_Result_Smm[GUI_SALESRESULTSMM.QTY_GI].fillna(0).astype('int32')
+
+    #AND    NOT EXISTS (SELECT ''X'' FROM V_MTA_SELLERMAP WHERE  ITEM = A.ITEM AND SITEID = A.SITEID)
+    df_MST_GINNETING_01 = df_Sales_Result_Smm.loc[
+            ~(df_Sales_Result_Smm[GUI_SALESRESULTSMM.ITEM] + df_Sales_Result_Smm[GUI_SALESRESULTSMM.SITEID]).isin(
+                df_in_Netting_Seller_Map[V_MTA_SELLERMAP.ITEM]+df_in_Netting_Seller_Map[V_MTA_SELLERMAP.SITEID]
+            )
+        ]
+
+
+    #AND    NOT EXISTS (SELECT ''X'' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.ITEM AND ISVALID = ''Y'')
+    df_MST_GINNETING_01 = df_MST_GINNETING_01.loc[
+            ~(df_MST_GINNETING_01[GUI_SALESRESULTSMM.ITEM]+'Y').isin(
+                    df_in_Netting_Custom_Model_Map_ODS_W[MTA_CUSTOMMODELMAP.CUSTOMITEM]+
+                            df_in_Netting_Custom_Model_Map_ODS_W[MTA_CUSTOMMODELMAP.ISVALID])
+        ]
+
+
+    df_MST_GINNETING_01[GUI_SALESRESULTSMM.QTY_RTF] = df_MST_GINNETING_01[GUI_SALESRESULTSMM.QTY_RTF].fillna(0).astype('int32')
+    df_MST_GINNETING_01[GUI_SALESRESULTSMM.QTY_GI] = df_MST_GINNETING_01[GUI_SALESRESULTSMM.QTY_GI].fillna(0).astype('int32')
+
+    #GROUP BY ITEM, SITEID--, AP2ID
+    #HAVING SUM(DECODE(CATEGORY, ''02RTF'', WEEK'||V_PREYWEEK||',0)) < SUM(DECODE(CATEGORY, ''30GI'' , WEEK'||V_PREYWEEK||',0))
+    V_PRE_PLAN = V_PREYEAR + V_PREYWEEK
+    df_MST_GINNETING_01 = df_MST_GINNETING_01.loc[df_MST_GINNETING_01[GUI_SALESRESULTSMM.WEEK]==V_PRE_PLAN]
+
+
+    df_MST_GINNETING_01 = df_MST_GINNETING_01[[GUI_SALESRESULTSMM.SITEID,GUI_SALESRESULTSMM.ITEM,GUI_SALESRESULTSMM.QTY_RTF,GUI_SALESRESULTSMM.QTY_GI]]
+    df_MST_GINNETING_01 = df_MST_GINNETING_01.groupby(by=[GUI_SALESRESULTSMM.SITEID,GUI_SALESRESULTSMM.ITEM,])[[GUI_SALESRESULTSMM.QTY_RTF,GUI_SALESRESULTSMM.QTY_GI]].sum()
+    df_MST_GINNETING_01['EXCEPT'] = df_MST_GINNETING_01[GUI_SALESRESULTSMM.QTY_GI] - df_MST_GINNETING_01[GUI_SALESRESULTSMM.QTY_RTF] 
+    df_MST_GINNETING_01[GUI_SALESRESULTSMM.WEEK] = V_PLANWEEK
+    df_EXCEPT = df_MST_GINNETING_01.loc[df_MST_GINNETING_01[GUI_SALESRESULTSMM.QTY_RTF] < df_MST_GINNETING_01[GUI_SALESRESULTSMM.QTY_GI]].reset_index()
+
+    # -- 1. 가용량 (INVENTORY + INTRANSIT + DISTRIBUTIONORDERS)
+    # AND    A.WEEK BETWEEN '||V_WEEK1||' AND '||V_WEEK4||'
+    df_MST_GINNETING_02 = df_in_Netting_Available_Resource_ODS_W.loc[df_in_Netting_Available_Resource_ODS_W[MST_INVENTORY_FNE.WEEK].between(V_WEEK1, V_WEEK4)]
+
+    # AND    NOT EXISTS (SELECT ''X'' FROM V_MTA_SELLERMAP WHERE ITEM = A.ITEM AND SITEID = A.SITEID)
+    df_MST_GINNETING_02 = df_MST_GINNETING_02[
+            ~(df_MST_GINNETING_02[MST_INVENTORY_FNE.ITEM] + df_MST_GINNETING_02[MST_INVENTORY_FNE.SITEID]).isin(
+                df_in_Netting_Seller_Map[V_MTA_SELLERMAP.ITEM]+df_in_Netting_Seller_Map[V_MTA_SELLERMAP.SITEID]
+            )
+        ]
+
+    df_MST_GINNETING_02[MST_INVENTORY_FNE.QTY] = df_MST_GINNETING_02[MST_INVENTORY_FNE.QTY].fillna(0).astype('int32')
+
+    df_MST_GINNETING_02.rename(columns={
+        MST_INVENTORY_FNE.QTY: 'AVAILQTY',
+    }, inplace=True)
+
+    df_MST_GINNETING_02 = df_MST_GINNETING_02[[MST_INVENTORY_FNE.ITEM,MST_INVENTORY_FNE.SITEID,MST_INVENTORY_FNE.WEEK,'AVAILQTY']]
+    df_MST_GINNETING_02['DPQTY'] = 0
+
+    # -- 2. DEMAND
+    df_MST_GINNETING_03 = df_Inbound[[ND_.ITEMID, ND_.SITEID, ND_.PROMISEDDELDATE, ND_.QTYPROMISED]].copy()
+    df_MST_GINNETING_03.insert(3,'QTY',0)
+    df_MST_GINNETING_03['QTY'] = df_MST_GINNETING_03['QTY'].fillna(0).astype('int32')
+    df_MST_GINNETING_03[ND_.QTYPROMISED] = df_MST_GINNETING_03[ND_.QTYPROMISED].astype('float').astype('int32')
+    # AND     QTYPROMISED > 0
+    df_MST_GINNETING_03 = df_MST_GINNETING_03.loc[df_MST_GINNETING_03[ND_.QTYPROMISED] > 0]
+
+    # AND     TO_CHAR(PROMISEDDELDATE, ''IYYYIW'') BETWEEN '||V_WEEK1||' AND '||V_WEEK4||'
+    df_MST_GINNETING_03[ND_.PROMISEDDELDATE] = pd.to_datetime(df_MST_GINNETING_03[ND_.PROMISEDDELDATE]).dt.strftime('%G%V')
+    df_MST_GINNETING_03 = df_MST_GINNETING_03.loc[df_MST_GINNETING_03[ND_.PROMISEDDELDATE].between(V_WEEK1, V_WEEK4)]
+
+    # AND     NOT EXISTS (SELECT ''X'' FROM V_MTA_SELLERMAP WHERE ITEM = A.ITEM AND SITEID = A.SITEID)
+    df_DEMAND = df_MST_GINNETING_03.loc[
+        ~(df_MST_GINNETING_03[ND_.ITEMID] + df_MST_GINNETING_03[ND_.SITEID]).isin(
+            df_in_Netting_Seller_Map[V_MTA_SELLERMAP.ITEM]+df_in_Netting_Seller_Map[V_MTA_SELLERMAP.SITEID]
+        )
+    ]
+
+    df_MST_GINNETING_02 = df_MST_GINNETING_02.rename(columns={
+        MST_INVENTORY_FNE.ITEM:ND_.ITEMID,
+        MST_INVENTORY_FNE.SITEID:ND_.SITEID,
+    })
+    df_DEMAND = df_DEMAND.rename(columns={
+        ND_.PROMISEDDELDATE:MST_INVENTORY_FNE.WEEK,
+        'QTY': 'AVAILQTY',
+        ND_.QTYPROMISED: 'DPQTY',
+    })
+
+    #df_MST_GINNETING_02 union all df_MST_GINNETING_03
+    df_MST_GINNETING_04 = pd.concat([df_MST_GINNETING_02, df_DEMAND], axis=0, ignore_index=True)
+
+    #groupby
+    df_AVAIL = df_MST_GINNETING_04.groupby(by=[ND_.ITEMID, ND_.SITEID, MST_INVENTORY_FNE.WEEK]).sum(numeric_only=True).reset_index()
+    df_AVAIL = df_AVAIL.rename(columns={
+        MST_INVENTORY_FNE.WEEK:'WEEK'
+    })
+
+    #df_EXCEPT, df_AVAIL inner join
+    dfMST_GINETTING = pd.merge(df_EXCEPT, df_AVAIL, how='inner',
+                                left_on=[GUI_SALESRESULTSMM.ITEM, GUI_SALESRESULTSMM.SITEID],
+                                right_on=[ND_.ITEMID, ND_.SITEID]).reset_index()
+    dfMST_GINETTING = dfMST_GINETTING.sort_values(by=[ND_.ITEMID, ND_.SITEID, 'WEEK',]).reset_index()
+    dfMST_GINETTING = dfMST_GINETTING[[ND_.SITEID,ND_.ITEMID,'WEEK',GUI_SALESRESULTSMM.QTY_RTF,GUI_SALESRESULTSMM.QTY_GI,'EXCEPT','AVAILQTY','DPQTY']]
+    dfMST_GINETTING.insert(0, ND_.PLANID, V_PLANID)
+    dfMST_GINETTING.columns = [ND_.PLANID, ND_.SITEID, ND_.ITEMID, 'WEEK', GUI_SALESRESULTSMM.QTY_RTF,GUI_SALESRESULTSMM.QTY_GI, 'EXCEPTQ', 'AVAIL', 'DP']
+    dfMST_GINETTING['WEEK'] = dfMST_GINETTING['WEEK'].fillna(0).astype('int32')
+    dfMST_GINETTING['RK'] = dfMST_GINETTING.groupby(by=[ND_.ITEMID, ND_.SITEID])['WEEK'].rank(method='min')
+    dfMST_GINETTING.insert(9, 'CUREXCEPT', dfMST_GINETTING[['EXCEPTQ']])
+    dfMST_GINETTING.insert(10, 'CURAVAIL', dfMST_GINETTING[['AVAIL']])
+    dfMST_GINETTING.insert(11, 'GIDP', 0)
+    dfMST_GINETTING.insert(12, 'MPDP', 0)
+    dfMST_GINETTING.insert(13, 'REMAINGIDP', np.nan)
+    dfMST_GINETTING.insert(14, 'UPDATEYN','')
+    dfMST_GINETTING['WEEK'] = dfMST_GINETTING['WEEK'].fillna(0).astype('int32')
+
+
+    '''
+    mst_ginet_sales 생성
+    '''
+    #형전환
+    df_Sales_Result_Smm[GUI_SALESRESULTSMM.QTY_RTF].fillna(0).astype('int32')
+    df_Sales_Result_Smm[GUI_SALESRESULTSMM.QTY_GI].fillna(0).astype('int32')
+
+    df_MST_GINETING_SALES_01 = df_Sales_Result_Smm.copy(deep=True)
+
+    #AND    NOT EXISTS (SELECT ''X'' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.ITEM AND ISVALID = ''Y'')
+    df_MST_GINETING_SALES_01 = df_MST_GINETING_SALES_01.loc[
+            ~(df_MST_GINETING_SALES_01[GUI_SALESRESULTSMM.ITEM]+'Y').isin(
+                    df_in_Netting_Custom_Model_Map_ODS_W[MTA_CUSTOMMODELMAP.CUSTOMITEM]+
+                            df_in_Netting_Custom_Model_Map_ODS_W[MTA_CUSTOMMODELMAP.ISVALID])
+        ]
+
+    df_MST_GINETING_SALES_01.insert(0, 'PLANID', V_PLANID)
+
+    df_MST_GINETING_SALES_01[GUI_SALESRESULTSMM.QTY_RTF] = df_MST_GINETING_SALES_01[GUI_SALESRESULTSMM.QTY_RTF].fillna(0).astype('int32')
+    df_MST_GINETING_SALES_01[GUI_SALESRESULTSMM.QTY_GI] = df_MST_GINETING_SALES_01[GUI_SALESRESULTSMM.QTY_GI].fillna(0).astype('int32')
+
+    V_PRE_PLAN = V_PREYEAR + V_PREYWEEK
+    df_MST_GINETING_SALES_01 = df_MST_GINETING_SALES_01.loc[df_MST_GINETING_SALES_01[GUI_SALESRESULTSMM.WEEK]==V_PRE_PLAN]
+
+    df_MST_GINETING_SALES_01 = df_MST_GINETING_SALES_01[['PLANID',GUI_SALESRESULTSMM.ITEM,GUI_SALESRESULTSMM.SALESID,GUI_SALESRESULTSMM.SITEID,GUI_SALESRESULTSMM.QTY_RTF,GUI_SALESRESULTSMM.QTY_GI]]
+
+    df_MST_GINETING_SALES_01.insert(4, 'WEEK', V_PREPLANID)
+
+    #GROUP BY ITEM, SALESID, SITEID--, AP2ID
+    df_MST_GINETING_SALES_01 = df_MST_GINETING_SALES_01.groupby(by=['PLANID',GUI_SALESRESULTSMM.ITEM,GUI_SALESRESULTSMM.SALESID,GUI_SALESRESULTSMM.SITEID,'WEEK',])[[GUI_SALESRESULTSMM.QTY_RTF,GUI_SALESRESULTSMM.QTY_GI]].sum()
+
+    df_MST_GINETING_SALES_01['EXCEPTQ'] = df_MST_GINETING_SALES_01[GUI_SALESRESULTSMM.QTY_GI] - df_MST_GINETING_SALES_01[GUI_SALESRESULTSMM.QTY_RTF] 
+
+    #HAVING SUM(DECODE(CATEGORY, ''02RTF'', WEEK'||V_PREYWEEK||',0)) < SUM(DECODE(CATEGORY, ''30GI'' , WEEK'||V_PREYWEEK||',0))
+    df_MST_GINETING_SALES_01 = df_MST_GINETING_SALES_01.loc[df_MST_GINETING_SALES_01[GUI_SALESRESULTSMM.QTY_RTF] < df_MST_GINETING_SALES_01[GUI_SALESRESULTSMM.QTY_GI]]
+
+    df_GI1 = df_MST_GINETING_SALES_01.loc[df_MST_GINETING_SALES_01[GUI_SALESRESULTSMM.QTY_RTF] >= 0].reset_index()
+
+    df_GI2 = df_GI1.groupby(by=['PLANID',GUI_SALESRESULTSMM.ITEM,GUI_SALESRESULTSMM.SITEID,'WEEK',])[['EXCEPTQ']].sum()
+    df_GI2 = pd.merge(df_GI1, df_GI2, how='inner',
+                            left_on=['PLANID',GUI_SALESRESULTSMM.ITEM,GUI_SALESRESULTSMM.SITEID,'WEEK'],
+                            right_on=['PLANID',GUI_SALESRESULTSMM.ITEM,GUI_SALESRESULTSMM.SITEID,'WEEK'])
+    df_GI2.columns = ['PLANID', GUI_SALESRESULTSMM.ITEM, GUI_SALESRESULTSMM.SALESID, GUI_SALESRESULTSMM.SITEID, 'WEEK', 'RTF', 'GI', 'EXCEPTQ', 'SUMEXCEPTQ']
+    df_GI2.sort_values(by=[GUI_SALESRESULTSMM.ITEM, GUI_SALESRESULTSMM.SITEID, 'WEEK', 'EXCEPTQ']).reset_index()
+
+    df_GI2['RATIOEXCEPTQ'] = df_GI2['EXCEPTQ'] / df_GI2['SUMEXCEPTQ']
+
+    df_GI2['RNK'] = df_GI2.groupby(by=[GUI_SALESRESULTSMM.ITEM,GUI_SALESRESULTSMM.SITEID, 'WEEK'])['EXCEPTQ'].rank(method='min',ascending=False)
+    df_GI2['DP'] = 0
+    df_GI2['CUREXCEPT'] = 0
+    df_MST_GINETING_SALES = df_GI2
+
+    logger.Step(1, 'Data Summary End')
+    #endregion logger.Step(1, 'Data Summary')
+    # print(f"{time.time() - sub_start_time_1:.5f} sec")
+    # sub_start_time_2 = time.time()
+    #region logger.Step(2, 'AVAIL QTY ROLLING')
+    logger.Step(2, 'AVAIL QTY ROLLING Start')
+    ''' 
+    2.AVAIL QTY ROLLING
+    '''
+
+    M_AVAIL = 0
+
+    dt = np.dtype([("S1", 'object'),
+        ("S2", 'object'),
+        ("S3", 'object'),
+        ("S4", 'object'), 
+        ("i1", np.int32), 
+        ("i2", np.int32), 
+        ("i3", np.int32),
+        ("i4", np.int32),
+        ("i5", np.int32),
+        ("i6", np.int32),
+        ("i7", np.int32),
+        ("i8", np.int32),
+        ("i9", np.int32), 
+        ("i10", np.float64),
+        ("S5", 'object'),
+        ("i11", np.int32)])
+
+    nparr_ginet = np.array([tuple(v) for v in dfMST_GINETTING.values.tolist()], dtype=dt)
+
+    for row in nparr_ginet:
+        if row[GINET.RK_IDX] == 1: # IF X.RK = 1 THEN
+            if row[GINET.AVAIL_IDX] > row[GINET.DP_IDX]:     # IF X.AVAIL > X.DP THEN
+                M_AVAIL = row[GINET.AVAIL_IDX] - row[GINET.DP_IDX] # M_AVAIL := X.AVAIL - X.DP;
+            else:
+                M_AVAIL = 0
+        #--! 첫 행이 아니면 !--
+        else:
+            #--! CURAVAIL = AVAIL + M_AVAIL !--
+            row[GINET.CURAVAIL_IDX] = row[GINET.AVAIL_IDX] + M_AVAIL
+        
+            if (row[GINET.AVAIL_IDX] + M_AVAIL) > row[GINET.DP_IDX]:
+                M_AVAIL = (row[GINET.AVAIL_IDX] + M_AVAIL) - row[GINET.DP_IDX]
+            else:
+                M_AVAIL = 0
+
+    logger.Step(2, 'AVAIL QTY ROLLING End')
+    #endregion logger.Step(2, 'AVAIL QTY ROLLING Start')
+    # print(f"{time.time() - sub_start_time_2:.5f} sec")
+    # sub_start_time_3 = time.time()
+    #region logger.Step(3, 'GINETTING OPEN')
+    logger.Step(3, 'GINETTING OPEN Start')
+    ''' 
+    3.GINETTING OPEN
+    '''
+    M_EXCEPT = 0
+
+    for row in nparr_ginet:
+        if row[GINET.RK_IDX] == 1: # IF X.RK = 1 THEN
+            if (row[GINET.CURAVAIL_IDX] - row[GINET.DP_IDX]) >= 0: # IF X.CURAVAIL - X.DP >=0 THEN
+                #--! 전량 MPDP, GIDP 0 !--
+                row[GINET.GIDP_IDX] = 0
+                row[GINET.MPDP_IDX] = row[GINET.DP_IDX]
+
+                M_EXCEPT = row[GINET.EXCEPTQ_IDX]
+            else: 
+                #--! DP 가 남았을 경우 !--
+                if (row[GINET.EXCEPTQ_IDX] >= (row[GINET.DP_IDX] - row[GINET.CURAVAIL_IDX])):
+                    #--! 가용량이 없는 만큼은 GIDP, 가용량이 있는 만큼은 MPDP !--
+                    row[GINET.GIDP_IDX] = (row[GINET.DP_IDX] - row[GINET.CURAVAIL_IDX])
+                    row[GINET.MPDP_IDX] = row[GINET.DP_IDX] - (row[GINET.DP_IDX] - row[GINET.CURAVAIL_IDX])
+
+                    M_EXCEPT = row[GINET.EXCEPTQ_IDX] - (row[GINET.DP_IDX] - row[GINET.CURAVAIL_IDX])
+                
+                #--! X.EXCEPT< X.DP - X.CURAVAIL !--
+                else:
+                    #--!  GIDP = X.EXCEPTQ , MPDP =  DP - (X.EXCEPTQ) !--
+                    row[GINET.GIDP_IDX] = row[GINET.EXCEPTQ_IDX]
+                    row[GINET.MPDP_IDX] = row[GINET.DP_IDX] - row[GINET.EXCEPTQ_IDX]
+
+                    M_EXCEPT = 0
+        #--! 두번째 ROW부터 !--
+        else:
+            #--! AVAIL 수량 > DP 일 경우 !--
+            if (row[GINET.CURAVAIL_IDX] - row[GINET.DP_IDX]) >= 0: # IF X.CURAVAIL - X.DP >=0 THEN
+                #--! 전량 MPDP, GIDP 0 !--
+                row[GINET.GIDP_IDX] = 0
+                row[GINET.MPDP_IDX] = row[GINET.DP_IDX]
+                row[GINET.CUREXCEPT_IDX] = M_EXCEPT
+
+                M_EXCEPT = M_EXCEPT
+            else:
+                #--! CUREXCEPT = M_EXCEPT !--
+                row[GINET.CUREXCEPT_IDX] = M_EXCEPT
+
+                #--! DP 가 남았을 경우 !--
+                if(M_EXCEPT >= (row[GINET.DP_IDX] - row[GINET.CURAVAIL_IDX])):
+
+                    # --!  GIDP = X.DP - X.CURAVAIL , DP - (X.DP - X.CURAVAIL) !--
+                    row[GINET.GIDP_IDX] = row[GINET.DP_IDX] - row[GINET.CURAVAIL_IDX]
+                    row[GINET.MPDP_IDX] = row[GINET.DP_IDX] - (row[GINET.DP_IDX] - row[GINET.CURAVAIL_IDX])
+
+                    M_EXCEPT = M_EXCEPT - (row[GINET.DP_IDX] - row[GINET.CURAVAIL_IDX])
+                else:
+                    row[GINET.GIDP_IDX] = M_EXCEPT
+                    row[GINET.MPDP_IDX] = row[GINET.DP_IDX] - M_EXCEPT
+
+                    M_EXCEPT = 0
+
+    logger.Step(3, 'GINETTING OPEN End')
+    #endregion logger.Step(3, 'GINETTING OPEN')
+    # print(f"{time.time() - sub_start_time_3:.5f} sec")
+    # sub_start_time_4 = time.time()
+    #region logger.Step(4, 'SALES OPEN')
+    logger.Step(4, 'SALES OPEN Start')
+    ''' 
+    4.SALES OPEN
+    '''
+    for col in ND_.LIST_COLUMN:
+        if col not in df_Inbound.columns:
+            df_Inbound[col] = ''
+
+    df_Inbound = df_Inbound[ND_.LIST_COLUMN]
+
+
+    df_ginet_sales_update = pd.DataFrame()
+    df_ginet_sales_merge = pd.DataFrame()
+
+    # 형전환
+    df_Outbound[ND_.QTYPROMISED] = df_Outbound[ND_.QTYPROMISED].astype('float').astype('int32')
+    df_Outbound[ND_.SOLINENUM] = df_Outbound[ND_.SOLINENUM].fillna(0).astype('int32')
+
+    V_REMAINGIDP = 0
+    V_GIDP = 0
+
+    dfMST_GINETTING = pd.DataFrame(nparr_ginet)
+    dfMST_GINETTING.columns = ['PLANID', 'SITEID', 'ITEM', 'WEEK', 'RTF', 'GI', 'EXCEPTQ', 'AVAIL', 'DP', 'CUREXCEPT', 'CURAVAIL', 'GIDP', 'MPDP', 'REMAINGIDP','UPDATEYN', 'RK']
+    dfMST_GINETTING = dfMST_GINETTING.astype({'RTF':'int32', 'GI':'int32', 'EXCEPTQ':'int32', 'AVAIL':'int32', 'DP':'int32', 'CUREXCEPT':'int32', 'CURAVAIL':'int32', 'GIDP':'int32', 'MPDP':'int32', 'REMAINGIDP':'float64', 'RK':'int32'})
+
+    dfMST_GINETTING_SITE = pd.DataFrame(nparr_ginet)
+    dfMST_GINETTING_SITE.columns = ['PLANID', 'SITEID', 'ITEM', 'WEEK', 'RTF', 'GI', 'EXCEPTQ', 'AVAIL', 'DP', 'CUREXCEPT', 'CURAVAIL', 'GIDP', 'MPDP', 'REMAINGIDP', 'UPDATEYN', 'RK']
+    dfMST_GINETTING_SITE = dfMST_GINETTING_SITE.astype({'RTF':'int32', 'GI':'int32', 'EXCEPTQ':'int32', 'AVAIL':'int32', 'DP':'int32', 'CUREXCEPT':'int32', 'CURAVAIL':'int32', 'GIDP':'int32', 'MPDP':'int32', 'REMAINGIDP':'float64', 'RK':'int32'})
+
+    dfMST_GINETTING_SITE = dfMST_GINETTING_SITE.loc[dfMST_GINETTING_SITE['PLANID'] == V_PLANID]
+    dfMST_GINETTING_SITE = dfMST_GINETTING_SITE.loc[dfMST_GINETTING_SITE['GIDP'] > 0]
+
+    df_SITE = dfMST_GINETTING_SITE.sort_values(by=['SITEID', 'ITEM', 'WEEK',]).reset_index()
+    df_SITE = df_SITE[['SITEID', 'ITEM', 'WEEK', 'GIDP']]
+    df_SITE.columns = ['SITEID', 'ITEM', 'WEEK', 'GIDP'] 
+    df_SITE['WEEK'] = df_SITE['WEEK'].fillna(0).astype('int32')
+
+
+    #--기여도 높은 순으로 NOW DP를 발췌
+    df_DP1 = df_Inbound.copy(deep=True)
+
+    # 형전환
+    df_DP1[ND_.QTYPROMISED] = df_DP1[ND_.QTYPROMISED].astype('float').astype('int32')
+    df_DP1[ND_.SOLINENUM] = df_DP1[ND_.SOLINENUM].fillna(0).astype('int32')
+    df_MST_GINETING_SALES['EXCEPTQ'] = df_MST_GINETING_SALES['EXCEPTQ'].fillna(0).astype('int32')
+    df_MST_GINETING_SALES['CUREXCEPT'] = df_MST_GINETING_SALES['CUREXCEPT'].fillna(0).astype('int32')
+    df_MST_GINETING_SALES['RNK'] = df_MST_GINETING_SALES['RNK'].fillna(0).astype('int32')
+
+    df_MST_GINETING_SALES['UPBY'] = ''
+    df_MST_GINETING_SALES = df_MST_GINETING_SALES.astype({'UPBY':'str'})
+
+    df_MST_GINETING_SALES.rename(columns={
+        GUI_SALESRESULTSMM.ITEM:'ITEM',
+        GUI_SALESRESULTSMM.SALESID:'SALESID', 
+        GUI_SALESRESULTSMM.SITEID:'SITEID'
+    }, inplace=True)
+
+
+    # # WHERE  A.PLANID = V_PLANID
+    # # AND    QTYPROMISED>0
+    # # AND    A.SOLINENUM < 200
+    df_DP1 = df_DP1.loc[(df_DP1[ND_.PLANID] == V_PLANID) & (df_DP1[ND_.QTYPROMISED] > 0) & (df_DP1[ND_.SOLINENUM] < 200) ]
+
+    df_DP1['PROMISEDDELDATE2'] = pd.to_datetime(df_DP1[ND_.PROMISEDDELDATE]).dt.strftime('%G%V')
+    df_DP1['PROMISEDDELDATE2'] = df_DP1['PROMISEDDELDATE2'].fillna(0).astype('int32')
+
+
+    # AND    RK.EXCEPTQ > RK.CUREXCEPT
+    df_DP2 = df_MST_GINETING_SALES.copy(deep=True)
+
+    # #     # AND    RK.PLANID = V_PLANID
+    # #     # AND    A.ITEM = RK.ITEM
+    # #     # AND    A.SITEID = RK.SITEID
+    # #     # AND    A.SALESID = RK.SALESID
+    df_DP3 = pd.merge(df_DP1, df_DP2, how='inner',
+                                    left_on=[ND_.PLANID,ND_.ITEMID, ND_.SITEID,  ND_.SALESID],
+                                    right_on=['PLANID','ITEM', 'SITEID','SALESID'])
+
+    df_MVES_ITEMSITE = df_in_Netting_ES_Item_Site_ODS_W
+    df_DP3 = df_DP3.loc[
+            ~(df_DP3[ND_.ITEMID] + df_DP3[ND_.SALESID] + df_DP3[ND_.SITEID]).isin(
+                df_MVES_ITEMSITE[MVES_ITEMSITE.ITEM]+df_MVES_ITEMSITE[MVES_ITEMSITE.SALESID]+df_MVES_ITEMSITE[MVES_ITEMSITE.SITEID]
+            )
+        ]
+
+    df_DP3[ND_.DEMANDPRIORITY] = df_DP3[ND_.DEMANDPRIORITY].fillna(0).astype('int32')
+    df_DP3[ND_.QTYPROMISED] = df_DP3[ND_.QTYPROMISED].fillna(0).astype('int32')
+
+    # # RANK() OVER (ORDER BY RK.RNK, A.SALESID, A.DEMANDPRIORITY DESC, A.QTYPROMISED DESC, ROWNUM ) RNUM, 
+    df_DP3 = df_DP3.reset_index()
+    df_DP3.rename(columns={'index':'ROWNUM'}, inplace=True)
+    df_DP3_sorted = df_DP3.sort_values(by=['RNK', ND_.SALESID, ND_.DEMANDPRIORITY, ND_.QTYPROMISED,'ROWNUM'], ascending=[True,True,False,False,True])
+    # 소스상 df_DP3_sorted['RNUM'] = df_DP3_sorted.rank(method='min', ascending=True).reset_index(drop=True).index+1 가 맞으나 아래와 같이 수정하면 에러건수가 줄어듬_20250613
+    df_DP3_sorted['RNUM'] = (df_DP3_sorted.sort_values(by=['RNK', ND_.SALESID, ND_.DEMANDPRIORITY, ND_.QTYPROMISED,'ROWNUM'], ascending=[True,True,False,False,True]).groupby([ND_.ITEMID,ND_.SITEID,'PROMISEDDELDATE2']).cumcount() + 1)
+    # df_DP3_sorted['RNUM'] = df_DP3_sorted.rank(method='min', ascending=True).reset_index(drop=True).index+1
+    # df_DP3['RNUM'] = (df_DP3.sort_values(by=['RNK', ND_.SALESID, ND_.DEMANDPRIORITY, ND_.QTYPROMISED,'ROWNUM'], ascending=[True,True,False,False,True]).groupby([ND_.ITEMID,ND_.SITEID,'PROMISEDDELDATE2']).cumcount() + 1)
+
+    df_DP3_sorted['UPBY'] = ''
+    df_DP = df_DP3_sorted.sort_values([ND_.ITEMID, ND_.SITEID, 'RNK', ND_.SALESID, 'RNUM',ND_.DEMANDPRIORITY, ND_.QTYPROMISED], ascending=[True,True,True,True,True,False,False]).reset_index()
+
+
+    additional_column = ['RNK', 'EXCEPTQ','CUREXCEPT','PROMISEDDELDATE2','RNUM', 'UPBY']
+    df_DP = df_DP[ND_.LIST_COLUMN+additional_column]
+
+    ND_.RNK_IDX = df_DP.columns.get_loc('RNK')
+    ND_.EXCEPTQ_IDX = df_DP.columns.get_loc('EXCEPTQ')
+    ND_.CUREXCEPT_IDX = df_DP.columns.get_loc('CUREXCEPT')
+    ND_.PROMISEDDELDATE2_IDX = df_DP.columns.get_loc('PROMISEDDELDATE2')
+    ND_.RNUM_IDX = df_DP.columns.get_loc('RNUM')
+    ND_.UPBY_IDX = df_DP.columns.get_loc('UPBY')
+
+    colcount = len(ND_.LIST_COLUMN)
+
