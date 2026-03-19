@@ -1,0 +1,162 @@
+                                if(V_SOLINENUM == in_solinenum):
+                                    #기존값이존재하는경우
+                                    b_same_solinenum = True
+                                    
+                            if(b_same_solinenum):
+                                V_SOLINENUM = max_solinenum + 1
+
+                        set_solinenum.add(V_SOLINENUM)
+                        dict_salesorder[dp[ND_.SALESORDERID_IDX]] = set_solinenum
+
+                        list_Outbound_loop_update = np.append(list_Outbound_loop_update, np.array([[dp[ND_.ID_IDX],dp[ND_.SALESORDERID_IDX], dp[ND_.PLANID_IDX], int(V_SOLINENUM), int(dp[ND_.QTYPROMISED_IDX])]]), axis=0)
+
+                        V_REXCEPT -= int(dp[ND_.QTYPROMISED_IDX])
+                    else:
+                        # --! 남은 잔량이 DEMAND보다 적을 경우 !--
+                        # --! QTYPROMISED - 잔량 뺀 나머지는 그대로 둔다 !--
+                        # UPDATE EXP_SOPROMISESRC
+                        # SET    QTYPROMISED  = DP.QTYPROMISED - V_REXCEPT
+                        # WHERE ROWID = DP.ROWA;
+
+                        V_SOLINENUM = dp[ND_.SOLINENUM_IDX] + 200
+                        max_solinenum = 0
+                        b_same_solinenum = False
+                        set_solinenum = dict_salesorder[dp[ND_.SALESORDERID_IDX]]
+
+                        if(int(dp[ND_.SOLINENUM_IDX]) >= 100):
+                            for in_solinenum in set_solinenum:
+                                if(max_solinenum <= in_solinenum):
+                                    max_solinenum = in_solinenum
+
+                                if(V_SOLINENUM == in_solinenum):
+                                    #기존값이존재하는경우
+                                    b_same_solinenum = True
+
+                            if(b_same_solinenum):
+                                V_SOLINENUM = max_solinenum + 1
+                        else:
+                            for in_solinenum in set_solinenum:
+                                if((max_solinenum <= int(in_solinenum))&(int(in_solinenum)<300)):
+                                    max_solinenum = int(in_solinenum)
+
+                                if(V_SOLINENUM == in_solinenum):
+                                    #기존값이존재하는경우
+                                    b_same_solinenum = True
+                                    
+                            if(b_same_solinenum):
+                                V_SOLINENUM = max_solinenum + 1
+
+                        set_solinenum.add(V_SOLINENUM)
+                        dict_salesorder[dp[ND_.SALESORDERID_IDX]] = set_solinenum
+
+                        list_Outbound_loop_update = np.append(list_Outbound_loop_update, np.array([[dp[ND_.ID_IDX],dp[ND_.SALESORDERID_IDX], dp[ND_.PLANID_IDX], int(dp[ND_.SOLINENUM_IDX]), int(dp[ND_.QTYPROMISED_IDX])-V_REXCEPT]]), axis=0)
+                        
+                        # if(V_SOLINENUM <= dp_row[ND_.SOLINENUMMAX_IDX]):
+                        #     V_SOLINENUM = dp_row[ND_.SOLINENUMMAX_IDX]+1
+
+                        dp[ND_.SOLINENUM_IDX] = int(V_SOLINENUM)
+                        dp[ND_.QTYPROMISED_IDX] = int(V_REXCEPT)
+                        dp_row_insert = dp[:colcount].copy()
+                        list_Outbound_loop_insert = np.append(list_Outbound_loop_insert, np.array([dp_row_insert]), axis=0)
+
+                        # dp_row[SITE.QTYPROMISED_IDX] - V_REXCEPT
+                        V_REXCEPT = 0
+
+    df_outbound_update_aaa  = pd.DataFrame(list_Outbound_loop_update)
+    df_outbound_insert      = pd.DataFrame(list_Outbound_loop_insert)
+
+    df_outbound_update_aaa.columns = ['ID', ND_.SALESORDERID, ND_.PLANID, 'SOLINENUM_NEW', 'QTYPROMISED_NEW']
+
+    df_outbound_update = df_outbound_update_aaa[['ID', 'SOLINENUM_NEW', 'QTYPROMISED_NEW']]
+    df_outbound_insert.columns = ND_.LIST_COLUMN
+
+    df_outbound_update = df_outbound_update.astype({'ID':'int32', 'SOLINENUM_NEW':'int32', 'QTYPROMISED_NEW':'int32'})
+
+    df_outbound_mege = df_Outbound_final_2.merge(df_outbound_update, on=['ID'], how='left')
+    df_outbound_mege.loc[~df_outbound_mege['QTYPROMISED_NEW'].isna(),ND_.QTYPROMISED] = df_outbound_mege['QTYPROMISED_NEW']
+    df_outbound_mege.loc[~df_outbound_mege['SOLINENUM_NEW'].isna(),ND_.SOLINENUM] = df_outbound_mege['SOLINENUM_NEW']
+    df_outbound_mege = df_outbound_mege.drop(columns=['QTYPROMISED_NEW','SOLINENUM_NEW'])
+
+
+    df_Outbound_final_4 = pd.concat([df_outbound_mege, df_outbound_insert], axis=0, ignore_index=True)
+    df_Outbound_final_4[ND_.SOLINENUM] = df_Outbound_final_4[ND_.SOLINENUM].fillna(0).astype('float').astype('int32')
+
+    logger.Step(5, 'site OPEN End')
+    #endregion logger.Step(5, 'site OPEN')
+    
+    #region logger.Step(6, 'PRIORITY S SRC')
+    logger.Step(6, 'PRIORITY S SRC Start')
+
+    '''
+    5.PRIORITY S SRC
+    '''
+
+    df_priority = df_Outbound_final_4.loc[df_Outbound_final_4[ND_.PLANID] == V_PLANID]
+    df_priority = df_priority[[ND_.PLANID, ND_.SALESORDERID,ND_.SOLINENUM,ND_.SITEID,ND_.ITEMID,ND_.DEMANDPRIORITY]]
+    df_priority[ND_.SOLINENUM] = df_priority[ND_.SOLINENUM].fillna(0).astype('float').astype('int32')
+
+    df_priority = df_priority.loc[
+            df_priority[ND_.SOLINENUM].between(200, 299)
+        ]
+
+    df_priority[ND_.SOLINENUM] = df_priority[ND_.SOLINENUM].astype('str')
+    df_Outbound_final_4[ND_.SOLINENUM] = df_Outbound_final_4[ND_.SOLINENUM].astype('str')
+
+    df_priority[ND_.DEMANDPRIORITY] = df_priority[ND_.DEMANDPRIORITY].astype('str')
+
+    # AND     EXISTS (SELECT ''X'' FROM V_MTA_SELLERMAP WHERE ITEM = A.ITEM AND SITEID = A.SITEID)
+    df_priority = df_priority.loc[
+            (df_priority[ND_.ITEMID] + df_priority[ND_.SITEID]).isin(
+                df_in_Netting_Seller_Map[V_MTA_SELLERMAP.ITEM]+df_in_Netting_Seller_Map[V_MTA_SELLERMAP.SITEID]
+            )
+        ]
+
+    df_mst_site = df_mst_site.loc[df_mst_site[MST_SITE.SHIPMENTTYPE] == 'DIR_S']
+    df_mst_site = df_mst_site.loc[df_mst_site[MST_SITE.ISVALID] == 'Y']
+
+
+    df_priority = df_priority.loc[
+            ~(df_priority[ND_.SITEID]).isin(df_mst_site[MST_SITE.SITEID])
+        ]
+
+    start_pos, next_pos, total_length = find_priority_position('G_R001::1', 'DEMANDTYPERANK')
+    digit = next_pos - start_pos
+    df_priority['DEMANDPRIORITY_NEW'] = (
+        df_priority[ND_.DEMANDPRIORITY].str[0: start_pos]
+        + '8'.zfill(digit)
+        + df_priority[ND_.DEMANDPRIORITY].str[next_pos:]
+    )
+    df_priority = df_priority[[ND_.PLANID, ND_.SALESORDERID,ND_.SOLINENUM, 'DEMANDPRIORITY_NEW']]
+
+    df_priority[ND_.PLANID] = df_priority[ND_.PLANID].astype('str')
+    df_priority[ND_.SALESORDERID] = df_priority[ND_.SALESORDERID].astype('str')
+    df_priority[ND_.SOLINENUM] = df_priority[ND_.SOLINENUM].astype('int32')
+    df_priority['DEMANDPRIORITY_NEW'] = df_priority['DEMANDPRIORITY_NEW'].astype('str')
+
+    df_Outbound_final_4[ND_.PLANID] = df_Outbound_final_4[ND_.PLANID].astype('str')
+    df_Outbound_final_4[ND_.SALESORDERID] = df_Outbound_final_4[ND_.SALESORDERID].astype('str')
+    df_Outbound_final_4[ND_.SOLINENUM] = df_Outbound_final_4[ND_.SOLINENUM].astype('float').astype('int32')
+    df_Outbound_final_4[ND_.DEMANDPRIORITY] = df_Outbound_final_4[ND_.DEMANDPRIORITY].astype('str')
+
+    df_Outbound_final_5 = df_Outbound_final_4.merge(df_priority, how='left',
+                                    on=[ND_.PLANID, ND_.SALESORDERID,ND_.SOLINENUM])
+
+    df_Outbound_final_5.loc[~df_Outbound_final_5['DEMANDPRIORITY_NEW'].isna(),ND_.DEMANDPRIORITY] = df_Outbound_final_5['DEMANDPRIORITY_NEW']
+    df_Outbound_final_5 = df_Outbound_final_5.drop(columns=['DEMANDPRIORITY_NEW'])
+
+    df_Outbound_final_5[ND_.SOLINENUM] = df_Outbound_final_5[ND_.SOLINENUM].astype('float64').astype('int32')
+    df_Outbound_final_5[ND_.QTYPROMISED] = df_Outbound_final_5[ND_.QTYPROMISED].astype('float64').astype('int32')
+
+    df_Outbound_final_5 = df_Outbound_final_5[ND_.LIST_COLUMN]
+    df_Outbound_final_5 = df_Outbound_final_5.reset_index(drop=True)
+
+    logger.Step(6, 'PRIORITY S SRC End')
+    #endregion logger.Step(6, 'PRIORITY S SRC')
+
+    logger.Note('END GI Netting Sell', 20)
+
+    df_Outbound = df_Outbound_final_5
+
+    return df_Outbound[ND_.LIST_COLUMN]
+
+
