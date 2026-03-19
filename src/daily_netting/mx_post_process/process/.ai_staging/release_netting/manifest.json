@@ -1,0 +1,14 @@
+{
+  "root_name": "release_netting",
+  "source_file_name": "release_netting.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-19 17:08:18",
+  "target_full_path": "src/daily_netting/mx_post_process/process/release_netting.py",
+  "index_path": "src/daily_netting/mx_post_process/process/.ai_staging/release_netting/INDEX.md",
+  "parts_dir": "src/daily_netting/mx_post_process/process/.ai_staging/release_netting/parts",
+  "part_files": [
+    "src/daily_netting/mx_post_process/process/.ai_staging/release_netting/parts/PART_001.txt"
+  ],
+  "part_count": 1,
+  "max_bytes": 24714
+}
