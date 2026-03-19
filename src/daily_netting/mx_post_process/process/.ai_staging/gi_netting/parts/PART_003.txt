@@ -1,0 +1,353 @@
+    for row in df_DP.values:
+        key = row[ND_.ITEMID_IDX]+'::'+row[ND_.SITEID_IDX]+'::'+str(row[ND_.PROMISEDDELDATE2_IDX])
+        value = tuple(row)
+        if key in dict_df_dp:
+            dict_df_dp[key].append(value)
+        else:
+            dict_df_dp[key] = [value]
+
+    nparr_R = df_R.to_numpy()
+        # SITEID_IDX      =  0
+        # ITEM_IDX        =  1
+        # WEEK_IDX	    =  2
+        # RTF_IDX         =  3
+        # GI_IDX          =  4
+        # DP_IDX          =  5
+        # GIDP_IDX        =  6
+        # MPDP_IDX        =  7
+    for r_row in nparr_R:
+
+        V_REXCEPT = r_row[R.GIDP_IDX]
+
+        key = r_row[R.ITEM_IDX] + '::' + r_row[R.SITEID_IDX] + '::' + str(r_row[R.WEEK_IDX])
+
+        if(key in dict_df_dp):
+            dptuple = dict_df_dp.get(key)
+            dplist = list(dptuple)
+
+            for dpinner in dplist:
+                dp = list(dpinner)
+
+                # --! 남은 잔량이 0보다 클 경우만 진행한다. 아니면 다음 대상으로 고고싱 !--
+                if(V_REXCEPT > 0):
+
+                    # --! 남은 잔량이 DEMAND보다 많을 경우 !--
+                    if(V_REXCEPT >= int(dp[ND_.QTYPROMISED_IDX])):
+                        V_SOLINENUM = int(dp[ND_.SOLINENUM_IDX]) + 200
+                        
+                        max_solinenum = 0
+                        b_same_solinenum = False
+                        set_solinenum = dict_salesorder[dp[ND_.SALESORDERID_IDX]]
+
+                        if(int(dp[ND_.SOLINENUM_IDX]) >= 100):
+                            for in_solinenum in set_solinenum:
+                                if(max_solinenum <= int(in_solinenum)):
+                                    max_solinenum = int(in_solinenum)
+
+                                if(V_SOLINENUM == in_solinenum):
+                                    #기존값이존재하는경우
+                                    b_same_solinenum = True
+                                    
+                            if(b_same_solinenum):
+                                V_SOLINENUM = max_solinenum + 1
+                        else:
+                            for in_solinenum in set_solinenum:
+                                if((max_solinenum <= int(in_solinenum))&(int(in_solinenum)<300)):
+                                    max_solinenum = int(in_solinenum)
+
+                                if(V_SOLINENUM == in_solinenum):
+                                    #기존값이존재하는경우
+                                    b_same_solinenum = True
+                                    
+                            if(b_same_solinenum):
+                                V_SOLINENUM = max_solinenum + 1
+
+                        set_solinenum.add(V_SOLINENUM)
+                        dict_salesorder[dp[ND_.SALESORDERID_IDX]] = set_solinenum
+
+                        list_Outbound_loop_update = np.append(list_Outbound_loop_update, np.array([[dp[ND_.ID_IDX],dp[ND_.SALESORDERID_IDX], dp[ND_.PLANID_IDX], int(V_SOLINENUM), int(dp[ND_.QTYPROMISED_IDX])]]), axis=0)
+
+                        V_REXCEPT -= int(dp[ND_.QTYPROMISED_IDX])
+                    else:
+                        # --! 남은 잔량이 DEMAND보다 적을 경우 !--
+                        # --! QTYPROMISED - 잔량 뺀 나머지는 그대로 둔다 !--
+                        # UPDATE EXP_SOPROMISESRC
+                        # SET    QTYPROMISED  = DP.QTYPROMISED - V_REXCEPT
+                        # WHERE ROWID = DP.ROWA;
+
+                        V_SOLINENUM = dp[ND_.SOLINENUM_IDX] + 200
+                        max_solinenum = 0
+                        b_same_solinenum = False
+                        set_solinenum = dict_salesorder[dp[ND_.SALESORDERID_IDX]]
+
+                        if(int(dp[ND_.SOLINENUM_IDX]) >= 100):
+                            for in_solinenum in set_solinenum:
+                                if(max_solinenum <= in_solinenum):
+                                    max_solinenum = in_solinenum
+
+                                if(V_SOLINENUM == in_solinenum):
+                                    #기존값이존재하는경우
+                                    b_same_solinenum = True
+
+                            if(b_same_solinenum):
+                                V_SOLINENUM = max_solinenum + 1
+                        else:
+                            for in_solinenum in set_solinenum:
+                                if((max_solinenum <= int(in_solinenum))&(int(in_solinenum)<300)):
+                                    max_solinenum = int(in_solinenum)
+
+                                if(V_SOLINENUM == in_solinenum):
+                                    #기존값이존재하는경우
+                                    b_same_solinenum = True
+                                    
+                            if(b_same_solinenum):
+                                V_SOLINENUM = max_solinenum + 1
+
+                        set_solinenum.add(V_SOLINENUM)
+                        dict_salesorder[dp[ND_.SALESORDERID_IDX]] = set_solinenum
+
+                        list_Outbound_loop_update = np.append(list_Outbound_loop_update, np.array([[dp[ND_.ID_IDX],dp[ND_.SALESORDERID_IDX], dp[ND_.PLANID_IDX], int(dp[ND_.SOLINENUM_IDX]), int(dp[ND_.QTYPROMISED_IDX])-V_REXCEPT]]), axis=0)
+                        
+                        # if(V_SOLINENUM <= dp_row[ND_.SOLINENUMMAX_IDX]):
+                        #     V_SOLINENUM = dp_row[ND_.SOLINENUMMAX_IDX]+1
+
+                        dp[ND_.SOLINENUM_IDX] = int(V_SOLINENUM)
+                        dp[ND_.QTYPROMISED_IDX] = int(V_REXCEPT)
+                        dp_row_insert = dp[:colcount].copy()
+                        list_Outbound_loop_insert = np.append(list_Outbound_loop_insert, np.array([dp_row_insert]), axis=0)
+
+                        # dp_row[SITE.QTYPROMISED_IDX] - V_REXCEPT
+                        V_REXCEPT = 0
+
+    df_outbound_update_aaa  = pd.DataFrame(list_Outbound_loop_update)
+    df_outbound_insert      = pd.DataFrame(list_Outbound_loop_insert)
+
+    df_outbound_update_aaa.columns = ['ID', ND_.SALESORDERID, ND_.PLANID, 'SOLINENUM_NEW', 'QTYPROMISED_NEW']
+
+    df_outbound_update = df_outbound_update_aaa[['ID', 'SOLINENUM_NEW', 'QTYPROMISED_NEW']]
+    df_outbound_insert.columns = ND_.LIST_COLUMN
+
+    df_outbound_update = df_outbound_update.astype({'ID':'int32', 'SOLINENUM_NEW':'int32', 'QTYPROMISED_NEW':'int32'})
+
+    df_outbound_mege = df_Outbound_final_2.merge(df_outbound_update, on=['ID'], how='left')
+    df_outbound_mege.loc[~df_outbound_mege['QTYPROMISED_NEW'].isna(),ND_.QTYPROMISED] = df_outbound_mege['QTYPROMISED_NEW']
+    df_outbound_mege.loc[~df_outbound_mege['SOLINENUM_NEW'].isna(),ND_.SOLINENUM] = df_outbound_mege['SOLINENUM_NEW']
+    df_outbound_mege = df_outbound_mege.drop(columns=['QTYPROMISED_NEW','SOLINENUM_NEW'])
+
+    # df_Outbound_final_3 = pd.concat([df_Outbound_final_2, df_outbound_mege], axis=0, ignore_index=True)
+    df_Outbound_final_4 = pd.concat([df_outbound_mege, df_outbound_insert], axis=0, ignore_index=True)
+    df_Outbound_final_4[ND_.SOLINENUM] = df_Outbound_final_4[ND_.SOLINENUM].fillna(0).astype('float').astype('int32')
+    # return df_Outbound_final_4
+
+
+    logger.Step(5, 'site OPEN End')
+    #endregion logger.Step(5, 'site OPEN')
+    # print(f"site OPEN : {time.time() - sub_start_time_5:.5f} sec")
+    # sub_start_time_6 = time.time()
+    #region logger.Step(6, 'PRIORITY S SRC')
+    logger.Step(6, 'PRIORITY S SRC Start')
+
+    '''
+    6.PRIORITY S SRC
+    '''
+
+
+
+    # AND     NOT EXISTS (SELECT ''X'' FROM V_MTA_SELLERMAP WHERE ITEM = A.ITEM AND SITEID = A.SITEID)
+    df_priority = df_Outbound_final_4.loc[df_Outbound_final_4[ND_.PLANID] == V_PLANID]
+    df_priority = df_priority[[ND_.PLANID, ND_.SALESORDERID,ND_.SOLINENUM,ND_.SITEID,ND_.ITEMID,ND_.DEMANDPRIORITY]]
+    df_priority[ND_.SOLINENUM] = df_priority[ND_.SOLINENUM].fillna(0).astype('float').astype('int32')
+
+    df_priority = df_priority.loc[
+            df_priority[ND_.SOLINENUM].between(200, 299)
+        ]
+
+    df_priority[ND_.SOLINENUM] = df_priority[ND_.SOLINENUM].astype('str')
+    df_Outbound_final_4[ND_.SOLINENUM] = df_Outbound_final_4[ND_.SOLINENUM].astype('str')
+
+    df_priority[ND_.DEMANDPRIORITY] = df_priority[ND_.DEMANDPRIORITY].astype('str')
+
+    df_priority = df_priority.loc[
+            ~(df_priority[ND_.ITEMID] + df_priority[ND_.SITEID]).isin(
+                df_in_Netting_Seller_Map[V_MTA_SELLERMAP.ITEM]+df_in_Netting_Seller_Map[V_MTA_SELLERMAP.SITEID]
+            )
+        ]
+
+
+    df_mst_site = df_mst_site.loc[df_mst_site[MST_SITE.SHIPMENTTYPE] == 'DIR_S']
+    df_mst_site = df_mst_site.loc[df_mst_site[MST_SITE.ISVALID] == 'Y']
+
+
+    df_priority = df_priority.loc[
+            ~(df_priority[ND_.SITEID]).isin(df_mst_site[MST_SITE.SITEID])
+        ]
+
+    start_pos, next_pos, total_length = find_priority_position('G_R001::1', 'DEMANDTYPERANK')
+    digit = next_pos - start_pos
+    df_priority['DEMANDPRIORITY_NEW'] = (
+        df_priority[ND_.DEMANDPRIORITY].str[: start_pos]
+        + '8'.zfill(digit)
+        + df_priority[ND_.DEMANDPRIORITY].str[next_pos:]
+    )
+    df_priority = df_priority[[ND_.PLANID, ND_.SALESORDERID,ND_.SOLINENUM, 'DEMANDPRIORITY_NEW']]
+
+    df_priority[ND_.PLANID] = df_priority[ND_.PLANID].astype('str')
+    df_priority[ND_.SALESORDERID] = df_priority[ND_.SALESORDERID].astype('str')
+    df_priority[ND_.SOLINENUM] = df_priority[ND_.SOLINENUM].astype('int32')
+    df_priority['DEMANDPRIORITY_NEW'] = df_priority['DEMANDPRIORITY_NEW'].astype('str')
+
+    df_Outbound_final_4[ND_.PLANID] = df_Outbound_final_4[ND_.PLANID].astype('str')
+    df_Outbound_final_4[ND_.SALESORDERID] = df_Outbound_final_4[ND_.SALESORDERID].astype('str')
+    df_Outbound_final_4[ND_.SOLINENUM] = df_Outbound_final_4[ND_.SOLINENUM].astype('float').astype('int32')
+    df_Outbound_final_4[ND_.DEMANDPRIORITY] = df_Outbound_final_4[ND_.DEMANDPRIORITY].astype('str')
+
+
+    df_Outbound_final_5 = df_Outbound_final_4.merge(df_priority, how='left',
+                                    on=[ND_.PLANID, ND_.SALESORDERID,ND_.SOLINENUM])
+
+    df_Outbound_final_5.loc[~df_Outbound_final_5['DEMANDPRIORITY_NEW'].isna(),ND_.DEMANDPRIORITY] = df_Outbound_final_5['DEMANDPRIORITY_NEW']
+    df_Outbound_final_5 = df_Outbound_final_5.drop(columns=['DEMANDPRIORITY_NEW'])
+
+    df_Outbound_final_5[ND_.SOLINENUM] = df_Outbound_final_5[ND_.SOLINENUM].astype('float64').astype('int32')
+    df_Outbound_final_5[ND_.QTYPROMISED] = df_Outbound_final_5[ND_.QTYPROMISED].astype('float64').astype('int32')
+
+
+    df_Outbound_final_5 = df_Outbound_final_5.reset_index(drop=True)
+
+    # return df_Outbound_final_5
+
+    logger.Step(6, 'PRIORITY S SRC End')
+    #endregion logger.Step(6, 'PRIORITY S SRC')
+    # print(f"PRIORITY S SRC : {time.time() - sub_start_time_6:.5f} sec")
+    logger.Note('END GI Netting', 20)
+
+    return df_Outbound_final_5[ND_.LIST_COLUMN], df_MST_GINETTING_final_1, df_MST_GINETING_SALES_final_1
+
+
+
+# # '''
+# # main 함수시작
+# # '''
+
+# logger = LOGGER('Netting')
+
+
+# # 임시
+# V_PLANID = '202526_P'
+# V_PREPLANID = '202525'
+# V_PLANWEEK = '202526'
+# V_WEEK1 = '202526'
+# V_WEEK4 = '202529'
+# V_PREYEAR = '2025'
+# V_PREYWEEK = '25' 
+
+# df_Outbound = pd.DataFrame()
+# df_Outbound_origin = pd.DataFrame()
+
+# #gi_net_sell 전달용
+# df_MST_GINETING_SALES = pd.DataFrame()
+
+# df_Inbound = pd.DataFrame()
+# df_in_Netting_Seller_Map = pd.DataFrame()
+# df_in_Netting_Available_Resource_ODS_W = pd.DataFrame()
+# df_in_Netting_ES_Item_Site_ODS_W = pd.DataFrame()
+# df_in_Netting_Custom_Model_Map_ODS_W = pd.DataFrame()
+# df_Sales_Result_Smm = pd.DataFrame()
+# df_mst_site = pd.DataFrame()
+
+
+# df_Inbound, df_in_Netting_Seller_Map, df_in_Netting_Available_Resource_ODS_W, \
+# df_in_Netting_ES_Item_Site_ODS_W, df_in_Netting_Custom_Model_Map_ODS_W, df_Sales_Result_Smm, \
+# df_mst_site, df_Outbound_origin = _make_gi_netting_dataframe( \
+#                             df_Inbound, df_in_Netting_Seller_Map, df_in_Netting_Available_Resource_ODS_W, \
+#                             df_in_Netting_ES_Item_Site_ODS_W, df_in_Netting_Custom_Model_Map_ODS_W, df_Sales_Result_Smm, \
+#                             df_mst_site)
+
+
+# # # 전체 수행시간 (csv 데이터 read , csv 파일생성 포함)
+# all_start_time = time.time()
+
+# df_Outbound, df_MST_GINETTING, df_MST_GINETING_SALES = do_gi_netting(df_Inbound, df_in_Netting_Seller_Map, df_in_Netting_Available_Resource_ODS_W, df_in_Netting_ES_Item_Site_ODS_W,
+#         df_in_Netting_Custom_Model_Map_ODS_W, df_Sales_Result_Smm, df_mst_site, logger)
+
+# #전체 수행시간
+# print(f"{time.time() - all_start_time:.5f} sec")
+
+
+
+# # # 중간테이블
+# # # df_MST_GINETTING
+# # # df_MST_GINETING_SALES
+# df_MST_GINETTING = df_MST_GINETTING[['PLANID','SITEID','ITEM','WEEK','RTF','GI','EXCEPTQ','AVAIL','DP','CUREXCEPT','CURAVAIL','GIDP','MPDP']]
+# df_MST_GINETTING = df_MST_GINETTING.sort_values(by=['SITEID','ITEM','WEEK'])
+# df_MST_GINETTING.to_csv('MST_GINETTING.csv',index=False)
+# df_MST_GINETING_SALES.to_csv('MST_GINETTING_SALES.csv',index=False)
+
+# outbound_file_name = f"df_outbound최종_{V_PLANID}_DEV.csv"
+
+# df_Outbound = df_Outbound.sort_values(by=[ND_.SALESORDERID,ND_.SOLINENUM])
+# df_Outbound = df_Outbound[[ND_.SALESORDERID,ND_.SOLINENUM,ND_.QTYPROMISED, ND_.DEMANDPRIORITY,ND_.ITEMID, 
+#                         ND_.SITEID, ND_.SALESID, ND_.PROMISEDDELDATE, ND_.AP1ID, ND_.AP2ID,
+#                         ND_.BUILDAHEADTIME, ND_.BUSINESSTYPE,ND_.CHANNELRANK, ND_.CUSTOMERRANK, ND_.DEMANDTYPERANK, 
+#                         ND_.GCID, ND_.GLOBALPRIORITY, ND_.LOCALPRIORITY, ND_.MAP_SATISFY_SS, ND_.MEASURETYPERANK,
+#                         ND_.NO_SPLIT, ND_.PLANID,ND_.PREALLOC_ATTRIBUTE, ND_.PREFERENCERANK, ND_.PRODUCTRANK,
+#                         ND_.REASONCODE,ND_.ROUTING_PRIORITY,ND_.SOPROMISEID,ND_.SALESLEVEL, ND_.SHIPTOID, 
+#                         ND_.TIEBREAK, ND_.TIMEUOM, ND_.WEEKRANK]] 
+# df_Outbound.to_csv(outbound_file_name,index=False)
+
+# outbound_origin_file_name = f"df_outbound최종_{V_PLANID}_DB.csv"
+
+# df_Outbound_origin = df_Outbound_origin.sort_values(by=[ND_.SALESORDERID,ND_.SOLINENUM])
+# df_Outbound_origin = df_Outbound_origin[[ND_.SALESORDERID,ND_.SOLINENUM,ND_.QTYPROMISED, ND_.DEMANDPRIORITY,ND_.ITEMID, 
+#                                         ND_.SITEID, ND_.SALESID, ND_.PROMISEDDELDATE, ND_.AP1ID, ND_.AP2ID,
+#                                         ND_.BUILDAHEADTIME, ND_.BUSINESSTYPE,ND_.CHANNELRANK, ND_.CUSTOMERRANK, ND_.DEMANDTYPERANK, 
+#                                         ND_.GCID, ND_.GLOBALPRIORITY, ND_.LOCALPRIORITY, ND_.MAP_SATISFY_SS, ND_.MEASURETYPERANK,
+#                                         ND_.NO_SPLIT, ND_.PLANID,ND_.PREALLOC_ATTRIBUTE, ND_.PREFERENCERANK, ND_.PRODUCTRANK,
+#                                         ND_.REASONCODE,ND_.ROUTING_PRIORITY,ND_.SOPROMISEID,ND_.SALESLEVEL, ND_.SHIPTOID, 
+#                                         ND_.TIEBREAK, ND_.TIMEUOM, ND_.WEEKRANK]]
+# df_Outbound_origin.to_csv(outbound_origin_file_name,index=False)
+
+
+# # 데이터 타입을 문자열(str)로 변환
+# df_Old_Rename = df_Outbound_origin.astype(str)
+# df_New = df_Outbound.astype(str)
+
+# # df_Old_Rename[ND_.OPTION_CODE] = df_Old_Rename[ND_.OPTION_CODE].str.replace('.0', '', regex=False)
+# # df_New[ND_.OPTION_CODE] = df_New[ND_.OPTION_CODE].str.replace('.0', '', regex=False)
+
+# # 차집합을 사용하여 차이 검증
+# set_Old = set([tuple(row) for row in df_Old_Rename.values])
+# set_New = set([tuple(row) for row in df_New.values])
+
+# # OLD 기준에서 NEW 차집합 : set_Old - set_New
+# oldBase_Row = set_Old - set_New
+# df_OldBase = pd.DataFrame(list(oldBase_Row), columns=df_Old_Rename.columns)
+
+# # NEW 기준에서 OLD 차집합 : set_New - set_Old
+# newBase_Row = set_New - set_Old
+# df_NewBase = pd.DataFrame(list(newBase_Row), columns=df_Old_Rename.columns)
+
+# # 차집합 결과 UNION 처리
+# df_Diff = pd.concat([df_OldBase.assign(Status="OLD"), df_NewBase.assign(Status="NEW")])
+
+# df_Diff = df_Diff.sort_values(by=[ND_.SALESORDERID,ND_.SOLINENUM,'Status']).drop_duplicates()
+# df_Diff = df_Diff[['Status',ND_.SALESORDERID,ND_.SOLINENUM,ND_.QTYPROMISED, ND_.DEMANDPRIORITY,ND_.ITEMID, 
+#                         ND_.SITEID, ND_.SALESID, ND_.PROMISEDDELDATE, ND_.AP1ID, ND_.AP2ID,
+#                         ND_.BUILDAHEADTIME, ND_.BUSINESSTYPE,ND_.CHANNELRANK, ND_.CUSTOMERRANK, ND_.DEMANDTYPERANK, 
+#                         ND_.GCID, ND_.GLOBALPRIORITY, ND_.LOCALPRIORITY, ND_.MAP_SATISFY_SS, ND_.MEASURETYPERANK,
+#                         ND_.NO_SPLIT, ND_.PLANID,ND_.PREALLOC_ATTRIBUTE, ND_.PREFERENCERANK, ND_.PRODUCTRANK,
+#                         ND_.REASONCODE,ND_.ROUTING_PRIORITY,ND_.SOPROMISEID,ND_.SALESLEVEL, ND_.SHIPTOID, 
+#                         ND_.TIEBREAK, ND_.TIMEUOM, ND_.WEEKRANK]]
+# df_Diff.to_csv(f'ginet_Diff_{V_PLANID}.csv',index=False)
+
+# # 검증결과 출력
+# print('====================================================================================')
+# print(f'OLD / NEW 전체건수: {len(df_Old_Rename)} / {len(df_New)}')
+# print(f'OLD - NEW 차이건수: {len(df_OldBase)}')
+# print(f'NEW - OLD 차이건수: {len(df_NewBase)}')
+# print('====================================================================================')
+
+
+
+# # '''
+# # main 함수 끝
