@@ -1,0 +1,14 @@
+{
+  "root_name": "processor",
+  "source_file_name": "processor.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-20 08:56:27",
+  "target_full_path": "src/daily_netting/vd_post_process/processor.py",
+  "staging_path": "src/daily_netting/vd_post_process/.ai_staging/processor/20260320_085619_27faf21d",
+  "parts_dir": "src/daily_netting/vd_post_process/.ai_staging/processor/20260320_085619_27faf21d/parts",
+  "part_files": [
+    "src/daily_netting/vd_post_process/.ai_staging/processor/20260320_085619_27faf21d/parts/PART_001.txt"
+  ],
+  "part_count": 1,
+  "max_bytes": 24714
+}
