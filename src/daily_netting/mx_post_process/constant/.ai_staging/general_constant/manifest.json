@@ -1,0 +1,14 @@
+{
+  "root_name": "general_constant",
+  "source_file_name": "general_constant.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-19 15:31:06",
+  "target_full_path": "src/daily_netting/mx_post_process/constant/general_constant.py",
+  "index_path": "src/daily_netting/mx_post_process/constant/.ai_staging/general_constant/INDEX.md",
+  "parts_dir": "src/daily_netting/mx_post_process/constant/.ai_staging/general_constant/parts",
+  "part_files": [
+    "src/daily_netting/mx_post_process/constant/.ai_staging/general_constant/parts/PART_001.txt"
+  ],
+  "part_count": 1,
+  "max_bytes": 24714
+}
