@@ -1,0 +1,51 @@
+                CM.NUM2: 'float64',
+                CM.NUM3: 'float64',
+                CM.DATE1: 'datetime64[ns]',
+                CM.DATE2: 'datetime64[ns]',
+                CM.DATE3: 'datetime64[ns]',
+            })
+        if self.df_delivery_plan.empty:
+            self.df_delivery_plan = self.df_delivery_plan.astype({
+                DP_.QTYOPEN: 'float64',
+            })
+        if self.df_short_reason.empty:
+            self.df_short_reason = self.df_short_reason.astype({
+                SR_.PROBLEMID: 'float64',
+                SR_.SHORTQTY: 'float64',
+            })
+        if self.df_distribution_orders.empty:
+            self.df_distribution_orders = self.df_distribution_orders.astype({
+                DO_.QTY: 'float64',
+            })
+        if self.df_distribution_orders_sell.empty:
+            self.df_distribution_orders_sell = self.df_distribution_orders_sell.astype({
+                DOS_.QTY: 'float64',
+            })
+        if self.df_sales_result.empty:
+            self.df_sales_result = self.df_sales_result.astype({
+                SR.QTY_RTF: 'float64',
+                SR.QTY_GI: 'float64',
+            })
+        if self.df_channel_stock_master.empty:
+            self.df_channel_stock_master = self.df_channel_stock_master.astype({
+                CSM.EFFSTARTDATE: 'datetime64[ns]',
+                CSM.EFFENDDATE: 'datetime64[ns]',
+                CSM.TOBE: 'float64',
+            })
+        if self.df_channel_stock_ap2_master.empty:
+            self.df_channel_stock_ap2_master = self.df_channel_stock_ap2_master.astype({
+                CSAP2M.ASIS: 'float64',
+            })
+        if self.df_estore_replenishment.empty:
+            self.df_estore_replenishment = self.df_estore_replenishment.astype({
+                ESR.PLANNEDENDDATE: 'datetime64[ns]',
+                ESR.REPLENISHMENTQTY: 'float64',
+            })
+        if self.df_prebuild.empty:
+            self.df_prebuild = self.df_prebuild.astype({
+                P.BUILDAHEADTIME: 'float64',
+            })
+        if self.df_sales_order_lp.empty:
+            self.df_sales_order_lp = self.df_sales_order_lp.astype({
+                SOLP.QTY: 'float64',
+            })
