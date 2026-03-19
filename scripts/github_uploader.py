@@ -1,6 +1,37 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+GitHub Contents API를 사용하여 파일을 업로드하는 스크립트
+- lauch.json 설정예시
+        {
+            "name": "GitHub Upload processor.py + Merge",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/nscm/scripts/github_uploader.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "envFile": "${workspaceFolder}/nscm/.env.github",
+            "args": [
+                "--owner", "chanjoolee",
+                "--repo", "nscm",
+                "--branch", "main",
+                // "--file", "${workspaceFolder}/test/plug-in script/PYNettingVDPostD.py",
+                // "--publish-path", "src/plug-in script/PYNettingVDPostD.py",
+                "--file", "/Users/chanjoolee/workspace/etc/paste_01.txt",
+                "--publish-path", "src/etc/paste_01.txt",
+                "--mode", "text",
+                "--always-chunk-text",
+                "--max-bytes", "45000",
+                "--sleep-secs", "0.5",
+                "--dispatch-after-upload",
+                "--dispatch-workflow", "merge_parts.yml"
+            ]
+        }
+
+
+"""
 from __future__ import annotations
 
 import argparse
