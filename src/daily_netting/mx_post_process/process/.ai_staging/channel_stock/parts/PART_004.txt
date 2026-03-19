@@ -1,0 +1,444 @@
+    # #         df_in_netting_code_map['CATEGORY'].isin(['HC_WL_DP_UNFORD_CHSTOCK', 'HC_WL_DP_UNFORD_CHSTOCK_ACNT'])
+    # #     ]
+    # # dfMTA_CODEMAP = dfMTA_CODEMAP[['CATEGORY','CODE1','CODE2_NUM']]
+
+
+    # # #    AND DECODE(B.CATEGORY(+),'HC_WL_DP_UNFORD_CHSTOCK' 
+    # # #                            , A.AP2ID
+    # # #                            ,'HC_WL_DP_UNFORD_CHSTOCK_ACNT'
+    # # #                            , A.SALESID) = B.CODE1(+)
+    # # df_demandinner['JOIN_KEY'] = df_demandinner.apply(lambda row:row['AP2ID'] if 'HC_WL_DP_UNFORD_CHSTOCK' in dfMTA_CODEMAP['CATEGORY'].values else row['SALESID'], axis=1)
+    # # df_demandinner = df_demandinner.merge(dfMTA_CODEMAP, left_on='JOIN_KEY', right_on='CODE1', how='left')
+
+    # df_demandinner = df_demandinner.merge(dfMTA_CODEMAP, how='left',left_on=ND_.AP2ID, right_on=CM.CODE1)
+
+
+    # # AND A.PROMISEDDELDATE < SYSDATE + 7 * NVL(B.CODE2_NUM+V_NUM, 8)
+    # df_demandinner[CM.CODE2_NUM] = df_demandinner[CM.CODE2_NUM].astype('str')
+    # df_demandinner[CM.CODE2_NUM] = df_demandinner.apply(
+    #     lambda row:'8' if np.isnan(float(row[CM.CODE2_NUM])) else str(float(row[CM.CODE2_NUM])+V_NUM), axis=1
+    # )
+    # df_demandinner[CM.CODE2_NUM] = df_demandinner[CM.CODE2_NUM].astype('float').astype('int32')
+
+    # df_demandinner['DUEDATE_DELTA'] =  datetime.combine(date.fromisoformat(V_EFFSTARTDATE),datetime.min.time()) + pd.to_timedelta(((df_demandinner[CM.CODE2_NUM]) *7), unit='D')
+    # df_demandinner['DUEDATE']  = df_demandinner[ND_.PROMISEDDELDATE].astype('datetime64[ns]')
+    # df_demandinner = df_demandinner.loc[df_demandinner['DUEDATE'] < df_demandinner['DUEDATE_DELTA']]
+
+    # # AND NOT EXISTS (SELECT 'X' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.REQITEM AND ISVALID = 'Y')
+    # df_demandinner = df_demandinner.loc[
+    #     ~(df_demandinner[ND_.ITEMID]+'Y').isin(
+    #         df_in_Netting_Custom_Model_Map_ODS_W[CMM.CUSTOMITEM] + df_in_Netting_Custom_Model_Map_ODS_W[CMM.ISVALID]
+    #     )
+    # ]
+
+    # # AND NOT EXISTS (SELECT ITEM, SITEID, SALESID FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SITEID = A.SITEID AND SALESID = A.SALESID)
+    # df_MVES_ITEMSITE = df_in_Netting_ES_Item_Site_ODS_W
+    # df_demandinner = df_demandinner.loc[
+    #         ~(df_demandinner[ND_.ITEMID] + df_demandinner[ND_.SALESID] + df_demandinner[ND_.SITEID]).isin(
+    #             df_MVES_ITEMSITE[ESIS.ITEM]+df_MVES_ITEMSITE[ESIS.SALESID]+df_MVES_ITEMSITE[ESIS.SITEID]
+    #         )
+    #     ]
+
+    # df_demandinner['UNFORDQTY'] = 0
+
+
+    # df_demandinner.rename(columns={
+    #     ND_.QTYPROMISED:'CHSTOCKQTY'
+    # }, inplace=True)
+
+
+    # df_demandinner=df_demandinner[[ND_.SALESID, ND_.SITEID, ND_.ITEMID, 'DUEDATE', 'UNFORDQTY', 'CHSTOCKQTY']]
+    # df_demandinner.columns = ['SALESID', 'SITEID', 'ITEM', 'DUEDATE', 'UNFORDQTY', 'CHSTOCKQTY']
+
+
+    # df_demandinnerqq = df_demand001.copy(deep=True)
+    # df_demandinnerqq[ND_.PROMISEDDELDATE]  = df_demandinnerqq[ND_.PROMISEDDELDATE].astype('datetime64[ns]')
+    # df_demandinnerqq['PROMISEDDELDATE2'] = df_demandinnerqq[ND_.PROMISEDDELDATE].dt.strftime('%Y-%m-%d')
+    # df_shortreason['UNFORDQTY']  = df_shortreason['UNFORDQTY'].astype('float32').astype('int32')
+    # df_shortreason['CHSTOCKQTY']  = df_shortreason['CHSTOCKQTY'].astype('float32').astype('int32')
+    # df_demandinner['UNFORDQTY']  = df_demandinner['UNFORDQTY'].astype('float32').astype('int32')
+    # df_demandinner['CHSTOCKQTY']  = df_demandinner['CHSTOCKQTY'].astype('float32').astype('int32')
+
+    # df_ss_inner = pd.concat([df_shortreason, df_demandinner], axis=0, ignore_index=True)
+
+    # df_ss_inner = df_ss_inner.groupby(by=['SALESID','SITEID','ITEM','DUEDATE'])[['UNFORDQTY','CHSTOCKQTY']].sum()
+    # df_ss_inner['RNK'] = (df_ss_inner.sort_values(by=['DUEDATE'], ascending=[True]).groupby(['SALESID','SITEID','ITEM']).cumcount() + 1)
+
+    # df_ss_inner = df_ss_inner.reset_index()
+
+    # # SUM(UNFORDQTY) OVER (PARTITION BY SALESID, SITEID, ITEM) UNFORDSUM
+    # # SUM(CHSTOCKQTY) OVER (PARTITION BY SALESID, SITEID, ITEM) CHSTOCKSUM
+
+    # df_ss_inner[['UNFORDSUM','CHSTOCKSUM']]= df_ss_inner.groupby(['SALESID', 'SITEID', 'ITEM'])[['UNFORDQTY','CHSTOCKQTY']].transform('sum')
+
+    # df_ss_inner = df_ss_inner.reset_index()
+
+    # df_ss_inner.rename(columns={
+    #     'DUEDATE':'PROMISEDDELDATE'
+    # }, inplace=True)
+
+    # # WHERE UNFORDSUM <> 0 AND CHSTOCKSUM <> 0
+    # df_ss_inner = df_ss_inner.loc[df_ss_inner['UNFORDSUM'] > 0 ]
+    # df_ss_inner = df_ss_inner.loc[df_ss_inner['CHSTOCKSUM'] > 0 ]
+    # df_ss_inner = df_ss_inner[['SALESID', 'SITEID', 'ITEM', 'PROMISEDDELDATE', 'UNFORDQTY', 'CHSTOCKQTY',  'UNFORDSUM', 'CHSTOCKSUM', 'RNK']]
+
+    # df_demandinnerqq = df_demand001.copy(deep=True)
+    # df_demandinnerqq[ND_.PROMISEDDELDATE]  = df_demandinnerqq[ND_.PROMISEDDELDATE].astype('datetime64[ns]')
+    # df_demandinnerqq['PROMISEDDELDATE3'] = df_demandinnerqq[ND_.PROMISEDDELDATE].dt.strftime('%Y-%m-%d')
+
+    # # AND MOD(NVL(OPTION_CODE,0), 2) = 1
+    # df_demandinnerqq['OPTION_CODE2'] = df_demandinnerqq[ND_.OPTION_CODE]
+    # df_demandinnerqq.loc[df_demandinnerqq['OPTION_CODE2'].isna() ,'OPTION_CODE2'] = '0'
+    # df_demandinnerqq.loc[df_demandinnerqq['OPTION_CODE2']=='','OPTION_CODE2'] = '0'
+
+    # df_demandinnerqq['OPTION_CODE2'] = df_demandinnerqq['OPTION_CODE2'].astype('int32')
+    # df_demandinnerqq['OPTION_CODE2'] = df_demandinnerqq['OPTION_CODE2'].mod(2)
+    # df_demandinnerqq = df_demandinnerqq.loc[df_demandinnerqq['OPTION_CODE2']==1]
+
+    # df_demandinnerqq[ND_.QTYPROMISED] = df_demandinnerqq[ND_.QTYPROMISED].astype('int32')
+
+    # ND_.ROWA_IDX = df_demandinnerqq.columns.get_loc('ROWA')
+    # count_using_column = len(ND_.LIST_COLUMN) + 1 # ROWA
+
+    # list_Outbound_loop_update_ss  = []
+
+    # list_Outbound_loop_update_qq  = []
+    # list_Outbound_loop_update_qq2 = []
+    # list_Outbound_loop_insert_qq  = []
+
+
+
+
+    # nparr_ss_inner = df_ss_inner.to_numpy()
+
+    # for ss_row in nparr_ss_inner:
+
+    #     if(int(ss_row[SS.RNK_IDX]) == 1):
+    #         V_AVAILQTY2 = ss_row[SS.UNFORDQTY_IDX]
+    #     else:
+    #         V_AVAILQTY2 = ss_row[SS.UNFORDQTY_IDX] + V_ROLLING
+
+    #     if(V_AVAILQTY2 >= ss_row[SS.CHSTOCKQTY_IDX]):
+    #         V_ALIVE = ss_row[SS.CHSTOCKQTY_IDX]
+    #     else:
+    #         V_ALIVE = V_AVAILQTY2
+
+    #     if((V_AVAILQTY2 - int(ss_row[SS.CHSTOCKQTY_IDX])) < 0):
+    #         V_ROLLING = 0
+    #     else:
+    #         V_ROLLING = V_AVAILQTY2 - int(ss_row[SS.CHSTOCKQTY_IDX])
+
+    #     if((int(ss_row[SS.CHSTOCKQTY_IDX]) - V_AVAILQTY2) < 0):
+    #         V_CHSTOCK = 0
+    #     else:
+    #         V_CHSTOCK = int(ss_row[SS.CHSTOCKQTY_IDX]) - V_AVAILQTY2
+
+
+    #     if(V_AVAILQTY2 >= int(ss_row[SS.CHSTOCKQTY_IDX])):
+
+    #         list_Outbound_loop_update_ss.append(
+    #             np.array([
+    #                 V_PLANID, str(1), ss_row[SS.SALESID_IDX], ss_row[SS.SITEID_IDX],
+    #                 ss_row[SS.ITEM_IDX], str(ss_row[SS.PROMISEDDELDATE_IDX]), str(0), 'C/Stock_UNF_ORD'
+    #             ])
+    #         )
+
+
+    #         if((V_AVAILQTY2 - int(ss_row[SS.CHSTOCKQTY_IDX])) < 0):
+    #             V_AVAILQTY2 = 0
+    #         else:
+    #             V_AVAILQTY2 -= int(ss_row[SS.CHSTOCKQTY_IDX])
+
+    #     elif((V_AVAILQTY2 < int(ss_row[SS.CHSTOCKQTY_IDX])) & (V_AVAILQTY2 > 0)):
+    #         #  AND SALESID = SS.SALESID
+    #         #  AND SITEID = SS.SITEID
+    #         #  AND ITEM = SS.ITEM
+    #         #  AND PROMISEDDELDATE = SS.PROMISEDDELDATE
+    #         df_demandinnerqq_loop = df_demandinnerqq.loc[df_demandinnerqq[ND_.SALESID] == ss_row[SS.SALESID_IDX]]
+    #         df_demandinnerqq_loop = df_demandinnerqq_loop.loc[df_demandinnerqq_loop[ND_.SITEID] == ss_row[SS.SITEID_IDX]]
+    #         df_demandinnerqq_loop = df_demandinnerqq_loop.loc[df_demandinnerqq_loop[ND_.ITEMID] == ss_row[SS.ITEM_IDX]]
+    #         df_demandinnerqq_loop = df_demandinnerqq_loop.loc[
+    #             df_demandinnerqq_loop['PROMISEDDELDATE3'] == ss_row[SS.PROMISEDDELDATE_IDX].strftime('%Y-%m-%d')
+    #         ]
+
+    #         # ORDER BY DEMANDPRIORITY, QTYPROMISED
+    #         df_demandinnerqq_loop = df_demandinnerqq_loop.sort_values([ND_.DEMANDPRIORITY, ND_.QTYPROMISED], ascending=[True,True])
+
+    #         nparr_qq = df_demandinnerqq_loop.to_numpy()
+    #         for qq_row in nparr_qq:
+    #             if(V_AVAILQTY2 >= int(qq_row[ND_.QTYPROMISED_IDX])):
+    #                 list_Outbound_loop_update_qq.append(np.array([str(V_PLANID), str(1), str(qq_row[ND_.SALESORDERID_IDX]), str(qq_row[ND_.SOLINENUM_IDX]), str(0), str('C/Stock_UNF_ORD_PART1')]))
+
+    #                 # V_AVAILQTY2 := CASE WHEN V_AVAILQTY2 - ND_.QTYPROMISED <0 THEN 0 ELSE V_AVAILQTY2 - ND_.QTYPROMISED END ;
+    #                 if(V_AVAILQTY2 - int(qq_row[ND_.QTYPROMISED_IDX]) < 0) :
+    #                     V_AVAILQTY2 = 0
+    #                 else:
+    #                     V_AVAILQTY2 -= int(qq_row[ND_.QTYPROMISED_IDX])
+    #             elif((V_AVAILQTY2 < int(qq_row[ND_.QTYPROMISED_IDX])) & (V_AVAILQTY2 > 0)):
+    #                 list_Outbound_loop_update_qq2.append(np.array([str(V_PLANID), str(qq_row[ND_.SALESORDERID_IDX]), str(qq_row[ND_.SOLINENUM_IDX]), str(int(qq_row[ND_.QTYPROMISED_IDX])- V_AVAILQTY2), 'C/Stock_UNF_ORD_PART3'+str(V_AVAILQTY2), str(qq_row[ND_.OPTION_CODE_IDX])]))
+
+    #                 V_SOLINENUM = int(qq_row[ND_.SOLINENUM_IDX])+1
+    #                 upby = 'C/Stock_UNF_ORD_PART2'
+    #                 # --! INSERT 중복시 예외 처리 !-- 시작
+    #                 max_solinenum = 0
+    #                 b_same_solinenum = False
+    #                 set_solinenum = dict_salesorder[qq_row[ND_.SALESORDERID_IDX]]
+                    
+    #                 for in_solinenum in set_solinenum:
+    #                     if(max_solinenum <= in_solinenum):
+    #                         max_solinenum = in_solinenum
+    #                         upby = 'C/Stock_UNF_ORD_PART2'+str(V_AVAILQTY2)
+
+    #                     if(V_SOLINENUM == in_solinenum):
+    #                         #기존값이존재하는경우
+    #                         b_same_solinenum = True
+                            
+    #                 if(b_same_solinenum):
+    #                     V_SOLINENUM = max_solinenum + 1
+    #                     upby = 'C/Stock_UNF_ORD_PART2'
+
+    #                 set_solinenum.add(V_SOLINENUM)
+    #                 dict_salesorder[qq_row[ND_.SALESORDERID_IDX]] = set_solinenum
+    #                 # --! INSERT 중복시 예외 처리 !-- 끝
+                    
+    #                 i_qtypromise = V_AVAILQTY2
+    #                 i_optioncode = int(np.nan_to_num(qq_row[ND_.OPTION_CODE_IDX], copy=False))-1
+
+    #                 row = qq_row[:count_using_column].copy()
+    #                 row[ND_.ROWA_IDX] = 0
+    #                 row[ND_.SOLINENUM_IDX] = V_SOLINENUM
+    #                 row[ND_.QTYPROMISED_IDX] = i_qtypromise
+    #                 row[ND_.OPTION_CODE_IDX] = i_optioncode
+    #                 list_Outbound_loop_insert_qq.append(row)
+
+    #                 # V_AVAILQTY2 := CASE WHEN V_AVAILQTY2 - ND_.QTYPROMISED < 0 THEN 0 ELSE V_AVAILQTY2 - ND_.QTYPROMISED END;
+    #                 if(V_AVAILQTY2 - int(qq_row[ND_.QTYPROMISED_IDX]) < 0):
+    #                     V_AVAILQTY2 = 0
+    #                 else:
+    #                     V_AVAILQTY2 -= int(qq_row[ND_.QTYPROMISED_IDX])
+
+
+    # df_demand001['OPTION_CODE2'] = df_demand001[ND_.OPTION_CODE]
+    # df_demand001.loc[df_demand001['OPTION_CODE2'].isna() ,'OPTION_CODE2'] = '0'
+    # df_demand001.loc[df_demand001['OPTION_CODE2']=='','OPTION_CODE2'] = '0'
+
+    # df_demand001['OPTION_CODE2'] = df_demand001['OPTION_CODE2'].astype('int32')
+    # df_demand001['OPTION_CODE2'] = df_demand001['OPTION_CODE2'].mod(2)
+    # df_demand001[ND_.PROMISEDDELDATE]  = df_demand001[ND_.PROMISEDDELDATE].astype('datetime64[ns]')
+    # df_demand001[ND_.QTYPROMISED]  = df_demand001[ND_.QTYPROMISED].astype('object')
+    # df_demand001[ND_.SOLINENUM] = df_demand001[ND_.SOLINENUM].astype('int32')
+
+
+    # df_outbound_update_ss = pd.DataFrame(list_Outbound_loop_update_ss)
+    # df_outbound_update_ss.columns = [ND_.PLANID,'OPTION_CODE2',ND_.SALESID,ND_.SITEID,ND_.ITEMID,ND_.PROMISEDDELDATE,'OPTION_CODE_NEW','UPBY_NEW']
+    # df_outbound_update_ss = df_outbound_update_ss.astype({'OPTION_CODE2':'int32', ND_.PROMISEDDELDATE:'datetime64[ns]'})
+
+    # df_outbound_update_ss = df_outbound_update_ss.drop_duplicates()
+    # df_demand001 = df_demand001.drop_duplicates()
+
+    # df_demand001 = df_demand001.merge(
+    #     df_outbound_update_ss, how='left',
+    #     on=[ND_.PLANID,'OPTION_CODE2',ND_.SALESID,ND_.SITEID,ND_.ITEMID,ND_.PROMISEDDELDATE,]
+    # )
+    # df_demand001.loc[~df_demand001['OPTION_CODE_NEW'].isna(),ND_.OPTION_CODE] = df_demand001['OPTION_CODE_NEW']
+    # df_demand001 = df_demand001.drop(columns=['OPTION_CODE_NEW','UPBY_NEW'])
+
+
+    # df_outbound_update_qq = pd.DataFrame(list_Outbound_loop_update_qq)
+    # df_outbound_update_qq.columns = [ND_.PLANID,'OPTION_CODE2',ND_.SALESORDERID,ND_.SOLINENUM,'OPTION_CODE_NEW','UPBY_NEW']
+    # df_outbound_update_qq = df_outbound_update_qq.astype({'OPTION_CODE2':'int32',ND_.SOLINENUM:'int32'})
+
+    # df_demand001 = df_demand001.merge(
+    #     df_outbound_update_qq, how='left', on=[ND_.PLANID,'OPTION_CODE2',ND_.SALESORDERID,ND_.SOLINENUM]
+    # )
+    # df_demand001.loc[~df_demand001['OPTION_CODE_NEW'].isna(),ND_.OPTION_CODE] = df_demand001['OPTION_CODE_NEW']
+    # df_demand001 = df_demand001.drop(columns=['OPTION_CODE_NEW','UPBY_NEW'])
+
+
+    # df_outbound_update_qq2 = pd.DataFrame(list_Outbound_loop_update_qq2)
+    # df_outbound_update_qq2.columns = [ND_.PLANID,ND_.SALESORDERID,ND_.SOLINENUM,'QTYPROMISED_NEW','UPBY_NEW','OPTION_CODE_NEW']
+    # df_outbound_update_qq2 = df_outbound_update_qq2.astype({ND_.SOLINENUM:'int32'})
+
+
+    # df_demand001a = df_demand001.copy(deep=True)
+    # df_demand001a = df_demand001a.merge(df_outbound_update_qq2, how='left', on=[ND_.PLANID,ND_.SALESORDERID,ND_.SOLINENUM])
+
+    # df_demand001a.loc[~df_demand001a['QTYPROMISED_NEW'].isna(),ND_.QTYPROMISED] = df_demand001a['QTYPROMISED_NEW']
+    # df_demand001a.loc[~df_demand001a['OPTION_CODE_NEW'].isna(),ND_.OPTION_CODE] = df_demand001a['OPTION_CODE_NEW']
+    # df_demand001a.loc[~df_demand001a['UPBY_NEW'].isna(),'UPBY'] = df_demand001a['UPBY_NEW']
+    # df_demand001a = df_demand001a.drop(columns=['QTYPROMISED_NEW','OPTION_CODE_NEW','UPBY_NEW'])
+
+    # df_demand001a = df_demand001a.drop(columns=['OPTION_CODE2'])
+
+    # df_outbound_insert_qq = pd.DataFrame(list_Outbound_loop_insert_qq)
+    # df_outbound_insert_qq.columns = df_Outbound1.columns
+    # df_demand002 = pd.concat([df_demand001a, df_outbound_insert_qq], axis=0, ignore_index=True)
+
+    # logger.Step(7, 'CH.STOCK으로 잘린 것들 UNF_ORD 수량만큼 살려준다 2016.06.08 End')
+    #endregion logger.Step(7, 'CH.STOCK으로 잘린 것들 UNF_ORD 수량만큼 살려준다 2016.06.08')
+
+    #region logger.Step(8, 'Demend Priority 설정')
+    logger.Step(8, 'Demend Priority 설정 Start')
+
+    df_demand002 = df_demand002.loc[df_demand002[ND_.PLANID] == V_PLANID]
+    df_demand002['OPTION_CODE2'] = df_demand002[ND_.OPTION_CODE]
+    df_demand002.loc[df_demand002['OPTION_CODE2'].isna() ,'OPTION_CODE2'] = '0'
+    df_demand002.loc[df_demand002['OPTION_CODE2']=='','OPTION_CODE2'] = '0'
+    df_demand002['OPTION_CODE2'] = df_demand002['OPTION_CODE2'].astype('int32')
+
+    df_demand002['OPTION_CODE2'] = df_demand002['OPTION_CODE2'].mod(2)
+
+    df_priority = df_demand002.copy(deep=True)
+
+
+    df_priority = df_priority.loc[df_priority['OPTION_CODE2'] == 1]
+
+    start_pos, next_pos, total_length = find_priority_position('G_R001::1', 'DEMANDTYPERANK')
+    digit = next_pos - start_pos
+    df_priority['DEMANDPRIORITY_NEW'] = (
+        df_priority[ND_.DEMANDPRIORITY].str[:start_pos]
+        + '9'.zfill(digit)
+        + df_priority[ND_.DEMANDPRIORITY].str[next_pos:]
+    )
+    df_priority = df_priority[[ND_.PLANID, ND_.SALESORDERID, ND_.SOLINENUM, 'OPTION_CODE2','DEMANDPRIORITY_NEW']]
+    df_priority[ND_.PLANID] = df_priority[ND_.PLANID].astype('str')
+    df_priority[ND_.SALESORDERID] = df_priority[ND_.SALESORDERID].astype('str')
+    df_priority[ND_.SOLINENUM] = df_priority[ND_.SOLINENUM].astype('int32')
+    df_priority['OPTION_CODE2'] = df_priority['OPTION_CODE2'].astype('int64')
+    df_priority['DEMANDPRIORITY_NEW'] = df_priority['DEMANDPRIORITY_NEW'].astype('str')
+
+    df_demand002[ND_.PLANID] = df_demand002[ND_.PLANID].astype('str')
+    df_demand002[ND_.SALESORDERID] = df_demand002[ND_.SALESORDERID].astype('str')
+    df_demand002[ND_.SOLINENUM] = df_demand002[ND_.SOLINENUM].astype('float').astype('int32')
+    df_demand002['OPTION_CODE2'] = df_demand002['OPTION_CODE2'].astype('float').astype('int32')
+    df_demand002[ND_.DEMANDPRIORITY] = df_demand002[ND_.DEMANDPRIORITY].astype('str')
+
+    df_demand003 = df_demand002.merge(df_priority, how='left',
+                                    on=[ND_.PLANID, 'OPTION_CODE2', ND_.SALESORDERID, ND_.SOLINENUM,])
+
+    df_demand003.loc[~df_demand003['DEMANDPRIORITY_NEW'].isna(),ND_.DEMANDPRIORITY] = df_demand003['DEMANDPRIORITY_NEW']
+    df_demand003 = df_demand003.drop(columns=['DEMANDPRIORITY_NEW'])
+
+    df_outbound = df_demand003.astype({ND_.QTYPROMISED:'int32', ND_.PROMISEDDELDATE:'datetime64[ns]'})
+
+    df_chstock_step8 = df_outbound[ND_.LIST_COLUMN]
+
+    logger.Step(8, 'Demend Priority 설정 End')
+    #endregion logger.Step(8, 'Demend Priority 설정')
+
+    #region logger.Step(9, 'Channel Short 재분류')
+    logger.Step(9, 'Channel Short 재분류 Start')
+    
+    ## 재분류의 기준이 되는 df_short_reason_dp_guide 전처리
+
+    # 우선순위 정렬 및 중복 제거
+    df_short_reason_dp_guide = df_short_reason_dp_guide.sort_values(by=[
+        SRDPG.SALESID, SRDPG.ITEM, SRDPG.SITEID, SRDPG.WEEK, SRDPG.DEMANDID
+    ])
+    df_short_reason_dp_guide = df_short_reason_dp_guide.drop_duplicates(subset=SRDPG.DEMANDID)
+
+    # Promised Del Date 기준으로 week 변경
+    df_short_reason_dp_guide[SRDPG.WEEK] = pd.to_datetime(df_short_reason_dp_guide[SRDPG.WEEK] + '7', format='%G%V%u')
+
+    # 빠른 계산을 위해 numpy array로 변환
+    nparr_reason_dp_guide_cause = df_short_reason_dp_guide.to_numpy()
+
+    ## demand에 대한 전처리
+    # option code의 나머지가 1이고, qty > 0인 것이 재분류 대상
+    series_classify_condition = (
+        (df_chstock_step8[ND_.OPTION_CODE].astype(float)%2==1)
+        & (df_chstock_step8[ND_.QTYPROMISED]>0)
+    )
+
+    # 재분류 대상과 비대상 분리
+    df_classification_target = df_chstock_step8[series_classify_condition].sort_values(by=[
+        ND_.SALESID, ND_.ITEMID, ND_.SITEID, ND_.PROMISEDDELDATE, ND_.DEMANDPRIORITY,
+        ND_.QTYPROMISED, ND_.SALESORDERID, ND_.SOLINENUM,
+    ])
+    df_classification_non_target = df_chstock_step8.loc[~series_classify_condition]
+
+    # 재분류 과정에서 분리된 demand를 담을 list
+    list_splited = []
+
+    # 재분류 할 demand numpy array 변환
+    nparr_classification_target = df_classification_target.to_numpy()
+
+    ## 재분류
+    # 탈출 조건 설정을 위해 각각의 길이를 구하고, idx를 초기화
+    len_shreason_dp_guideause = len(nparr_reason_dp_guide_cause)
+    len_classification_target = len(nparr_classification_target)
+    short_reason_dp_guide_idx = 0
+    classification_target_idx = 0
+
+    while short_reason_dp_guide_idx < len_shreason_dp_guideause and classification_target_idx < len_classification_target:
+        ct_row = nparr_classification_target[classification_target_idx]
+        sc_row = nparr_reason_dp_guide_cause[short_reason_dp_guide_idx]
+
+        # 동일한 sales, item, site, week가 아닐 경우 idx를 넘긴다.
+        if ct_row[ND_.SALESID_IDX] < sc_row[SRDPG.SALESID_IDX]:
+            classification_target_idx += 1
+            continue
+        elif ct_row[ND_.SALESID_IDX] > sc_row[SRDPG.SALESID_IDX]:
+            short_reason_dp_guide_idx += 1
+            continue
+        else:
+            if ct_row[ND_.ITEMID_IDX] < sc_row[SRDPG.ITEM_IDX]:
+                classification_target_idx += 1
+                continue
+            elif ct_row[ND_.ITEMID_IDX] > sc_row[SRDPG.ITEM_IDX]:
+                short_reason_dp_guide_idx += 1
+                continue
+            else:
+                if ct_row[ND_.SITEID_IDX] < sc_row[SRDPG.SITEID_IDX]:
+                    classification_target_idx += 1
+                    continue
+                elif ct_row[ND_.SITEID_IDX] > sc_row[SRDPG.SITEID_IDX]:
+                    short_reason_dp_guide_idx += 1
+                    continue
+                else:
+                    if ct_row[ND_.PROMISEDDELDATE_IDX] < sc_row[SRDPG.WEEK_IDX]:
+                        classification_target_idx += 1
+                        continue
+                    elif ct_row[ND_.PROMISEDDELDATE_IDX] > sc_row[SRDPG.WEEK_IDX]:
+                        short_reason_dp_guide_idx += 1
+                        continue
+        
+        # 동일한 sales, item, site, week일 경우 재분류를 진행한다.
+        if ct_row[ND_.QTYPROMISED_IDX] <= sc_row[SRDPG.SHORTQTY_IDX]:
+            ct_row[ND_.REASONCODE_IDX] = sc_row[SRDPG.DEMANDID_IDX]
+            sc_row[SRDPG.SHORTQTY_IDX] -= ct_row[ND_.QTYPROMISED_IDX]
+            classification_target_idx += 1
+            if sc_row[SRDPG.SHORTQTY_IDX] == 0:
+                short_reason_dp_guide_idx += 1
+        else:
+            new_row = ct_row.copy()
+            new_row[ND_.REASONCODE_IDX] = sc_row[SRDPG.DEMANDID_IDX]
+            new_row[ND_.QTYPROMISED_IDX] = sc_row[SRDPG.SHORTQTY_IDX]
+            # 새로운 겹치지 않는 solinenum 생성
+            set_solinenum = dict_salesorder[ct_row[ND_.SALESORDERID_IDX]]
+            new_solinenum = ct_row[ND_.SOLINENUM_IDX] + 1
+            while new_solinenum in set_solinenum:
+                new_solinenum += 1
+            new_row[ND_.SOLINENUM_IDX] = new_solinenum
+            set_solinenum.add(new_solinenum)
+            list_splited.append(new_row)
+            ct_row[ND_.QTYPROMISED_IDX] -= sc_row[SRDPG.SHORTQTY_IDX]
+            sc_row[SRDPG.SHORTQTY_IDX] = 0
+            short_reason_dp_guide_idx += 1
+
+    ## 재분류 된 demand를 다시 합친다.
+    if len(list_splited) > 0:
+        nparr_classified = np.concatenate([nparr_classification_target, np.array(list_splited)], axis=0)
+    else:
+        nparr_classified = nparr_classification_target
+    df_classified = pd.DataFrame(data=nparr_classified, columns=ND_.LIST_COLUMN)
+    df_classified = df_classified.astype({
+        ND_.SOLINENUM: 'int32',
+        ND_.QTYPROMISED: 'int32',
+    })
+    df_chstock_out = pd.concat([df_classification_non_target, df_classified], ignore_index=True)
+
+    logger.Step(9, 'Channel Short 재분류 End')
+    #endregion logger.Step(9, 'Channel Short 재분류')
+
+    return df_chstock_out
