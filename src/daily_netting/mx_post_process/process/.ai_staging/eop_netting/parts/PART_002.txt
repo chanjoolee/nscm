@@ -1,0 +1,161 @@
+    df_eop_netting_a_b_a_b = df_eop_netting_a_b_a_b[[SBOMM.HEADSITEID, SBOMM.HEADSKU, SBOMM.SITEID, SBOMM.MAINSKU,]]
+
+    # a-b-a-a + a-b-a-b -> a-b-a, 결과 컬럼 -> ['SITEID', 'ITEM', 'AVAILQTY', 'MOD_SITEID']
+    df_eop_netting_a_b_a = pd.merge(df_eop_netting_a_b_a_a,
+                                    df_eop_netting_a_b_a_b,
+                                    how='left',
+                                    left_on=EOP.ITEM, right_on=SBOMM.MAINSKU)
+
+    df_eop_netting_a_b_a[EOP.SITEID] = df_eop_netting_a_b_a[SBOMM.HEADSITEID].fillna(df_eop_netting_a_b_a[EOP.SITEID])
+    df_eop_netting_a_b_a[EOP.ITEM] = df_eop_netting_a_b_a[SBOMM.HEADSKU].fillna(df_eop_netting_a_b_a[EOP.ITEM])
+    df_eop_netting_a_b_a = df_eop_netting_a_b_a[[EOP.SITEID, EOP.ITEM, EOP.AVAILQTY] + salesid]
+    df_eop_netting_a_b_a['MOD_SITEID'] = df_eop_netting_a_b_a.groupby(EOP.ITEM)[EOP.SITEID].transform('max')
+
+    # a-b-b  결과 컬럼: ['SITEID', 'ITEM', 'QTYPROMISED',]
+    df_eop_netting_a_b_b = df_inbound[[ND_.SITEID, ND_.ITEMID, ND_.QTYPROMISED,] + ap2id]
+    df_eop_netting_a_b_b = df_eop_netting_a_b_b[df_eop_netting_a_b_b[ND_.QTYPROMISED] > 0]
+    df_eop_netting_a_b_b = df_eop_netting_a_b_b[~df_eop_netting_a_b_b[ND_.ITEMID].isin(df_custom_model_map_view[CMM.CUSTOMITEM])]
+    df_eop_netting_a_b_b = df_eop_netting_a_b_b[[ND_.ITEMID, ND_.SITEID] + ap2id].drop_duplicates()
+
+    # a-b-a + a-b-b -> a-b, 결과 컬럼: ['SITEID', 'ITEM', 'WEEK', 'INVQTY', 'DMDQTY']
+    df_eop_netting_a_b = df_eop_netting_a_b_a
+    df_eop_netting_a_b[EOP.SITEID] = np.where(df_eop_netting_a_b[EOP.SITEID] == '-',
+                                            df_eop_netting_a_b['MOD_SITEID'],
+                                            df_eop_netting_a_b[EOP.SITEID])
+    df_eop_netting_a_b = df_eop_netting_a_b[df_eop_netting_a_b[EOP.SITEID] != '-'].copy()
+    df_eop_netting_a_b = pd.merge(df_eop_netting_a_b, df_eop_netting_a_b_b, how='inner',
+                                left_on=[EOP.ITEM, EOP.SITEID] + salesid,
+                                right_on=[ND_.ITEMID, ND_.SITEID] + ap2id)
+    df_eop_netting_a_b = df_eop_netting_a_b.groupby(by=[EOP.SITEID, EOP.ITEM] + salesid)[[EOP.AVAILQTY]].sum().reset_index()
+    df_eop_netting_a_b[EOP.WEEK] = PLAN_WEEK
+    df_eop_netting_a_b[EOP.DMDQTY] = 0
+    df_eop_netting_a_b.rename(columns={
+        EOP.AVAILQTY: EOP.INVQTY,
+    }, inplace=True)
+    df_eop_netting_a_b = df_eop_netting_a_b[[EOP.SITEID, EOP.ITEM, EOP.WEEK, EOP.INVQTY, EOP.DMDQTY,] + salesid]
+
+    # a-a + a-b -> a, 결과 컬럼: ['SITEID', 'ITEM', 'WEEK', 'DMDQTY', 'INVQTY']
+    df_eop_netting_a = pd.concat([df_eop_netting_a_a, df_eop_netting_a_b], axis=0, ignore_index=True)
+
+    # b  결과 컬럼 -> ['ITEM', 'EOP']
+    # b-b
+    df_eop_netting_b_b = df_sales_bom_map[df_sales_bom_map[SBOMM.PRIORITY] == 1]
+    df_eop_netting_b_b = df_eop_netting_b_b[[SBOMM.HEADSKU, SBOMM.MAINSKU]].rename(columns={SBOMM.HEADSKU: 'HEADSKU'})
+
+    df_eop_netting_b = pd.merge(df_model_eop, df_eop_netting_b_b, how='left', left_on=MEOP.ITEM, right_on=SBOMM.MAINSKU)
+    df_eop_netting_b[EOP.ITEM] = df_eop_netting_b['HEADSKU'].fillna(df_eop_netting_b[MEOP.ITEM])
+    df_eop_netting_b[EOP.EOP] = np.where(
+                            df_eop_netting_b[MEOP.STATUS] == 'COM',
+                            df_eop_netting_b[MEOP.EOP_COM_DATE],
+                            np.where(
+                                df_eop_netting_b[MEOP.STATUS] == 'INI',
+                                df_eop_netting_b[MEOP.EOP_CHG_DATE].fillna(df_eop_netting_b[MEOP.EOP_INIT_DATE]),
+                                pd.NaT
+                            )
+                        )
+
+    df_eop_netting_b[EOP.EOP] = pd.to_datetime(df_eop_netting_b[EOP.EOP])
+    df_eop_netting_b = df_eop_netting_b[[EOP.ITEM, EOP.EOP]].groupby(by=[EOP.ITEM]).max().reset_index()
+
+    # 시작 날짜보다 먼저 eop가 되는 거 찾음(생산이 종료 돼서 재고만 줄 수 있는 애들)
+    comaprison_start_date = START_DATE.floor('D')
+    df_eop_netting_b = df_eop_netting_b[df_eop_netting_b[EOP.EOP] <= comaprison_start_date]
+
+    # a + b -> eop_netting
+    # ['SITEID', 'ITEM', 'DMDWEEK', 'EOPWEEK', 'INVQTY', 'REMAINQTY', 'AVAILQTY', 'DMDQTY']
+    df_eop_netting = pd.merge(df_eop_netting_a, df_eop_netting_b, how='inner', on=EOP.ITEM)
+    df_eop_netting[EOP.EOPWEEK] = convert_dt_to_week(df_eop_netting[EOP.EOP])
+
+    df_eop_netting[EOP.DMDQTY] = df_eop_netting[EOP.DMDQTY].fillna(0).astype('int32')
+    df_eop_netting[EOP.INVQTY] = df_eop_netting[EOP.INVQTY].fillna(0).astype('int32')
+
+    df_eop_netting = df_eop_netting.groupby(by=[EOP.SITEID, EOP.ITEM, EOP.WEEK, EOP.EOPWEEK,] + salesid)[[EOP.DMDQTY, EOP.INVQTY,]].sum().reset_index()
+    df_eop_netting[EOP.REMAINQTY] = 0
+    df_eop_netting[EOP.AVAILQTY] = df_eop_netting[EOP.INVQTY]
+
+    return df_eop_netting[[
+                EOP.SITEID, EOP.ITEM, EOP.WEEK, EOP.EOPWEEK, EOP.INVQTY,
+                EOP.REMAINQTY, EOP.AVAILQTY, EOP.DMDQTY,
+           ] + salesid]
+
+def _make_inventory(
+        df_location:DF, df_inventory:DF, df_seller_map:DF,
+        df_intransit:DF, is_seller_case:bool
+    ) -> DF:
+    '''
+    재고를 합한 dataframe을 만드는 함수이다.
+    일반 재고(inventory)와 운송 중인 재고(intransit)를 합한다.
+
+    is_seller_case = True -> sales_id포한한 sell 컬럼들 사용
+    is_seller_case = False -> sales_id 없는 컬럼 사용
+    '''
+    inv_siteid, inv_item, inv_tositeid = Inv_.SITEID, Inv_.ITEM, Inv_.TOSITEID
+    inv_availqty, inv_bohaddqty = Inv_.AVAILQTY, Inv_.BOHADDQTY
+    inv_w0bohaddqty, inv_salesid = Inv_.W0BOHADDQTY, ''
+
+    int_tositeid, int_item = Int_.TOSITEID, Int_.ITEM
+    int_intransitqty, int_salesid = Int_.INTRANSITQTY, ''
+
+    if is_seller_case:
+        inv_siteid, inv_item, inv_tositeid = InvS_.SITEID, InvS_.ITEM, InvS_.TOSITEID
+        inv_availqty, inv_bohaddqty = InvS_.AVAILQTY, InvS_.BOHADDQTY
+        inv_w0bohaddqty, inv_salesid = InvS_.W0BOHADDQTY, InvS_.SALESID
+
+        int_tositeid, int_item = IntS_.TOSITEID, IntS_.ITEM
+        int_intransitqty, int_salesid = IntS_.INTRANSITQTY, IntS_.SALESID
+    
+    list_inv_init_column = [
+                            inv_siteid, inv_item, inv_tositeid,
+                            inv_availqty, inv_bohaddqty, inv_w0bohaddqty
+                        ]
+    list_inv_final_column = [EOP.SITEID, inv_item, EOP.AVAILQTY]
+    list_int_init_column = [int_tositeid, int_item, int_intransitqty]
+    if is_seller_case:
+        list_inv_init_column.append(inv_salesid)
+        list_inv_final_column.append(inv_salesid)
+        list_int_init_column.append(int_salesid)
+
+    df_inventory_view = df_inventory[list_inv_init_column].rename(columns={
+                            inv_siteid: EOP.SITEID,
+                        })
+    df_inventory_view = pd.merge(
+            df_inventory_view, df_location[[L.SITEID, L.TYPE]],
+            how='inner', left_on=EOP.SITEID, right_on=L.SITEID
+        )
+    # MF 공장일 경우 옮겨갈 위치 사용, DC 이미 법인일 경우 현위치 사용
+    df_inventory_view[EOP.SITEID] = np.where(
+                                        df_inventory_view[L.TYPE] == 'MF',
+                                        df_inventory_view[inv_tositeid],
+                                        np.where(
+                                            df_inventory_view[L.TYPE] == 'DC',
+                                            df_inventory_view[EOP.SITEID],
+                                            np.nan
+                                        )
+                                    )
+    df_filtered_inventory = _filter_seller_map(
+            df_inventory_view, df_seller_map,
+            (inv_item, EOP.SITEID), is_seller_case
+        )
+    df_filtered_inventory[EOP.AVAILQTY] = df_filtered_inventory[inv_availqty] \
+                                        + df_filtered_inventory[inv_bohaddqty] \
+                                        + df_filtered_inventory[inv_w0bohaddqty]
+    df_filtered_inventory = df_filtered_inventory[list_inv_final_column]
+    df_filtered_inventory = df_filtered_inventory.rename(columns={
+                                inv_item: EOP.ITEM,
+                                inv_salesid: EOP.SALESID,
+                            })
+
+    df_intransit_view = df_intransit[list_int_init_column]
+    df_filtered_intransit = _filter_seller_map(
+                                df_intransit_view, df_seller_map,
+                                (int_item, int_tositeid), is_seller_case
+                            )
+    df_filtered_intransit = df_filtered_intransit[list_int_init_column]
+    df_filtered_intransit = df_filtered_intransit.rename(columns={
+                                int_tositeid: EOP.SITEID,
+                                int_item: EOP.ITEM,
+                                int_intransitqty: EOP.AVAILQTY,
+                                int_salesid: EOP.SALESID,
+                            })
+
+    return pd.concat([df_filtered_inventory, df_filtered_intransit], axis=0, ignore_index=True)
