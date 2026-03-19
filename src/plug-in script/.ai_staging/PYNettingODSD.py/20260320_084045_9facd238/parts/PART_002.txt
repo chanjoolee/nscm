@@ -1,0 +1,365 @@
+        ExecSpec(21, "do_Create_ODS_21", "21_df_out_Netting_Measure_Type_Conversion_Rule_ODS_D","df_out_Netting_Measure_Type_Conversion_Rule_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}MeasureTypeConversionRuleODSD",
+                 f"PYNetting{lv_DivisionName}MeasureTypeConversionRuleODSD.PY", "create_Netting_Measure_Type_Conversion_Rule_ODS"),
+        ExecSpec(22, "do_Create_ODS_22", "22_df_out_Netting_Retention_Rule_ODS_D","df_out_Netting_Retention_Rule_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}RetentionRuleODSD",
+                 f"PYNetting{lv_DivisionName}RetentionRuleODSD.PY", "create_Netting_Retention_Rule_ODS"),
+        ExecSpec(23, "do_Create_ODS_23", "23_df_out_Netting_Retention_Type_ODS_D","df_out_Netting_Retention_Type_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}RetentionTypeODSD",
+                 f"PYNetting{lv_DivisionName}RetentionTypeODSD.PY", "create_Netting_Retention_Type_ODS"),
+        ExecSpec(24, "do_Create_ODS_24", "24_df_out_Netting_Pre_Allocation_Rule_ODS_D","df_out_Netting_Pre_Allocation_Rule_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}PreAllocationRuleODSD",
+                 f"PYNetting{lv_DivisionName}PreAllocationRuleODSD.PY", "create_Netting_Pre_Allocation_Rule_ODS"),
+        ExecSpec(25, "do_Create_ODS_25", "25_df_out_Netting_Priority_Rule_Master_ODS_D","df_out_Netting_Priority_Rule_Master_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}PriorityRuleMasterODSD",
+                 f"PYNetting{lv_DivisionName}PriorityRuleMasterODSD.PY", "create_Priority_Rule_Master_ODS"),
+        ExecSpec(26, "do_Create_ODS_26", "26_df_out_Netting_Priority_Rank_ODS_D","df_out_Netting_Priority_Rank_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}PriorityRankODSD",
+                 f"PYNetting{lv_DivisionName}PriorityRankODSD.PY", "create_Priority_Rank_ODS"),
+        ExecSpec(27, "do_Create_ODS_27", "27_df_out_Netting_Priority_Rank_Detail_ODS_D","df_out_Netting_Priority_Rank_Detail_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}PriorityRankDetailODSD",
+                 f"PYNetting{lv_DivisionName}PriorityRankDetailODSD.PY", "create_Priority_Rank_Detail_ODS"),
+        ExecSpec(28, "do_Create_ODS_28", "28_df_out_Netting_Priority_Swap_ODS_D","df_out_Netting_Priority_Swap_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}PrioritySwapODSD",
+                 f"PYNetting{lv_DivisionName}PrioritySwapODSD.PY", "create_Netting_Priority_Swap_ODS"),
+        ExecSpec(29, "do_Create_ODS_29", "29_df_out_Netting_Priority_Rule_ASN_ODS_D","df_out_Netting_Priority_Rule_ASN_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}PriorityRuleASNODSD",
+                 f"PYNetting{lv_DivisionName}PriorityRuleASNODSD.PY", "create_Priority_Rule_ASN_ODS"),
+        ExecSpec(30, "do_Create_ODS_30", "30_df_out_Netting_Preference_Rank_ODS_D","df_out_Netting_Preference_Rank_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}PreferenceRankODSD",
+                 f"PYNetting{lv_DivisionName}PreferenceRankODSD.PY", "create_Netting_PreferenceRank_ODS"),
+        ExecSpec(31, "do_Create_ODS_31", "31_df_out_Netting_Customer_Rank_ODS_D","df_out_Netting_Customer_Rank_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}CustomerRankODSD",
+                 f"PYNetting{lv_DivisionName}CustomerRankODSD.PY", "create_Customer_Rank_ODS"),
+        ExecSpec(32, "do_Create_ODS_32", "32_df_out_Netting_Product_Rank_ODS_D","df_out_Netting_Product_Rank_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}ProductRankODSD",
+                 f"PYNetting{lv_DivisionName}ProductRankODSD.PY", "create_Product_Rank_ODS"),
+        ExecSpec(33, "do_Create_ODS_33", "33_df_out_Netting_FCST_Plan_ODS_D",    "df_out_Netting_FCST_Plan_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}FCSTPlanODSD",
+                 f"PYNetting{lv_DivisionName}FCSTPlanODSD.PY", "create_Forecst_Plan_ODS"),
+        ExecSpec(34, "do_Create_ODS_34", "34_df_out_Netting_Except_Demand_ODS_D",    "df_out_Netting_Except_Demand_ODS_D",
+                 f"daily_netting.pre_process.{lv_DivisionName}.PYNetting{lv_DivisionName}ExceptDmdODSD",
+                 f"PYNetting{lv_DivisionName}ExceptDmdODSD.PY", "create_Netting_Excpt_Dmd_ODS"),
+    ]
+
+
+def _run_exec_plan(exec_plan: list[ExecSpec], dic_InputTable: dict):
+    dict_outputs: dict[str, pd.DataFrame] = {}
+    rows: list[dict] = []
+    executed_src_files: set[Path] = set()
+
+    for spec in exec_plan:
+        mod = importlib.import_module(spec.module_import_path)
+        func = getattr(mod, spec.function_nm)
+
+        dict_log = {
+            "p_step_no": spec.step_no,
+            "p_step_desc": spec.step_desc,
+            "p_df_name": spec.output_dataframe_nm,
+        }
+
+        df_out = func(**dic_InputTable, **dict_log)
+        if df_out is None:
+            df_out = pd.DataFrame()
+
+        dict_outputs[spec.output_var_key] = df_out
+
+        # 실행된 파일 path (로컬일 때 copy용)
+        try:
+            src = Path(mod.__file__)
+            if src.exists():
+                executed_src_files.add(src)
+        except Exception:
+            pass
+
+        rows.append({
+            "output_dataframe_nm": spec.output_dataframe_nm,
+            "python_file": spec.python_file,
+            "function_nm": spec.function_nm,
+            "row_cnt": int(len(df_out)),
+        })
+
+        # 11~15는 다음 step input으로도 사용
+        if spec.needs_update_inputtable:
+            if spec.step_no == 11:
+                dic_InputTable["df_in_Netting_Item_ODS_D"] = df_out
+            elif spec.step_no == 12:
+                dic_InputTable["df_in_Netting_Sales_ODS_D"] = df_out
+            elif spec.step_no == 13:
+                dic_InputTable["df_in_Netting_Site_ODS_D"] = df_out
+            elif spec.step_no == 14:
+                dic_InputTable["df_in_Netting_Week_Bucket_ODS_D"] = df_out
+            elif spec.step_no == 15:
+                dic_InputTable["df_in_Netting_Month_Bucket_ODS_D"] = df_out
+
+    df_result = pd.DataFrame(rows).reset_index(drop=True)
+    return dict_outputs, df_result, executed_src_files
+
+
+def _copy_executed_modules(executed_src_files: set[Path], str_output_dir: str) -> None:
+    logger.Note(p_note='실행된모듈들: ')
+    copied = set()
+    for src in sorted(executed_src_files, key=lambda p: p.name):
+        if src.name in copied:
+            continue
+        try:
+            shutil.copyfile(src, Path(str_output_dir) / src.name)
+            logger.Note(p_note=f'{src.name}')
+            copied.add(src.name)
+        except Exception as e:
+            logger.Note(p_note=f"[WARN] copy failed: {src} / {e}")
+
+    
+def _copy_inbound_dir_to_output(str_input_dir: str, str_output_dir: str) -> None:
+    """
+    is_local 인 경우:
+    - str_input_dir 폴더 전체를
+    - str_output_dir/inbound 로 폴더명 변경하여 복사
+    """
+    src = Path(str_input_dir)
+    dst = Path(str_output_dir) / "inbound"
+
+    if not src.exists():
+        logger.Note(p_note=f"[WARN] inbound copy skipped: input dir not found -> {src}")
+        return
+
+    # 기존 inbound 폴더가 있으면 제거 후 다시 복사
+    if dst.exists():
+        try:
+            shutil.rmtree(dst)
+        except Exception as e:
+            logger.Note(p_note=f"[WARN] failed to remove existing inbound dir: {dst} / {e}")
+
+    try:
+        # python 3.8+ (dirs_exist_ok 지원)
+        shutil.copytree(src, dst, dirs_exist_ok=True)
+        logger.Note(p_note=f"[OK] inbound copied: {src} -> {dst}")
+    except TypeError:
+        # (아주 구버전 대비) dirs_exist_ok 미지원인 경우
+        shutil.copytree(src, dst)
+        logger.Note(p_note=f"[OK] inbound copied: {src} -> {dst}")
+    except Exception as e:
+        logger.Note(p_note=f"[WARN] inbound copy failed: {src} -> {dst} / {e}")
+
+
+####################################
+############ Start Main  ###########
+####################################
+if __name__ == '__main__':
+    logger.info(f'[START] {str_instance} {time.strftime("%Y-%m-%d - %H:%M:%S")}')
+    logger.Start()
+
+    input_dataframes = {}
+    executed_src_files = set()
+    df_result = pd.DataFrame()
+
+    try:
+        # ----------------------------------------------------------
+        # (중요) Version/Division은 o9 플러그인이 주입할 수 있으므로
+        #        전역/상단에서 절대 초기화(=할당)하지 않는다.
+        #        로컬일 때만 명시적으로 세팅한다.
+        # ----------------------------------------------------------
+        if is_local:
+            # --------------------
+            # 운영
+            # --------------------
+            # Version = '202606_DP_MX_AS_WE'
+            # Division = 'D001'
+            # str_input_dir = r'C:\Netting\o9Data\PYNettingODSD\Prod\DPNS\202606_DP_MX_AS_WE\download_20260204-124753'
+
+            
+            # Version = '202606_DP_MX_EU_WE'
+            # Division = 'D001'
+            # str_input_dir = r'C:\Netting\o9Data\PYNettingODSD\Prod\DPNS\202606_DP_MX_EU_WE\download_20260204-145427'
+            
+            # Version = '202606_DP_VD_EU_WE'
+            # Division = 'D002'
+            # str_input_dir = r'C:\Netting\o9Data\PYNettingODSD\Prod\DPNS\202606_DP_VD_EU_WE\download_20260204-132100'
+
+            # Version = '202606_DP_DA_AS_WE'
+            # Division = 'D003'
+            # str_input_dir = r'C:\Netting\o9Data\PYNettingODSD\Prod\DPNS\202606_DP_DA_AS_WE\download_20260204-132837'
+
+            # Version = '202606_DP_DA_EU_FR'
+            # Division = 'D003'
+            # str_input_dir = r'C:\Netting\o9Data\PYNettingODSD\Prod\DPNS\202606_DP_DA_EU_FR\download_20260206-131742'
+
+            # Version = '202606_DP_MX_AS_FR'
+            # Division = 'D001'
+            # str_input_dir = r'C:\Netting\o9Data\PYNettingODSD\Prod\DPNS\202606_DP_MX_AS_FR\download_20260206-161923'
+
+            Version = '202606_DP_DA_US_FR'
+            Division = 'D003'
+            str_input_dir = r'C:\Netting\o9Data\PYNettingODSD\Prod\DPNS\202606_DP_DA_US_FR\download_20260209-101823'
+            
+
+            # --------------------
+            # QA
+            # --------------------
+            # # QA 202606_DP_MX_AS_MO
+            # Version = '202606_DP_MX_AS_MO'
+            # Division = 'D001'
+            # str_input_dir = r'C:\Netting\o9Data\PYNettingODSD\QA\DPNS\202606_DP_MX_AS_MO\download_20260204-154645'
+
+            # Version = '202606_DP_VD_AS_MO'
+            # Division = 'D002'
+            # str_input_dir = r'C:\Netting\o9Data\PYNettingODSD\QA\DPNS\202606_DP_VD_AS_MO\download_20260204-160114'
+
+            map_division = {'D001': 'MX', 'D002': 'VD', 'D003': 'DA'}
+
+            div_nm = map_division.get(Division, '')
+            output_folder_name = str_instance
+
+            current_time = datetime.datetime.now()
+            formatted_time = current_time.strftime("%Y%m%d")
+            str_output_dir = f'Output/{output_folder_name}_{Version}_{formatted_time}'
+            # str_output_dir = f'Output/{output_folder_name}_{div_nm}_{formatted_time}'
+
+
+            os.makedirs(str_input_dir, exist_ok=True)
+            os.makedirs(str_output_dir, exist_ok=True)
+
+            # 필요 시 로컬에서 사용할 df만 제한
+            local_using_df = [
+                # 'df_in_Netting_Plan_Parameter_UI',
+                # 'df_in_Netting_Item',
+            ]
+
+        # ----------------------------------------------------------
+        # Parameter 체크 (o9에서는 주입된 Version/Division을 그대로 참조)
+        # ----------------------------------------------------------
+        try:
+            lv_ParamVersion = Version
+        except NameError:
+            lv_ParamVersion = ""
+
+        try:
+            lv_ParamDivision = Division
+        except NameError:
+            lv_ParamDivision = ""
+
+        # ----------------------------------------------------------
+        # DivisionName
+        # ----------------------------------------------------------
+        if lv_ParamDivision == 'D001':
+            lv_DivisionName = 'MX'
+        elif lv_ParamDivision == 'D002':
+            lv_DivisionName = 'VD'
+        elif lv_ParamDivision == 'D003':
+            lv_DivisionName = 'DA'
+        else:
+            # o9에서 Division이 꼭 온다는 전제면 여기서 raise 해도 됨
+            lv_DivisionName = 'VD'
+
+        # ----------------------------------------------------------
+        # vdLog 초기화
+        # ----------------------------------------------------------
+        log_path = os.path.dirname(__file__) if is_local else ""
+        vdCommon.gfn_pyLog_start(lv_ParamVersion, str_instance, logger, is_local, log_path)
+
+        # ----------------------------------------------------------
+        # df_input 적재
+        # ----------------------------------------------------------
+        logger.Note(p_note='df_input 체크 시작', p_log_level=LOG_LEVEL.debug())
+        fn_process_in_df_mst(p_step_no=0, p_step_desc="fn_process_in_df_mst", p_df_name=None)
+
+        # 입력 DF 간단 출력
+        for in_df in input_dataframes:
+            try:
+                logger.PrintDF(input_dataframes[in_df], in_df, p_row_num=20)
+            except Exception:
+                logger.Note(p_note=f"{in_df} 를 표현하는데 문제가 있습니다.")
+                logger.Note(p_note=input_dataframes[in_df].dtypes)
+
+        # ----------------------------------------------------------
+        # Input Table dictionary 생성
+        # ----------------------------------------------------------
+        dic_InputTable = {
+            'lv_ParamDivision': lv_ParamDivision,
+            'lv_ParamVersion':  lv_ParamVersion,
+            'lv_VersionName':   lv_ParamVersion,
+        }
+
+        # input_dataframes를 dic_InputTable에 그대로 넣는다
+        # (기존 모듈들이 df_in_XXX 키로 참조하므로 그대로 유지)
+        for k, v in input_dataframes.items():
+            dic_InputTable[k] = v
+
+        # ----------------------------------------------------------
+        # 실행계획 / 실행
+        # ----------------------------------------------------------
+        exec_plan = _build_exec_plan(lv_DivisionName)
+        dict_outputs, df_result, executed_src_files = _run_exec_plan(exec_plan, dic_InputTable)
+
+        # o9 의 후속에서 인식할 수 있어야 한다.
+        df_out_Netting_Plan_Param_ODS_D                  	= dict_outputs.get('df_out_Netting_Plan_Param_ODS_D                  '.strip(),pd.DataFrame())
+        df_out_Netting_Item_ODS_D                           = dict_outputs.get('df_out_Netting_Item_ODS_D                        '.strip(),pd.DataFrame())
+        df_out_Netting_Sales_ODS_D                          = dict_outputs.get('df_out_Netting_Sales_ODS_D                       '.strip(),pd.DataFrame())
+        df_out_Netting_Site_ODS_D                           = dict_outputs.get('df_out_Netting_Site_ODS_D                        '.strip(),pd.DataFrame())
+        df_out_Netting_Week_Bucket_ODS_D                    = dict_outputs.get('df_out_Netting_Week_Bucket_ODS_D                 '.strip(),pd.DataFrame())
+        df_out_Netting_Month_Bucket_ODS_D                   = dict_outputs.get('df_out_Netting_Month_Bucket_ODS_D                '.strip(),pd.DataFrame())
+        df_out_Netting_BOD_ODS_D                            = dict_outputs.get('df_out_Netting_BOD_ODS_D                         '.strip(),pd.DataFrame())
+        df_out_Netting_FCST_Rule_ODS_D                      = dict_outputs.get('df_out_Netting_FCST_Rule_ODS_D                   '.strip(),pd.DataFrame())
+        df_out_Netting_Extract_Rule_ODS_D                   = dict_outputs.get('df_out_Netting_Extract_Rule_ODS_D                '.strip(),pd.DataFrame())
+        df_out_Netting_Measure_Copy_Rule_ODS_D              = dict_outputs.get('df_out_Netting_Measure_Copy_Rule_ODS_D           '.strip(),pd.DataFrame())
+        df_out_Netting_Demand_Type_Conversion_Rule_ODS_D    = dict_outputs.get('df_out_Netting_Demand_Type_Conversion_Rule_ODS_D '.strip(),pd.DataFrame())
+        df_out_Netting_Measure_Type_Conversion_Rule_ODS_D   = dict_outputs.get('df_out_Netting_Measure_Type_Conversion_Rule_ODS_D'.strip(),pd.DataFrame())
+        df_out_Netting_Retention_Rule_ODS_D                 = dict_outputs.get('df_out_Netting_Retention_Rule_ODS_D              '.strip(),pd.DataFrame())
+        df_out_Netting_Retention_Type_ODS_D                 = dict_outputs.get('df_out_Netting_Retention_Type_ODS_D              '.strip(),pd.DataFrame())
+        df_out_Netting_Pre_Allocation_Rule_ODS_D            = dict_outputs.get('df_out_Netting_Pre_Allocation_Rule_ODS_D         '.strip(),pd.DataFrame())
+        df_out_Netting_Priority_Rule_Master_ODS_D           = dict_outputs.get('df_out_Netting_Priority_Rule_Master_ODS_D        '.strip(),pd.DataFrame())
+        df_out_Netting_Priority_Rank_ODS_D                  = dict_outputs.get('df_out_Netting_Priority_Rank_ODS_D               '.strip(),pd.DataFrame())
+        df_out_Netting_Priority_Rank_Detail_ODS_D           = dict_outputs.get('df_out_Netting_Priority_Rank_Detail_ODS_D        '.strip(),pd.DataFrame())
+        df_out_Netting_Priority_Swap_ODS_D                  = dict_outputs.get('df_out_Netting_Priority_Swap_ODS_D               '.strip(),pd.DataFrame())
+        df_out_Netting_Priority_Rule_ASN_ODS_D              = dict_outputs.get('df_out_Netting_Priority_Rule_ASN_ODS_D           '.strip(),pd.DataFrame())
+        df_out_Netting_Preference_Rank_ODS_D                = dict_outputs.get('df_out_Netting_Preference_Rank_ODS_D             '.strip(),pd.DataFrame())
+        df_out_Netting_Customer_Rank_ODS_D                  = dict_outputs.get('df_out_Netting_Customer_Rank_ODS_D               '.strip(),pd.DataFrame())
+        df_out_Netting_Product_Rank_ODS_D                   = dict_outputs.get('df_out_Netting_Product_Rank_ODS_D                '.strip(),pd.DataFrame())
+        df_out_Netting_FCST_Plan_ODS_D                      = dict_outputs.get('df_out_Netting_FCST_Plan_ODS_D                   '.strip(),pd.DataFrame())
+        df_out_Netting_Except_Demand_ODS_D                  = dict_outputs.get('df_out_Netting_Except_Demand_ODS_D               '.strip(),pd.DataFrame())
+
+        
+
+        end_time = time.time()
+        logger.Note("NETTING_ODSD_EXEC_TIME: {:.6f}".format(end_time - start_time))
+
+    except Exception as e:
+        logger.error(tb.format_exc())
+        raise e
+
+    finally:
+        # ----------------------------------------------------------
+        # 로컬에서만 파일 복사 수행 (o9에서는 파일시스템 접근 금지/불필요)
+        # ----------------------------------------------------------
+        if is_local:
+            try:
+                log_file_name = common.G_PROGRAM_NAME.replace('py', 'log')
+                log_file_name = f'log/{log_file_name}'
+                shutil.copyfile(log_file_name, os.path.join(str_output_dir, os.path.basename(log_file_name)))
+            except Exception as e:
+                logger.Note(p_note=f"[WARN] log copy failed: {e}")
+
+            try:
+                _copy_executed_modules(executed_src_files, str_output_dir)
+            except Exception as e:
+                logger.Note(p_note=f"[WARN] module copy failed: {e}")
+
+            try:
+                base_dir = Path(f"{os.getcwd()}") / "NettingTest"
+                program_path = base_dir / f"{str_instance}.py"
+                if program_path.exists():
+                    shutil.copyfile(program_path, os.path.join(str_output_dir, program_path.name))
+            except Exception as e:
+                logger.Note(p_note=f"[WARN] program copy failed: {e}")
+
+            # ... (기존 log copy / module copy / program copy)
+            # ✅ inbound 폴더 복사 추가
+            _copy_inbound_dir_to_output(str_input_dir, str_output_dir)
+
+        # ----------------------------------------------------------
+        # df_result 요약 로그 (요청사항)
+        # ----------------------------------------------------------
+        fn_log_dataframe(df_result, "df_result", int_p_row_num=200)
+
+        logger.Finish()
+        logger.Note('Netting ODSD END', 30)
