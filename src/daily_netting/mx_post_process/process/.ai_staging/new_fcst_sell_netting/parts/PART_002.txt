@@ -1,0 +1,423 @@
+    #df_mst_newfcstnetting['INITDTTM'] = pd.Timestamp('now')
+    #df_mst_newfcstnetting['INITBY'] = 'SP_FN_SUMMARYDATA'
+
+    df_mst_newfcstnetting['PLANID'] = v_planid
+
+    #컬럼 정리
+    df_mst_newfcstnetting = df_mst_newfcstnetting[['PLANID', 'SITEID', 'SALESID', 'ITEM', 'WEEK', 'PREQTY', 'CURQTY', 'NFSHORT', 'WEEKSUPPLY', 'DIFF', 'EXCEPNFSHORT', 'RELEASE', 'MRTF',
+                            'ARTF', 'MSUPPLY', 'ASUPPLY', 'MPDP', 'NEWDP']]
+
+
+    ##################### SP_FN_SUMMARYDATA 끝 #################
+
+
+    # %%
+    ############ SP_FN_AVAILNETTING 시작 ################
+    df_mst_newfcstnetting['WEEK'] = df_mst_newfcstnetting['WEEK'].astype(int)
+    df_mst_newfcstnetting['RK'] = df_mst_newfcstnetting.groupby(['ITEM', 'SITEID', 'SALESID'])['WEEK'].rank(method='first').astype(int)
+    df_mst_newfcstnetting = df_mst_newfcstnetting.sort_values(by=['SITEID', 'ITEM', 'SALESID', 'WEEK'])
+
+    nparr_mst_newfcstnetting = df_mst_newfcstnetting.to_numpy()
+
+    #컬럼 인덱스 번호 셋팅
+    iRK = df_mst_newfcstnetting.columns.get_loc('RK')
+    iWEEKSUPPLY = df_mst_newfcstnetting.columns.get_loc('WEEKSUPPLY')
+    iEXCEPNFSHORT = df_mst_newfcstnetting.columns.get_loc('EXCEPNFSHORT')
+    iCURQTY = df_mst_newfcstnetting.columns.get_loc('CURQTY')
+    iMPDP = df_mst_newfcstnetting.columns.get_loc('MPDP')
+    iNEWDP = df_mst_newfcstnetting.columns.get_loc('NEWDP')
+    iMRTF = df_mst_newfcstnetting.columns.get_loc('MRTF')
+    iARTF = df_mst_newfcstnetting.columns.get_loc('ARTF')
+    iMSUPPLY = df_mst_newfcstnetting.columns.get_loc('MSUPPLY')
+    iASUPPLY = df_mst_newfcstnetting.columns.get_loc('ASUPPLY')
+
+    #초기화
+    S_MRTF = 0
+    S_ARTF = 0
+    S_MSUPPLY = 0
+    S_ASUPPLY = 0
+    S_MPDP = 0
+    S_NEWDP = 0
+
+    #list_newfcstnetting_result = []
+    for row in nparr_mst_newfcstnetting:
+        if row[iRK] == 1:
+            S_MRTF = 0
+            S_ARTF = row[iEXCEPNFSHORT]
+            S_MSUPPLY = 0
+            S_ASUPPLY = row[iWEEKSUPPLY]
+            S_MPDP = 0
+            S_NEWDP = 0
+        else:
+            if S_ARTF > 0 :
+                if S_MPDP > 0 :
+                    if S_ARTF > S_MPDP :
+                        S_MRTF = S_ARTF - S_MPDP
+                    else: 
+                        S_MRTF = 0
+                else:
+                    S_MRTF = S_ARTF
+            else:   
+                S_MRTF = 0 
+            
+            S_ARTF = row[iEXCEPNFSHORT] + S_MRTF
+            
+            if S_ASUPPLY > 0 :
+                if S_MPDP > 0 :
+                    if S_ASUPPLY > S_MPDP :
+                        S_MSUPPLY = S_ASUPPLY - S_MPDP
+                    else: 
+                        S_MSUPPLY = 0 
+                else:
+                    S_MSUPPLY = S_ASUPPLY
+            else:   
+                S_MSUPPLY = 0
+            S_ASUPPLY = row[iWEEKSUPPLY] + S_MSUPPLY
+
+        if row[iCURQTY] > 0 :
+            if S_ARTF > 0 :
+                if row[iCURQTY] >= S_ARTF :
+                    if S_ASUPPLY > 0 :
+                        if S_ARTF >= S_ASUPPLY :
+                            S_MPDP = S_ARTF
+                        else:
+                            if S_ASUPPLY >= row[iCURQTY] :
+                                S_MPDP = row[iCURQTY]
+                            else: 
+                                S_MPDP = S_ASUPPLY
+                    else:
+                        S_MPDP = S_ARTF
+                else:
+                    S_MPDP = row[iCURQTY]
+            else:
+                if S_ASUPPLY > 0 :
+                    if  row[iCURQTY] >= S_ASUPPLY : 
+                        S_MPDP = S_ASUPPLY
+                    else:
+                        S_MPDP = row[iCURQTY]
+                else:
+                    S_MPDP = 0
+        else:
+            S_MPDP = 0
+
+        S_NEWDP = row[iCURQTY] - S_MPDP  
+
+        row[iMPDP]   = S_MPDP
+        row[iNEWDP]  = S_NEWDP
+        row[iMRTF]   = S_MRTF
+        row[iARTF]   = S_ARTF
+        row[iMSUPPLY] = S_MSUPPLY
+        row[iASUPPLY] = S_ASUPPLY
+        #list_newfcstnetting_result.append(row)
+
+    #ndArray -> df
+    df_mst_newfcstnetting_result = pd.DataFrame(nparr_mst_newfcstnetting, columns=df_mst_newfcstnetting.columns)
+
+    return df_mst_newfcstnetting_result
+
+    ############ SP_FN_AVAILNETTING 끝 ################
+
+
+
+
+###################################################################################################################
+
+
+
+# %%
+def do_new_fcst_sell_netting(
+    df_v_mta_sellermap
+    , df_exp_sopromisesrc
+    , df_exp_deliveryplan
+    , df_exp_shortreason
+    , df_mst_inventory
+    , df_mst_intransit
+    , df_mst_inventory_fne
+    , df_mst_distributionorders
+    , df_vui_itemattb
+    , df_mta_codemap
+    , df_mta_newfcstnetting
+    , df_mta_custommodelmap
+    , df_mves_itemsite 
+    , logger: LOGGER
+):
+    
+    #%%
+    #실행시작 시간
+    #start_time = time.time()
+    logger.Note('Start NEW FCST Netting_SELL', 20)
+
+    #전체 컬럼 인덱스를 저장해 놓음 - 원본과 동일한 컬럼으로 발췌하기 위해
+    idx_exp_sopromisesrc = df_exp_sopromisesrc.columns
+
+    # UPBY 컬럼 추가 - 로직 처리시 데이터 이동 확인용(실제 조건으로 사용됨)
+    if not 'UPBY' in df_exp_sopromisesrc.columns:
+        df_exp_sopromisesrc['UPBY'] = np.nan
+        df_exp_sopromisesrc['UPBY'] = df_exp_sopromisesrc['UPBY'].astype(str)
+
+
+    #형변환 및 필요 값 추가
+    #object -> float -> int
+    df_exp_shortreason[SR_.SHORTQTY] = pd.to_numeric(df_exp_shortreason[SR_.SHORTQTY], errors='coerce').astype(int)
+    df_exp_shortreason[SR_.PROBLEMID] = df_exp_shortreason[SR_.PROBLEMID].astype(int)
+
+    #WEEK 컬럼 추가(미리 생성)
+    isoCalDate = pd.to_datetime(df_exp_sopromisesrc[ND_.PROMISEDDELDATE]).dt.isocalendar()
+    df_exp_sopromisesrc['PROMISEDDELWEEK'] = isoCalDate.year.astype(str) + isoCalDate.week.astype(str).str.zfill(2)
+    df_exp_sopromisesrc['PROMISEDDELWEEK'] = df_exp_sopromisesrc['PROMISEDDELWEEK'].astype(int)
+
+    df_exp_sopromisesrc['ORG_QTYPROMISED'] = df_exp_sopromisesrc[ND_.QTYPROMISED].astype(int)
+
+    df_exp_sopromisesrc[ND_.SOLINENUM] = df_exp_sopromisesrc[ND_.SOLINENUM].astype(int)
+    df_exp_sopromisesrc[ND_.QTYPROMISED] = df_exp_sopromisesrc[ND_.QTYPROMISED].astype(int)
+    df_exp_sopromisesrc[ND_.DEMANDPRIORITY] = df_exp_sopromisesrc[ND_.DEMANDPRIORITY].astype(int)
+
+    df_mst_inventory_fne[AR_.QTY] = df_mst_inventory_fne[AR_.QTY].astype(int)
+
+    df_exp_deliveryplan[DP_.QTYOPEN] = df_exp_deliveryplan[DP_.QTYOPEN].astype(int)
+
+    #백업 생성
+    df_exp_sopromisesrcnew = df_exp_sopromisesrc.copy()
+
+    logger.Note('Start Create MST_NEWFCSTNETTING_SELL', 20)
+    df_mst_newfcstnetting_result = create_mst_newfcstnetting_sell(
+            v_planid, v_week1, v_week4, v_horisonweek, v_effstartdate, v_endweek
+            , df_v_mta_sellermap
+            , df_exp_sopromisesrc
+            , df_exp_deliveryplan
+            , df_exp_shortreason
+            , df_mst_inventory
+            , df_mst_intransit
+            , df_mst_inventory_fne
+            , df_mst_distributionorders
+            , df_vui_itemattb
+            , df_mta_codemap
+            , df_mta_newfcstnetting
+            , df_mta_custommodelmap )
+    logger.Note('End Create MST_NEWFCSTNETTING_SELL', 20)
+    
+    #%%
+    ################### SP_FN_NEWFCSTSRC 시작 ###################
+    # CUR_OPENNETTING  NEW FCST 대상 발췌
+    #sp_fn_acailnetting까지 수행 완료된 df 에서 조건 걸어서 df 새로 생성
+    # -- NEWDP > 0 이고, SITEID 가 TOTAL 이 아닌 조건
+
+    df_mst_newfcstnetting_fcst = df_mst_newfcstnetting_result[df_mst_newfcstnetting_result['NEWDP'].astype(int) > 0]
+    df_mst_newfcstnetting_fcst = df_mst_newfcstnetting_fcst.sort_values(by=['SITEID', 'ITEM', 'SALESID', 'WEEK'])
+
+
+    #NEWDP : 는 NEWFCST 수요로 꼬리표를 붙여주고 싶은 수량
+    #CURQTY : 수요 수량
+
+    #1 IF  R.NEWDP >= R.CURQTY AND  R.CURQTY > 0  THEN 조건 대상 발췌
+    df_mst_newfcstnetting_update1 = df_mst_newfcstnetting_fcst[
+            (df_mst_newfcstnetting_fcst['NEWDP'].astype(int) >= df_mst_newfcstnetting_fcst['CURQTY'].astype(int)) & 
+            (df_mst_newfcstnetting_fcst['CURQTY'].astype(int) > 0 )
+        ]
+
+    df_exp_sopromisesrc = df_exp_sopromisesrc.astype({ND_.SOLINENUM:int})
+
+    idx_mves_itemsite = pd.MultiIndex.from_frame(df_mves_itemsite[[ESIS.ITEM, ESIS.SITEID, ESIS.SALESID]])
+    df_exp_sopromisesrc_update1 = df_exp_sopromisesrc[
+        ~pd.MultiIndex.from_frame(df_exp_sopromisesrc[[ND_.ITEMID, ND_.SITEID, ND_.SALESID]]).isin(idx_mves_itemsite)
+    ]
+
+    df_exp_sopromisesrc_update1 = df_exp_sopromisesrc_update1.astype({'PROMISEDDELWEEK':int})
+    df_mst_newfcstnetting_update1 = df_mst_newfcstnetting_update1.astype({'WEEK':int})
+
+    #업데이트 대상 발췌
+    df_exp_sopromisesrc_update1_join = pd.merge(df_exp_sopromisesrc_update1, df_mst_newfcstnetting_update1
+                                                , left_on=[ND_.SITEID, ND_.AP2ID, ND_.ITEMID, 'PROMISEDDELWEEK']
+                                                , right_on=['SITEID', 'SALESID', 'ITEM', 'WEEK'], suffixes=('', '_x'))
+    df_exp_sopromisesrc_update1_join = df_exp_sopromisesrc_update1_join.drop(df_exp_sopromisesrc_update1_join.filter(regex='_x$').columns, axis=1)
+
+    midx_exp_src = pd.MultiIndex.from_frame(df_exp_sopromisesrc[[ND_.SALESORDERID, ND_.SOLINENUM]])
+    midx_exp_tar = pd.MultiIndex.from_frame(df_exp_sopromisesrc_update1_join[[ND_.SALESORDERID, ND_.SOLINENUM]])
+
+    df_exp_sopromisesrc.loc[midx_exp_src.isin(midx_exp_tar), ND_.SOLINENUM] = df_exp_sopromisesrc[ND_.SOLINENUM] + 99
+    df_exp_sopromisesrc.loc[midx_exp_src.isin(midx_exp_tar), 'UPBY'] = 'NEWALL'
+
+
+
+    # %%
+    #2
+    #NEWDP < CURQTY 이면, 수요 수량 중 일부만 NEWFCST 수요로 변환하고, 일부는 그대로 두어야 
+    #이 경우는 어느 수요를 NEWFCST 수요로 만들어야 하는지 우선순위에 따라 변환할 ROW를 찾아주는 로직이 추가됨
+    #또한 우선순위까지 다 동일한 경우는 여러 ROW에 대해서 동시에 적용하기 위해 N빵 해주는 로직이 적용
+
+    #ELSIF R.CURQTY > R.NEWDP AND R.NEWDP>0 THEN 조건문 반영
+    #-- 가용량보다 DEMAND가 많은 경우 해당 주차 PRIORITY별로 나눠주기
+    #-- 동순위위는 N빵
+    df_mst_newfcstnetting_update2 = df_mst_newfcstnetting_fcst[
+        (df_mst_newfcstnetting_fcst['CURQTY'] > df_mst_newfcstnetting_fcst['NEWDP']) &
+        (df_mst_newfcstnetting_fcst['NEWDP'] > 0)
+    ]
+
+    df_exp_sopromisesrc_sub2 = df_exp_sopromisesrc[
+        (df_exp_sopromisesrc[ND_.QTYPROMISED] > 0) &
+        ~pd.MultiIndex.from_frame(df_exp_sopromisesrc[[ND_.ITEMID, ND_.SITEID, ND_.SALESID]]).isin(idx_mves_itemsite)
+    ]
+
+    #전체 업데이트 대상에 세부 업데이트 대상만큼 돌아야 하니까 Merge join처리하여 하나로 봄.
+    df_mst_newfcstnetting_join = pd.merge(df_mst_newfcstnetting_update2, df_exp_sopromisesrc_sub2 
+                                        , left_on=['ITEM', 'SITEID', 'SALESID', 'WEEK'], right_on=[ND_.ITEMID, ND_.SITEID, ND_.AP2ID, 'PROMISEDDELWEEK'], suffixes=('', '_x1'))
+    df_mst_newfcstnetting_join = df_mst_newfcstnetting_join.drop(df_mst_newfcstnetting_join.filter(regex='_x1$').columns, axis=1)
+
+    df_mst_newfcstnetting_join = df_mst_newfcstnetting_join.astype({ND_.DEMANDPRIORITY:int})
+
+    #1차 정렬 : ORDER BY  A.DEMANDPRIORITY, A.QTYPROMISED, A.SALESID -> 전체적으로 봤을 때 ITEM, SITEID, WEEK에 대한 그룹 조건을 생각하여 추가.
+    #df_mst_newfcstnetting_join = df_mst_newfcstnetting_join.sort_values(by=['ITEM', 'SITEID', 'WEEK', 'DEMANDPRIORITY', 'QTYPROMISED', 'SALESID'])
+
+    df_mst_newfcstnetting_join['RK'] = df_mst_newfcstnetting_join.groupby(['ITEM', 'SITEID', 'SALESID', 'WEEK'])[ND_.DEMANDPRIORITY].rank(method='dense', ascending=False).astype(int)
+
+    #정렬을 먼저
+    #df_mst_newfcstnetting_join = df_mst_newfcstnetting_join.sort_values(by=['ITEM', 'SITEID','WEEK', 'RK', 'SALESORDERID', 'SOLINENUM'], ascending=[True, True, True, True, True, True])
+
+    df_mst_newfcstnetting_join['ROWNUMBER'] = (df_mst_newfcstnetting_join.sort_values(by=['ITEM', 'SITEID', 'SALESID', 'WEEK', 'RK', ND_.QTYPROMISED, ND_.SALESID], ascending=[True, True, True, True, True, True, True]).groupby(['ITEM', 'SITEID', 'SALESID', 'WEEK']).cumcount() + 1)
+
+    #FARE SHARE를 위한 체크값
+    #CHK : RK 동일 구간별 순번(역순)
+    df_mst_newfcstnetting_join['CHRK'] = (df_mst_newfcstnetting_join.sort_values(by=['ITEM', 'SITEID', 'SALESID', 'WEEK', 'RK', 'ROWNUMBER'], ascending=[True, True, True, True, True, False]).groupby(['ITEM', 'SITEID', 'SALESID', 'WEEK', 'RK']).cumcount() + 1)
+
+    #동순위 확인
+    #CNT : RK 동일 구간별 개수
+    df_mst_newfcstnetting_join['CNT'] = df_mst_newfcstnetting_join.groupby(['ITEM', 'SITEID', 'SALESID','WEEK','RK'])[ND_.DEMANDPRIORITY].transform('count')
+    #SUBTOTAL : RK 동일 구간별 합
+    df_mst_newfcstnetting_join['SUBTOTAL'] = df_mst_newfcstnetting_join.groupby(['ITEM', 'SITEID', 'SALESID','WEEK','RK'])[ND_.QTYPROMISED].transform('sum')
+
+    #오라클과 파이썬의 부동소수점 계산 차이로 decimal 사용
+    #df_mst_newfcstnetting_join['RATIO'] = (df_mst_newfcstnetting_join['QTYPROMISED']/df_mst_newfcstnetting_join['SUBTOTAL']).astype(str)
+    #df_mst_newfcstnetting_join['RATIO'] = df_mst_newfcstnetting_join.apply(lambda row: (decimal.Decimal(str(row[ND_.QTYPROMISED]))/decimal.Decimal(str(row['SUBTOTAL']))), axis=1)
+    df_mst_newfcstnetting_join['QTYPROMISED_DEC'] = df_mst_newfcstnetting_join[ND_.QTYPROMISED].apply(decimal.Decimal)
+    df_mst_newfcstnetting_join['SUBTOTAL_DEC'] = df_mst_newfcstnetting_join['SUBTOTAL'].apply(decimal.Decimal)
+    df_mst_newfcstnetting_join['RATIO'] = df_mst_newfcstnetting_join['QTYPROMISED_DEC']/df_mst_newfcstnetting_join['SUBTOTAL_DEC']
+    df_mst_newfcstnetting_join = df_mst_newfcstnetting_join.drop(['QTYPROMISED_DEC', 'SUBTOTAL_DEC'], axis=1)
+
+    #2차 정렬 : ORDER BY RK,DEMANDPRIORITY DESC, ROWNUM, QTYPROMISED ;
+    df_mst_newfcstnetting_join = df_mst_newfcstnetting_join.sort_values(by=['ITEM', 'SITEID', 'SALESID','WEEK', 'RK', 'ROWNUMBER', ND_.QTYPROMISED], ascending=[True, True, True, True, True, True, True])
+
+    #오라클도 40째자리 고정으로 반올림 처리 필요
+
+
+    # %%
+    #실제 루프를 돌리기
+    #FOR j IN mydata.first .. mydata.last LOOP 
+
+    #대상 데이터프레임을 넘파일배열로 변환
+    #업데이트, 인써트, 페어쉐어 대상 데이터를 리스트에 저장(나중에 일괄 처리)
+
+    ndarr_mst_newfcstnetting = df_mst_newfcstnetting_join.to_numpy()
+
+    #컬럼 인덱스 정의
+    idx_fcst_CNT = df_mst_newfcstnetting_join.columns.get_loc('CNT')
+    idx_fcst_CHRK = df_mst_newfcstnetting_join.columns.get_loc('CHRK')
+    idx_fcst_ROWNUM = df_mst_newfcstnetting_join.columns.get_loc('ROWNUMBER')
+    idx_fcst_SUBTOTAL = df_mst_newfcstnetting_join.columns.get_loc('SUBTOTAL')
+    idx_fcst_RATIO = df_mst_newfcstnetting_join.columns.get_loc('RATIO')
+    idx_fcst_DEMANDPRIORITY = df_mst_newfcstnetting_join.columns.get_loc(ND_.DEMANDPRIORITY)
+    idx_fcst_QTYPROMISED = df_mst_newfcstnetting_join.columns.get_loc(ND_.QTYPROMISED)
+    idx_fcst_NEWDP = df_mst_newfcstnetting_join.columns.get_loc('NEWDP')
+
+    idx_fcst_SITEID = df_mst_newfcstnetting_join.columns.get_loc('SITEID')
+    idx_fcst_ITEM = df_mst_newfcstnetting_join.columns.get_loc('ITEM')
+    idx_fcst_PROMISEDDELWEEK = df_mst_newfcstnetting_join.columns.get_loc('PROMISEDDELWEEK')
+
+    idx_fcst_SALESORDERID = df_mst_newfcstnetting_join.columns.get_loc(ND_.SALESORDERID)
+    idx_fcst_SOLINENUM = df_mst_newfcstnetting_join.columns.get_loc(ND_.SOLINENUM)
+    #idx_fcst_PROMISEDDELDATE = df_mst_newfcstnetting_join.columns.get_loc(ND_.PROMISEDDELDATE)
+
+    idx_fcst_UPBY = df_mst_newfcstnetting_join.columns.get_loc('UPBY')
+
+    #변수 초기화
+    L_DEMANDPRIORITY = 0
+    R_QTY = 0
+    STEP_R_QTY = 0
+    FARE_SHARE = 0
+
+    list_insert = []
+    list_update = []
+    list_FARE_SHARE = []
+
+    dict_exp_sopromisesrc_dtype = df_exp_sopromisesrc.dtypes.to_dict()
+
+    for mydata_row in ndarr_mst_newfcstnetting:
+        #-- 첫행이거나 
+        if mydata_row[idx_fcst_ROWNUM] == 1:
+            L_DEMANDPRIORITY = mydata_row[idx_fcst_DEMANDPRIORITY]
+            R_QTY = mydata_row[idx_fcst_NEWDP]
+            STEP_R_QTY = mydata_row[idx_fcst_NEWDP]
+            FARE_SHARE = 0
+
+        #-- 우선순위 바뀔때
+        elif L_DEMANDPRIORITY != mydata_row[idx_fcst_DEMANDPRIORITY]:
+            L_DEMANDPRIORITY = mydata_row[idx_fcst_DEMANDPRIORITY]
+            R_QTY = STEP_R_QTY
+            
+            FARE_SHARE = 0
+
+        # 발췌된 여러 row 들에 동일한 우선순위가 없는 경우에 대한 처리 
+        # 1. 꼬리표 붙여줘야 할 수량이 수요수량보다 크다면, 
+        #   -- 전체 newfcst 꼬리표만 달고 (solinenum + 99)  처리 끝
+        # 2. 꼬리표 불여줘야 할 수량이 수요 수량보다 작다면,
+        #    -- 일부 수량은 newfcst 꼬리표 달고 (solinenum + 99)  insert 
+        #    -- 나머지 수량은 기존 row 에다가 (수요수량 - newfcst 꼬리표 불일 수량) 으로 업데이트
+
+        #동순위 없을때
+        if mydata_row[idx_fcst_CNT] == 1:
+
+            #남은 수량> QTYPROMISE   작업필요없고 잔량 처리만
+            if R_QTY >= mydata_row[idx_fcst_QTYPROMISED]:
+                #update
+                update_row = mydata_row.copy()
+                #update_row[idx_fcst_SOLINENUM] += 99 #키값 수정되는 경우
+                update_row[idx_fcst_UPBY] = 'NEWALL2'
+                update_row = np.append(update_row, [update_row[idx_fcst_SOLINENUM] + 99]) #CHG_SOLINENUM
+                list_update.append(update_row)
+                
+                STEP_R_QTY = STEP_R_QTY - mydata_row[idx_fcst_QTYPROMISED]
+
+            #남은 수량 < QTYPROMISE  이면 남은수량만큼 UP0DATE 해줘야 함
+            else:
+                #insert --무조건 수량 상관없이 update, insert 한다. 나중에 N빵 수량 맞추려면 0이라도 row 있어야 함
+                insert_row = mydata_row.copy()
+                insert_row[idx_fcst_SOLINENUM] += 99
+                insert_row[idx_fcst_QTYPROMISED] = R_QTY
+                insert_row[idx_fcst_UPBY] = 'NEWINSERT1'
+                list_insert.append(insert_row)
+
+                #update
+                update_row = mydata_row.copy()
+                update_row[idx_fcst_QTYPROMISED] -= R_QTY
+                update_row[idx_fcst_UPBY] = 'NEWUPDATE1'
+                #update_row = np.append(update_row, [update_row[idx_fcst_SOLINENUM]]) #이 열이 수정되지 않지만 다른 조건에서 추가되므로 열맞추기 위해 추가
+                list_update.append(update_row)
+
+                STEP_R_QTY = STEP_R_QTY - R_QTY
+
+        # 발췌된 여러 row 들에 동일한 우선순위가 있는 경우에 대한 처리 
+        # 동순위 없을 때와 로직적으로 거의 비슷하지만,
+        # 동순위 처리를 위해 한번 더 select 하여 N빵해주는 부분이 있음
+        # 이 부분에 대한 처리는 EOP Netting 을 참고해주시면 되고, 
+        # RANK() OVER (PARTITION BY RK ORDER BY ROWNUM DESC , QTYPROMISED ) CHRK,  구문에서 
+        # rownum desc 구문에 오류가 있어서, ORDER BY 순서는 QTYPROMISED, SALESID 로 변경 필요 ?
+
+        #동순위 있을 때 
+        else:
+            #남은 수량> QTYPROMISE   작업필요없고 잔량 처리만
+            if R_QTY >= mydata_row[idx_fcst_SUBTOTAL]:
+                #update
+                update_row = mydata_row.copy()
+                #update_row[idx_fcst_SOLINENUM] += 99 #키값 수정
+                update_row[idx_fcst_UPBY] = 'NEWALL3'
+                update_row = np.append(update_row, [update_row[idx_fcst_SOLINENUM] + 99]) #CHG_SOLINENUM
+                list_update.append(update_row)
+
+                STEP_R_QTY = STEP_R_QTY - mydata_row[idx_fcst_QTYPROMISED]
+
+            #남은 수량 < QTYPROMISE  이면 남은수량 가지고 N빵 처리 해줘야 함
+            else:
+
+                #----------------------------------------------------------------------------------------
+                #오라클과 파이썬의 부동소수점 계산 차이로 맞지 않는 부분
+                appRatio = decimal.Decimal(mydata_row[idx_fcst_RATIO]) #.quantize(decimal.Decimal('1.'+ '0' * 40), rounding=decimal.ROUND_HALF_UP)
+                appAcnt = decimal.Decimal(str(R_QTY)) * appRatio
