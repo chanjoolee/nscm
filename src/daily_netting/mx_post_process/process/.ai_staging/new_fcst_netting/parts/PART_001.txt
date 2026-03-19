@@ -1,0 +1,430 @@
+# %%
+# 모듈 로딩
+import pandas as pd
+import numpy as np
+import time
+
+#오라클과 파이썬 부동소수점 계산 차이로 추가
+import decimal
+decimal.getcontext().prec = 40
+
+
+from daily_netting.mx_post_process.constant.ods_constant import NettedDemandD as ND_    # EXP_SOPROMISE
+from daily_netting.mx_post_process.constant.mx_constant import MXItemSellerMap as SM    # V_MTA_SELLERMAP 
+from daily_netting.mx_post_process.constant.mx_constant import CustomModelMap as CMM    # MTA_CUSTOMMODELMAP
+from daily_netting.mx_post_process.constant.mx_constant import InventoryD as Inv_    # MST_INVENTORY
+from daily_netting.mx_post_process.constant.mx_constant import IntransitD as Int_    # MST_INTRANSIT
+from daily_netting.mx_post_process.constant.mx_constant import DeliveryPlanD as DP_    # EXP_DELIVERYPLAN
+from daily_netting.mx_post_process.constant.mx_constant import ShortReasonD as SR_    # EXP_SHORTREASON
+from daily_netting.mx_post_process.constant.mx_constant import DistributionOrdersD as DO_    # MST_DISTRIBUTIONORDERS
+from daily_netting.mx_post_process.constant.mx_constant import CodeMap as CM    # MTA_CODEMAP
+from daily_netting.mx_post_process.constant.mx_constant import AvailableResourceD as AR_    # MST_INVENTORY_FNE
+from daily_netting.mx_post_process.constant.mx_constant import ESItemSite as ESIS    # MVES_ITEMSITE
+from daily_netting.mx_post_process.constant.mx_constant import NewFCSTPeriod as NFP    # MTA_NEWFCSTNETTING
+from daily_netting.mx_post_process.constant.dim_constant import Item as VIA
+
+from daily_netting.mx_post_process.utils.NSCMCommon import G_Logger
+LOGGER = G_Logger
+DF = pd.DataFrame
+
+v_planid = None
+v_effstartdate = None
+v_week1 = None
+v_week4 = None
+v_horisonweek = None
+v_endweek = None
+
+find_priority_position = None
+
+def set_new_fcst_env(accessor: object) -> None:
+    '''동적으로 전역변수를 설정하기 위한 함수'''
+    global v_planid, v_effstartdate, v_week1, v_week4, v_horisonweek, v_endweek
+    global find_priority_position
+    
+    find_priority_position = accessor.find_priority_position
+
+    #입력 파라미터 및 기준 데이터 정의
+    v_planid = accessor.plan_id
+    v_effstartdate = accessor.start_date
+    v_week1 = accessor.plan_week
+    
+    if accessor.plan_type == 'VPLAN':
+        v_horisonweek = 1
+        v_endweek = 7
+        v_week4 = (v_effstartdate + pd.Timedelta(days=7*4)).strftime('%G%V')
+    else:
+        v_horisonweek = 0
+        v_endweek = 0
+        v_week4 = (v_effstartdate + pd.Timedelta(days=7*3)).strftime('%G%V')
+
+
+#%%
+# [markdown]
+# #step 1. 4주이내 감소가 한주라도 있는 fcst에 대해 발라내기
+# - site, item, week 기준이며, sales는 가용량때문에 생각하지 않는다..
+# - 로직 적용하여 new fcst 분리후, exp_sopromisesrc 버프에서 sales도 감안하여 new fcst로 분리
+# - 가용량   = DC + INTRANSIT + 확정선적(공장재고 +공장생산)
+# - Realease = boddetail 의 max(frozon + LT) 이며, 최대 21을 넘지는 않는다.
+
+
+# %%
+def create_mst_newfcstnetting(
+        v_planid, v_week1, v_week4, v_horisonweek, v_effstartdate, v_endweek
+        , df_v_mta_sellermap
+        , df_exp_sopromisesrc
+        , df_exp_deliveryplan
+        , df_exp_shortreason
+        , df_mst_inventory
+        , df_mst_intransit
+        , df_mst_inventory_fne
+        , df_mst_distributionorders
+        , df_vui_itemattb
+        , df_mta_codemap
+        , df_mta_newfcstnetting
+        , df_mta_custommodelmap
+):
+
+    ############# SP_FN_SUMMARYDATA 시작 ##################
+
+    #1. WITH ITEMMASTER AS 시작
+
+    df_sellermap_itemsite = df_v_mta_sellermap[SM.ITEM] + df_v_mta_sellermap[SM.SITEID]
+
+    #ITEMMASTER
+    #DATA_SRC
+    ### 1-1
+    df_exp_sopromisesrc_view = df_exp_sopromisesrc[
+        ~(df_exp_sopromisesrc[ND_.ITEMID] + df_exp_sopromisesrc[ND_.SITEID]).isin(df_sellermap_itemsite)]
+    df_exp_sopromisesrc_view = df_exp_sopromisesrc_view[[ND_.ITEMID, ND_.SITEID]].drop_duplicates()
+    df_exp_sopromisesrc_view = df_exp_sopromisesrc_view.rename(columns={ND_.ITEMID:'ITEM', ND_.SITEID:'SITEID'})
+    ### 1-2
+    df_exp_deliveryplan_view = df_exp_deliveryplan[
+        ~(df_exp_deliveryplan[DP_.ITEM] + df_exp_deliveryplan[DP_.SITEID]).isin(df_sellermap_itemsite)]
+    df_exp_deliveryplan_view = df_exp_deliveryplan_view[[DP_.ITEM, DP_.SITEID]].drop_duplicates()
+    df_exp_deliveryplan_view = df_exp_deliveryplan_view.rename(columns={DP_.ITEM:'ITEM', DP_.SITEID:'SITEID'})
+    df_exp_deliveryplan_view
+    ### 1-3
+    df_exp_shortreason_view = df_exp_shortreason[df_exp_shortreason[SR_.PROBLEMID] == 1]
+    df_exp_shortreason_view = df_exp_shortreason_view[df_exp_shortreason_view[SR_.PROBLEMTYPE] == 'NEW_FCST']
+    df_exp_shortreason_view = df_exp_shortreason_view[
+        ~(df_exp_shortreason_view[SR_.REQITEM] + df_exp_shortreason_view[SR_.REQSITEID]).isin(df_sellermap_itemsite)]
+    df_exp_shortreason_view = df_exp_shortreason_view[[SR_.REQITEM, SR_.REQSITEID]].drop_duplicates()
+    df_exp_shortreason_view = df_exp_shortreason_view.rename(columns={SR_.REQITEM:'ITEM', SR_.REQSITEID:'SITEID'})
+
+    ### 1-4
+    df_mst_inventory_view = df_mst_inventory[
+        ~(df_mst_inventory[Inv_.ITEM] + df_mst_inventory[Inv_.SITEID]).isin(df_sellermap_itemsite)]
+    df_mst_inventory_view = df_mst_inventory_view[[Inv_.ITEM, Inv_.SITEID]].drop_duplicates()
+    df_mst_inventory_view = df_mst_inventory_view.rename(columns={Inv_.ITEM:'ITEM', Inv_.SITEID:'SITEID'})
+
+    ### 1-5
+    df_mst_intransit_view = df_mst_intransit[
+        ~(df_mst_intransit[Int_.ITEM] + df_mst_intransit[Int_.TOSITEID]).isin(df_sellermap_itemsite)]
+    df_mst_intransit_view = df_mst_intransit_view[[Int_.ITEM, Int_.TOSITEID]].drop_duplicates()
+    df_mst_intransit_view = df_mst_intransit_view.rename(columns={Int_.ITEM:'ITEM', Int_.TOSITEID:'SITEID'})
+
+    ### 1-6
+    df_mst_distributionorders_view = df_mst_distributionorders[
+        ~(df_mst_distributionorders[DO_.ITEM] + df_mst_distributionorders[DO_.TOSITEID]).isin(df_sellermap_itemsite)]
+    df_mst_distributionorders_view = df_mst_distributionorders_view[[DO_.ITEM, DO_.TOSITEID]].drop_duplicates()
+    df_mst_distributionorders_view = df_mst_distributionorders_view.rename(columns={DO_.ITEM:'ITEM', DO_.TOSITEID:'SITEID'})
+
+    #UNION
+    df_w_itemmaster = pd.concat([
+        df_exp_sopromisesrc_view
+        , df_exp_deliveryplan_view
+        , df_exp_shortreason_view
+        , df_mst_inventory_view
+        , df_mst_intransit_view
+        , df_mst_distributionorders_view], ignore_index=True)
+    df_w_itemmaster = df_w_itemmaster[['ITEM', 'SITEID']].drop_duplicates(ignore_index=True)
+
+    df_w_itemmaster = pd.merge(df_w_itemmaster, df_vui_itemattb, how='inner', left_on=['ITEM'], right_on=[VIA.ITEM])
+
+    df_w_itemmaster = df_w_itemmaster.rename(columns={VIA.PRODUCTGROUP:'PRODUCTGROUP'})
+
+    df_w_itemmaster = df_w_itemmaster[['PRODUCTGROUP', 'ITEM', 'SITEID']]
+
+    #1. WITH ITEMMASTER AS 끝
+
+
+    #2. (WITH), HORIZON AS 시작
+
+    #MTA_CODEMAP 'HC_WL_DP_SEA_COMMIT' 조건 필터링
+    df_mta_codemap_view = df_mta_codemap[df_mta_codemap[CM.CODEMAPKEY].str.split('::').str[0] =='HC_WL_DP_SEA_COMMIT']
+
+    #MTA_NEWFCSTNETTING A, MTA_CODEMAP B 조인
+    df_mta_newfcstnetting_merge = pd.merge(df_mta_newfcstnetting
+                                        , df_mta_codemap_view, how='left'
+                                        , left_on=[NFP.SITEID, NFP.PRODUCTGROUP]
+                                        , right_on=[CM.TXT1, CM.TXT2])
+
+    df_mta_newfcstnetting_merge = df_mta_newfcstnetting_merge[[NFP.SITEID, NFP.PRODUCTGROUP, NFP.ENDWEEK, CM.CODE1]]
+
+    #df_mta_newfcstnetting_merge
+
+    #이전 셀에서 생성한 ITEMMASTER와 조인
+    df_w_itemmaster_merge = pd.merge(df_w_itemmaster
+                                    , df_mta_newfcstnetting_merge, how='left'
+                                    , left_on=['SITEID', 'PRODUCTGROUP']
+                                    , right_on=[NFP.SITEID, NFP.PRODUCTGROUP])
+
+    #AND   SUBSTR(ITEM, -3) = NVL(B.CODE1(+), SUBSTR(ITEM, -3)) 처리
+    df_w_itemmaster_merge['item_sub'] = df_w_itemmaster_merge['ITEM'].str[-3:]
+    df_w_itemmaster_merge = df_w_itemmaster_merge[
+            df_w_itemmaster_merge['item_sub'] == df_w_itemmaster_merge[CM.CODE1].fillna(df_w_itemmaster_merge['item_sub'])
+        ]
+
+    #결과에서 추가 컬럼 구하기
+    #NVL(B.PRODUCTGROUP, A.PRODUCTGROUP) PRODUCTGROUP
+    df_w_itemmaster_merge['PRODUCTGROUP'] = df_w_itemmaster_merge[NFP.PRODUCTGROUP].fillna(df_w_itemmaster_merge['PRODUCTGROUP'])
+
+    #NVL(B.SITEID, A.SITEID) SITEID
+    df_w_itemmaster_merge['SITEID'] = df_w_itemmaster_merge[NFP.SITEID].fillna(df_w_itemmaster_merge['SITEID'])
+
+    #NVL(B.ENDWEEK, 4)+V_HORISONWEEK ENDHORIZON
+    df_w_itemmaster_merge['ENDHORIZON'] = df_w_itemmaster_merge[NFP.ENDWEEK].fillna(4).astype(int) + v_horisonweek
+
+    #TO_CHAR(V_EFFSTARTDATE + 7*(NVL(B.ENDWEEK, 4)-1)+V_ENDWEEK,'IYYYIW') ENDWEEK 
+    df_w_itemmaster_merge['ENDWEEK'] = (v_effstartdate + pd.to_timedelta(7 * ((df_w_itemmaster_merge[NFP.ENDWEEK].fillna(4).astype(int) - 1) + v_endweek), unit='D')).dt.strftime('%G%V')
+
+    df_w_horizon = df_w_itemmaster_merge[['PRODUCTGROUP', 'ITEM', 'SITEID', 'ENDHORIZON', 'ENDWEEK']]
+
+    #2. (WITH), HORIZON AS 끝
+
+
+    #3. (WIth),DATA_SRC AS ( 시작 : UNION ALL 위부분
+    df_custommodelmap_itemview = df_mta_custommodelmap[df_mta_custommodelmap[CMM.ISVALID] == 'Y']
+
+    df_exp_deliveryplan_merge = df_exp_deliveryplan[
+        ~(df_exp_deliveryplan[DP_.ITEM] + df_exp_deliveryplan[DP_.SITEID]).isin(df_sellermap_itemsite)]
+
+    df_exp_deliveryplan_merge = df_exp_deliveryplan_merge[
+            ~df_exp_deliveryplan_merge[DP_.ITEM].isin(df_custommodelmap_itemview[CMM.CUSTOMITEM])
+        ]
+
+    #조건 처리 : AND      TO_CHAR(PROMISEDSHIPPINGDATE,'IYYYIW') BETWEEN V_WEEK1  AND  B.ENDWEEK
+    #PROMISEDSHIPPINGDATE week로 변환
+    isoCalDate = pd.to_datetime(df_exp_deliveryplan_merge[DP_.PROMISEDSHIPPINGDATE]).dt.isocalendar()
+    df_exp_deliveryplan_merge['PROMISEDSHIPPINGWEEK'] = isoCalDate.year.astype(str) + isoCalDate.week.astype(str).str.zfill(2)
+
+    df_exp_deliveryplan_merge['CURQTY'] = 0
+    df_exp_deliveryplan_merge['WEEKSUPPLY'] = 0
+
+    df_exp_deliveryplan_merge = df_exp_deliveryplan_merge[[DP_.SITEID, DP_.ITEM, 'PROMISEDSHIPPINGWEEK', DP_.QTYOPEN, 'CURQTY', 'WEEKSUPPLY']]
+    df_exp_deliveryplan_merge = df_exp_deliveryplan_merge.rename(columns={DP_.ITEM:'ITEM', DP_.SITEID:'SITEID', 'PROMISEDSHIPPINGWEEK':'WEEK', DP_.QTYOPEN:'PREQTY'})
+
+    #3. (WIth),DATA_SRC AS ( 블럭의  UNION ALL 아래 부분
+
+    #sellermap not exists 조건 처리
+    df_exp_sopromisesrc_merge = df_exp_sopromisesrc[
+        ~(df_exp_sopromisesrc[ND_.ITEMID] + df_exp_sopromisesrc[ND_.SITEID]).isin(df_sellermap_itemsite)]
+    #customermap not exists 조건 처리
+    df_exp_sopromisesrc_merge = df_exp_sopromisesrc_merge[~df_exp_sopromisesrc_merge[ND_.ITEMID].isin(df_custommodelmap_itemview[CMM.CUSTOMITEM])]
+
+    # #6.1s
+    isoCalDate = pd.to_datetime(df_exp_sopromisesrc_merge[ND_.PROMISEDDELDATE]).dt.isocalendar()
+    df_exp_sopromisesrc_merge['PROMISEDDELWEEK'] = isoCalDate.year.astype(str) + isoCalDate.week.astype(str).str.zfill(2)
+
+    df_exp_sopromisesrc_merge['PREQTY'] = 0
+    df_exp_sopromisesrc_merge['WEEKSUPPLY'] = 0
+
+    df_exp_sopromisesrc_merge = df_exp_sopromisesrc_merge[[
+        ND_.SITEID
+        , ND_.ITEMID
+        , 'PROMISEDDELWEEK'
+        , 'PREQTY'
+        , ND_.QTYPROMISED
+        , 'WEEKSUPPLY']]
+    df_exp_sopromisesrc_merge = df_exp_sopromisesrc_merge.rename(columns={
+        ND_.SITEID : 'SITEID'
+        , ND_.ITEMID : 'ITEM'
+        , ND_.QTYPROMISED:'CURQTY'
+        , 'PROMISEDDELWEEK':'WEEK'})
+
+    #UNION ALL
+    df_w_data_src = pd.concat([df_exp_deliveryplan_merge, df_exp_sopromisesrc_merge])
+
+    #HORIZON 조인
+    df_w_data_src = pd.merge(df_w_data_src, df_w_horizon, on=['SITEID', 'ITEM'])
+    df_w_data_src = df_w_data_src[df_w_data_src['WEEK'].between(v_week1, df_w_data_src['ENDWEEK'])]
+
+    #3. (WIth),DATA_SRC AS ( 끝
+
+
+    #-- ###  4-1
+    #-- 1. 가용량 (INVENTORY + INTRANSIT + DISTRIBUTIONORDERS)
+
+    # V_MTA_SELLERMAP 및 MST_ITEM의 MultiIndex 생성
+    sellermap_index = pd.MultiIndex.from_frame(df_v_mta_sellermap[[SM.ITEM, SM.SITEID]]) #df_sellermap_itemsite
+
+    # Step 2: 서브 쿼리 작성 및 필터링
+    # MST_INVENTORY_FNE 테이블 필터링
+    df_mst_inventory_fne = df_mst_inventory_fne[
+        (~pd.MultiIndex.from_frame(df_mst_inventory_fne[[AR_.ITEM, AR_.SITEID]]).isin(sellermap_index))
+    ]
+
+
+    #조인 : MST_INVENTORY_FNE A, HORIZON B
+    df_mst_inventory_fne_merge = pd.merge(df_mst_inventory_fne, df_w_horizon, left_on=[AR_.SITEID, AR_.ITEM], right_on=['SITEID', 'ITEM'])
+
+    #AND A.WEEK BETWEEN V_WEEK1 AND B.ENDWEEK 
+    df_mst_inventory_fne_merge = df_mst_inventory_fne_merge[
+            df_mst_inventory_fne_merge[AR_.WEEK].between(v_week1, df_mst_inventory_fne_merge['ENDWEEK'])
+        ]
+
+    df_mst_inventory_fne_merge['PREQTY'] = 0
+    df_mst_inventory_fne_merge['CURQTY'] = 0
+
+    df_mst_inventory_fne_merge = df_mst_inventory_fne_merge[[AR_.SITEID, AR_.ITEM, AR_.WEEK, 'PREQTY', 'CURQTY', AR_.QTY]]
+    df_mst_inventory_fne_merge = df_mst_inventory_fne_merge.rename(columns={
+        AR_.SITEID:'SITEID', AR_.ITEM:'ITEM', AR_.WEEK:'WEEK', AR_.QTY:'WEEKSUPPLY'})
+
+
+    #-- ###  4-2
+    #DATA_SRC    UNION ALL
+    df_w_data_src_inv = pd.concat([df_w_data_src, df_mst_inventory_fne_merge])
+
+    #WHERE  NOT EXISTS (SELECT 'X' FROM MST_ITEM WHERE PRODUCTCODE = 'EBABX' AND  ITEM = A.ITEM)
+    df_mst_item_sub = df_vui_itemattb[df_vui_itemattb[VIA.PRODUCTCODE] == 'EBABX']
+    df_w_data_src_inv = df_w_data_src_inv[~df_w_data_src_inv['ITEM'].isin(df_mst_item_sub[VIA.ITEM])]
+
+    df_w_data_src_inv = df_w_data_src_inv[['SITEID', 'ITEM', 'WEEK', 'PREQTY', 'CURQTY', 'WEEKSUPPLY']]
+
+    df_w_data_src_inv = df_w_data_src_inv.astype({
+        'PREQTY': int,
+        'CURQTY': int,
+        'WEEKSUPPLY': int,
+    })
+
+
+    #-- ###  4-3
+    #GROUP BY PLANID, SITEID, ITEM, WEEK
+    df_w_data_src_inv = df_w_data_src_inv.groupby(['SITEID', 'ITEM', 'WEEK']).agg({
+        'PREQTY': 'sum',
+        'CURQTY': 'sum',
+        'WEEKSUPPLY': 'sum'
+    }).reset_index()
+
+    #-- ###  4-4 : EXP_SHORTREASON B블럭 처리
+    df_exp_shortreason_view = df_exp_shortreason[df_exp_shortreason[SR_.PROBLEMID] == 1]
+    df_exp_shortreason_view = df_exp_shortreason_view[df_exp_shortreason_view[SR_.PROBLEMTYPE] == 'NEW_FCST']
+
+    #not exists MST_ITEM 조인 조건 처리
+    df_exp_shortreason_view = df_exp_shortreason_view[~df_exp_shortreason_view[SR_.REQITEM].isin(df_mst_item_sub)]
+
+    #not exists V_MTA_SELLERMAP 조인 조건 처리
+    df_exp_shortreason_view = df_exp_shortreason_view[
+        ~(df_exp_shortreason_view[SR_.REQITEM] + df_exp_shortreason_view[SR_.REQSITEID]).isin(df_sellermap_itemsite)]
+
+    #net exists MTA_CUSTOMMODELMAP 조인 조건 처리
+    #프로시저에는 WHERE CUSTOMITEM = A.ITEM인데 잘못된 거라함. REQITEM이 맞다함
+    df_exp_shortreason_view = df_exp_shortreason_view[~df_exp_shortreason_view[SR_.REQITEM].isin(df_custommodelmap_itemview[CMM.CUSTOMITEM])]
+
+    df_exp_shortreason_view['WEEK'] = pd.to_datetime(df_exp_shortreason_view[SR_.DUEDATE]).dt.strftime('%G%V')
+
+    df_exp_shortreason_view = df_exp_shortreason_view[[SR_.REQSITEID, SR_.REQITEM, 'WEEK', SR_.SHORTQTY]]
+
+    #그룹핑 및 SUM
+    df_exp_shortreason_view = df_exp_shortreason_view.groupby([SR_.REQSITEID, SR_.REQITEM, 'WEEK']).agg({
+        SR_.SHORTQTY: 'sum'
+    }).reset_index()
+
+    df_exp_shortreason_view = df_exp_shortreason_view.rename(columns={SR_.REQSITEID:'SITEID', SR_.REQITEM:'ITEM', SR_.SHORTQTY:'NFSHORT'})
+
+    #조인 : VUI_ITEMATTB C 
+    df_mst_newfcstnetting = pd.merge(df_w_data_src_inv, df_vui_itemattb, left_on=['ITEM'], right_on=[VIA.ITEM])
+    #조인 : (EXP_SHORTREASON) B
+    df_mst_newfcstnetting = pd.merge(df_mst_newfcstnetting, df_exp_shortreason_view, how='left', on=['SITEID', 'ITEM', 'WEEK'])
+
+    df_mst_newfcstnetting = df_mst_newfcstnetting.rename(columns={VIA.ATTB05:'ATTB05', VIA.BASICNAME:'BASICNAME'})
+
+    #AND    NOT EXISTS (SELECT 'X' FROM MTA_CODEMAP WHERE CATEGORY = 'HC_WL_FN_EXCEPNEWFCST' AND TXT1 = A.SITEID AND TXT2 = C.ATTB05 AND TXT3 = C.BASICNAME )
+    #MTA_CODEMAP 'HC_WL_FN_EXCEPNEWFCST' 조건 필터링
+    df_mta_codemap_fcstview = df_mta_codemap[df_mta_codemap[CM.CODEMAPKEY].str.split('::').str[0] =='HC_WL_FN_EXCEPNEWFCST']
+    idx_codemap = pd.MultiIndex.from_frame(df_mta_codemap_fcstview[[CM.TXT1, CM.TXT2, CM.TXT3]])
+
+    df_mst_newfcstnetting = df_mst_newfcstnetting[
+        ~pd.MultiIndex.from_frame(df_mst_newfcstnetting[['SITEID','ATTB05','BASICNAME']]).isin(idx_codemap)
+    ]
+
+    df_mst_newfcstnetting['NFSHORT'] = df_mst_newfcstnetting['NFSHORT'].fillna(0).astype(int)
+    df_mst_newfcstnetting = df_mst_newfcstnetting[['SITEID', 'ITEM', 'WEEK', 'PREQTY', 'CURQTY', 'NFSHORT', 'WEEKSUPPLY']]
+
+    df_mst_newfcstnetting = df_mst_newfcstnetting.groupby(['SITEID', 'ITEM', 'WEEK']).agg({
+        'PREQTY': 'sum',
+        'CURQTY': 'sum',
+        'NFSHORT': 'sum',
+        'WEEKSUPPLY': 'sum'
+    }).reset_index()
+
+    #정렬
+    df_mst_newfcstnetting = df_mst_newfcstnetting.sort_values(by=['SITEID', 'ITEM', 'WEEK'])
+
+    #컬럼 추가
+    df_mst_newfcstnetting['DIFF'] = df_mst_newfcstnetting['CURQTY'] - df_mst_newfcstnetting['PREQTY']
+    df_mst_newfcstnetting['EXCEPNFSHORT'] = df_mst_newfcstnetting['PREQTY'] - df_mst_newfcstnetting['NFSHORT']
+
+    #V_PGMNAME               VARCHAR2(30) := 'SP_FN_SUMMARYDATA';
+    #INSERT INTO MST_NEWFCSTNETTING
+    #(  PLANID, SITEID, ITEM, WEEK, RELEASE, PREQTY, CURQTY, DIFF, NFSHORT, EXCEPNFSHORT, MRTF, ARTF, WEEKSUPPLY, MSUPPLY, ASUPPLY, MPDP, NEWDP, INITDTTM, INITBY )
+    df_mst_newfcstnetting['RELEASE'] = 0
+    df_mst_newfcstnetting['MRTF'] = 0
+    df_mst_newfcstnetting['ARTF'] = 0
+    df_mst_newfcstnetting['MSUPPLY'] = 0
+    df_mst_newfcstnetting['ASUPPLY'] = 0
+    df_mst_newfcstnetting['MPDP'] = 0
+    df_mst_newfcstnetting['NEWDP'] = 0
+
+    df_mst_newfcstnetting['PLANID'] = v_planid
+
+    #컬럼 정리
+    df_mst_newfcstnetting = df_mst_newfcstnetting[['PLANID', 'SITEID', 'ITEM', 'WEEK', 'PREQTY', 'CURQTY', 'NFSHORT', 'WEEKSUPPLY', 'DIFF', 'EXCEPNFSHORT', 'RELEASE', 'MRTF',
+                            'ARTF', 'MSUPPLY', 'ASUPPLY', 'MPDP', 'NEWDP']]
+
+    #AND SITEID LIKE 'S341%'
+    df_mst_newfcstnetting_total = df_mst_newfcstnetting[df_mst_newfcstnetting['SITEID'].str.startswith('S341')]
+
+    #df_mst_newfcstnetting_total = df_mst_newfcstnetting_total[['PLANID', 'SITEID', 'ITEM', 'WEEK', 'RELEASE', 'PREQTY', 'CURQTY','DIFF', 'NFSHORT', 'EXCEPNFSHORT', 'MRTF', 'ARTF', 'WEEKSUPPLY', 'MSUPPLY', 'ASUPPLY', 'MPDP', 'NEWDP']]
+
+    df_mst_newfcstnetting_total = df_mst_newfcstnetting_total.groupby(['ITEM', 'WEEK']).agg({
+            'RELEASE': 'sum',
+            'PREQTY': 'sum',
+            'CURQTY': 'sum',
+            'DIFF': 'sum',
+            'NFSHORT': 'sum',
+            'EXCEPNFSHORT': 'sum',
+            'MRTF': 'sum',
+            'ARTF': 'sum',
+            'WEEKSUPPLY': 'sum',
+            'MSUPPLY': 'sum',
+            'ASUPPLY': 'sum',
+            'MPDP': 'sum',
+            'NEWDP': 'sum'
+    }).reset_index()
+
+
+    df_mst_newfcstnetting_total['PLANID'] = v_planid
+    df_mst_newfcstnetting_total['SITEID'] = 'TOTAL'
+
+    df_mst_newfcstnetting_total = df_mst_newfcstnetting_total[['PLANID', 'SITEID', 'ITEM', 'WEEK', 
+            'PREQTY', 'CURQTY', 'NFSHORT', 'WEEKSUPPLY', 'DIFF', 'EXCEPNFSHORT', 'RELEASE', 'MRTF', 'ARTF', 'MSUPPLY', 'ASUPPLY', 'MPDP', 'NEWDP']]
+
+
+    #중복제거
+    df_mst_newfcstnetting_total = df_mst_newfcstnetting_total.drop_duplicates()
+
+
+    #df_mst_newfcstnetting_total = df_mst_newfcstnetting_total[['SITEID', 'ITEM', 'WEEK']].drop_duplicates()
+    #df_mst_newfcstnetting_total = df_mst_newfcstnetting_total[['PLANID', 'SITEID', 'ITEM', 'WEEK', 'PREQTY', 'CURQTY', 'NFSHORT', 'WEEKSUPPLY', 'DIFF', 'EXCEPNFSHORT', 'RELEASE', 'MRTF',
+    #                        'ARTF', 'MSUPPLY', 'ASUPPLY', 'MPDP', 'NEWDP']]
+
+    #토탈을 만들어서 붙임
+    df_mst_newfcstnetting = pd.concat([df_mst_newfcstnetting, df_mst_newfcstnetting_total], ignore_index=True)
+
+    ##################### SP_FN_SUMMARYDATA 끝 #################
+
+
+    ############ SP_FN_AVAILNETTING 시작 ################
+    df_mst_newfcstnetting['WEEK'] = df_mst_newfcstnetting['WEEK'].astype(int)
+    df_mst_newfcstnetting['RK'] = df_mst_newfcstnetting.groupby(['ITEM', 'SITEID'])['WEEK'].rank(method='first').astype(int)
