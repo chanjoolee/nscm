@@ -1,0 +1,15 @@
+{
+  "root_name": "estore_netting",
+  "source_file_name": "estore_netting.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-19 16:39:27",
+  "target_full_path": "src/daily_netting/mx_post_process/process/estore_netting.py",
+  "index_path": "src/daily_netting/mx_post_process/process/.ai_staging/estore_netting/INDEX.md",
+  "parts_dir": "src/daily_netting/mx_post_process/process/.ai_staging/estore_netting/parts",
+  "part_files": [
+    "src/daily_netting/mx_post_process/process/.ai_staging/estore_netting/parts/PART_001.txt",
+    "src/daily_netting/mx_post_process/process/.ai_staging/estore_netting/parts/PART_002.txt"
+  ],
+  "part_count": 2,
+  "max_bytes": 24714
+}
