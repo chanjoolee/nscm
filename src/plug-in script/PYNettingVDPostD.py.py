@@ -59,26 +59,28 @@ if nscm.G_IS_Local:
     from daily_netting.vd_post_process.constant.vd_constant import SalesOrderLine as SOL
     from daily_netting.vd_post_process.constant.vd_constant import TWOSSales as TWOSS
 
-    additional_path = '202604_DP_VD_US_SA'
+    additional_path = '202612_DP_VD_US_MO'
     # current_path = os.path.dirname(__file__)
-    current_path = 'C:\Netting\o9Data\PYNettingVDPostD\QA\DPNS\202612_DP_VD_M\download_20260320-110505'
+    # current_path = 'C:\\Netting\\o9Data\\PYNettingVDPostD\\QA\\DPNS\\202612_DP_VD_M\\download_20260320-110505'
+    current_path = r'C:\Netting\o9Data\PYNettingMXPostD\QA\DPNS\202612_DP_VD_US_MO\download_20260320-133652'
 
     # 데이터 가져오기
     # dim
-    df_dim_item                    = pd.read_csv(f'{current_path}\\df_dim_item.csv', dtype=object)
-    df_dim_location                = pd.read_csv(f'{current_path}\\df_dim_location.csv', dtype=object)
-    df_dim_netting_sales           = pd.read_csv(f'{current_path}\\df_dim_netting_sales.csv', dtype=object)
-    df_dim_netting_sales_level     = pd.read_csv(f'{current_path}\\df_dim_netting_sales_level.csv', dtype=object)
-    df_dim_netting_lp_plan_batch   = pd.read_csv(f'{current_path}\\df_dim_netting_lp_plan_batch.csv', dtype=object)
+    df_dim_item                         = pd.read_csv(f'{current_path}\\df_dim_item.csv', dtype=object)
+    df_dim_location                     = pd.read_csv(f'{current_path}\\df_dim_location.csv', dtype=object)
+    df_dim_netting_sales                = pd.read_csv(f'{current_path}\\df_dim_netting_sales.csv', dtype=object)
+    df_dim_netting_sales_level          = pd.read_csv(f'{current_path}\\df_dim_netting_sales_level.csv', dtype=object)
+    df_dim_netting_lp_plan_batch        = pd.read_csv(f'{current_path}\\df_dim_netting_lp_plan_batch.csv', dtype=object)
 
-    # ods
-    df_pre_demand                  = pd.read_csv(f'{current_path}\\df_pre_demand.csv', dtype=object)           
-    df_plan                        = pd.read_csv(f'{current_path}\\df_plan.csv', dtype=object)
-    df_plan_option                 = pd.read_csv(f'{current_path}\\df_plan_option.csv', dtype=object)
-    df_priority_rank               = pd.read_csv(f'{current_path}\\df_priority_rank.csv', dtype=object)
+    # ods       
+    df_pre_demand                       = pd.read_csv(f'{current_path}\\df_pre_demand.csv', dtype=object)           
+    df_plan                             = pd.read_csv(f'{current_path}\\df_plan.csv', dtype=object)
+    df_plan_option                      = pd.read_csv(f'{current_path}\\df_plan_option.csv', dtype=object)
+    df_priority_rank                    = pd.read_csv(f'{current_path}\\df_priority_rank.csv', dtype=object)
 
-    # general
-    df_sales_order_lp              = pd.read_csv(f'{current_path}\\df_sales_order_lp.csv', dtype=object)
+    # general   
+    df_sales_order_lp                   = pd.read_csv(f'{current_path}\\df_sales_order_lp.csv', dtype=object)
+    df_in_netting_if_vd_online_sales    = pd.read_csv(f'{current_path}\\df_in_Netting_IF_VD_Online_Sales.csv', dtype=object)
 
     
     print('csv load 완료')
@@ -112,25 +114,18 @@ if nscm.G_IS_Local:
     print('df_type 변환 완료')
 
 try:
-    logger.PrintDF(df_dim_item 					  ,'df_dim_item 				'.strip(),p_row_num=20)	
-    logger.PrintDF(df_dim_location                ,'df_dim_location             '.strip(),p_row_num=20)
-    logger.PrintDF(df_dim_netting_sales           ,'df_dim_netting_sales        '.strip(),p_row_num=20)
-    logger.PrintDF(df_dim_netting_sales_level     ,'df_dim_netting_sales_level  '.strip(),p_row_num=20)
-    logger.PrintDF(df_dim_netting_lp_plan_batch   ,'df_dim_netting_lp_plan_batch'.strip(),p_row_num=20)
-    logger.PrintDF(df_pre_demand                  ,'df_pre_demand               '.strip(),p_row_num=20)
-    logger.PrintDF(df_plan                        ,'df_plan                     '.strip(),p_row_num=20)
-    logger.PrintDF(df_plan_option                 ,'df_plan_option              '.strip(),p_row_num=20)
-    logger.PrintDF(df_priority_rank               ,'df_priority_rank            '.strip(),p_row_num=20)
-    logger.PrintDF(df_sales_order_lp              ,'df_sales_order_lp           '.strip(),p_row_num=20)
 
     df_list = [
         ('df_dim_item', df_dim_item),  ('df_dim_location', df_dim_location),  ('df_dim_netting_sales', df_dim_netting_sales), 
         ('df_dim_netting_sales_level', df_dim_netting_sales_level),  ('df_pre_demand', df_pre_demand),  ('df_plan', df_plan), 
         ('df_plan_option', df_plan_option),  ('df_priority_rank', df_priority_rank), ('df_dim_netting_lp_plan_batch', df_dim_netting_lp_plan_batch),
-        ('df_sales_order_lp', df_sales_order_lp),
+        ('df_sales_order_lp', df_sales_order_lp),('df_in_netting_if_vd_online_sales', df_in_netting_if_vd_online_sales),
     ]
     for name, df in df_list:
         logger.Note(f'{name} has {len(df)} rows', 20)
+    
+    for name, df in df_list:
+        logger.PrintDF(df ,f'{name}',p_row_num=20)
 
     # accessor에 데이터 담기, plan data
     accessor = Accessor(
@@ -139,6 +134,7 @@ try:
         df_plan_option, df_priority_rank,
         df_dim_netting_lp_plan_batch,
         df_sales_order_lp,
+        df_in_netting_if_vd_online_sales,
     ) # 모든 df 데이터 가져가기
 
     # 전역 레퍼런스 삭제, gc 비우기
