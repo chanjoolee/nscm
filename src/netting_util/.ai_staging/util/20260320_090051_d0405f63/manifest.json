@@ -1,0 +1,14 @@
+{
+  "root_name": "util",
+  "source_file_name": "util.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-20 09:00:58",
+  "target_full_path": "src/netting_util/util.py",
+  "staging_path": "src/netting_util/.ai_staging/util/20260320_090051_d0405f63",
+  "parts_dir": "src/netting_util/.ai_staging/util/20260320_090051_d0405f63/parts",
+  "part_files": [
+    "src/netting_util/.ai_staging/util/20260320_090051_d0405f63/parts/PART_001.txt"
+  ],
+  "part_count": 1,
+  "max_bytes": 24714
+}
