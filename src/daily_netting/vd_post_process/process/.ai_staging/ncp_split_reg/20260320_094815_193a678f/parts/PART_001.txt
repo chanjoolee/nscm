@@ -1,0 +1,357 @@
+
+import pandas as pd
+import numpy as np
+
+DF = pd.DataFrame
+
+# o9 gscm 간 컬럼 변환 처리
+from netting_util.conv_gscm_o9_cols import getcols, o92gscm, gscm2o9
+from netting_util.NSCMCommon import G_Logger
+
+# 아래 정의된 클래스는 등록 완료되면 임포트 후 제거
+
+class BUF_SALESPLANINVENTORY :
+	VERSIONNAME = 'Version.[Version Name]'
+	SEQUENCE = 'Sequence.[Sequence]'
+	LOGISTICSSITEID = 'Netting Sales Plan Inventory Logistic Site ID'
+	SALESSITEID = 'Netting Sales Plan Inventory Sales Site ID'
+	SALESID = 'Netting Sales Plan Inventory Sales ID'
+	ITEM = 'Netting Sales Plan Inventory Item'
+	INVENTORYDATE = 'Netting Sales Plan Inventory Date'
+	AVAILQTY = 'Netting Sales Plan Inventory Avail Qty'
+	CONSUMEQTY = 'Netting Sales Plan Inventory Consume Qty'
+BINV = BUF_SALESPLANINVENTORY
+    
+class MST_LOGISTICSSITE :
+	VERSIONNAME = 'Version.[Version Name]'
+	SEQUENCE = 'Sequence.[Sequence]'
+	LOGISTICSSITEID = 'Netting Logistic Site ID'
+	SALESSITEID = 'Netting Logistic Site Sales Site ID'
+	SALESID = 'Netting Logistic Site Sales ID'
+	SECTION = 'Netting Logistic Site Section'
+MLS = MST_LOGISTICSSITE
+
+
+from weekly_netting.vd_post_process.constant.ods_constant import NettedDemandW as ND_D
+
+def set_ncp_split_reg_env(accessor: object) -> None:
+     pass
+
+
+def do_ncp_split_reg(df_in_EXP_SOPROMISESRCNCP:DF
+          , df_in_MST_LOGISTICSSITE:DF
+          , df_in_BUF_SALESPLANINVENTORY:DF
+          , logger:G_Logger
+):
+    
+    logger.Note('ncp split reg start', 20)
+
+    df_EXP_SOPROMISESRC = o92gscm(df_in_EXP_SOPROMISESRCNCP, ND_D)
+    df_MST_LOGISTICSSITE = o92gscm(df_in_MST_LOGISTICSSITE, MLS)
+    df_BUF_SALESPLANINVENTORY = o92gscm(df_in_BUF_SALESPLANINVENTORY, BINV)
+
+    # # STEP1) df_in_MST_PLAN df에서 항목별 변수 선언
+    V_PROGNAME = 'SP_FN_SPLIT_REG'
+    
+    # STEP2) global df_out_EXP_SOPROMISESRCNCP 생성
+    df_EXP_SOPROMISESRC['QTYPROMISED'] = df_EXP_SOPROMISESRC['QTYPROMISED'].astype(float)
+    df_EXP_SOPROMISESRC['QTYPROMISED'] = df_EXP_SOPROMISESRC['QTYPROMISED'].astype(float)
+    df_EXP_SOPROMISESRC['PROMISEDDELDATE'] = pd.to_datetime(df_EXP_SOPROMISESRC['PROMISEDDELDATE'], errors='coerce')
+
+    # STEP3) df_BUF_SALESPLANINVENTORY 생성
+    # df_BUF_SALESPLANINVENTORY는 인바운드함
+    # 컬럼 순서 맞춤
+    df_BUF_SALESPLANINVENTORY = df_BUF_SALESPLANINVENTORY[['LOGISTICSSITEID'
+                                                          , 'SALESSITEID'
+                                                          , 'SALESID'
+                                                          , 'ITEM'
+                                                          , 'INVENTORYDATE'
+                                                          , 'AVAILQTY'
+                                                          , 'CONSUMEQTY']]
+
+    # STEP5) df_CUR_BUFFER 생성
+    #    1) df_in_EXP_SOPROMISESRCNCP A, df_in_MST_LOGISTICSSITE B Inner Join 하여, 필터링 처리 df_CUR_BUFFER_UNION01 생성
+
+    df_EXP_SOPROMISESRC_BUFFER = df_EXP_SOPROMISESRC[
+        ( df_EXP_SOPROMISESRC['QTYPROMISED'] > 0 )
+    ]
+    # df_EXP_SOPROMISESRC_BUFFER # 이름 변경 할 것, 아래에서 겹칩(상관없긴함)
+
+    df_CUR_BUFFER = pd.merge(df_EXP_SOPROMISESRC_BUFFER
+            , df_MST_LOGISTICSSITE
+            , left_on=['PRODUCTGROUP', 'SITEID', 'AP2ID'] # gscm쿼리상에는 GCID컬럼인데 실제 데이터는 PRODUCTGROUP임.
+            , right_on=['SECTION', 'LOGISTICSSITEID', 'SALESID']
+            , suffixes=['', '_B']
+    )
+
+    #    3) df_CUR_BUFFER_UNION01, df_CUR_BUFFER_UNION02 UNION ALL 처리하여, df_CUR_BUFFER 생성
+
+    df_CUR_BUFFER['SUBSOID'] = df_CUR_BUFFER['SALESORDERID'] + df_CUR_BUFFER['SALESSITEID']
+
+    df_CUR_BUFFER = df_CUR_BUFFER.rename(columns={'SALESSITEID':'LOCALSITEID'})
+
+    df_CUR_BUFFER = df_CUR_BUFFER[['SALESORDERID'
+                                , 'SOLINENUM'
+                                , 'DEMANDPRIORITY'
+                                , 'SALESID'
+                                , 'ITEMID'
+                                , 'SITEID'
+                                , 'LOCALSITEID'
+                                , 'PROMISEDDELDATE'
+                                , 'AP2ID'
+                                , 'GCID'
+                                , 'PRODUCTGROUP'
+                                , 'QTYPROMISED'
+                                # , 'GBM'
+                                # , 'ENTERPRISE'
+                                , 'SOPROMISEID'
+                                , 'SUBSOID'
+                                , 'DEMANDTYPERANK'
+                                , 'WEEKRANK']]
+
+    df_CUR_BUFFER['PROMISEDDELWEEK'] = pd.to_datetime(df_CUR_BUFFER['PROMISEDDELDATE']).dt.strftime('%G%V')
+
+    df_CUR_BUFFER = df_CUR_BUFFER.sort_values(by=['PROMISEDDELWEEK', 'SALESID', 'ITEMID', 'DEMANDPRIORITY', 'SOLINENUM'], ignore_index=True)
+
+    # --------------------------------------------------------------------
+    # sopromise 인써트가 느려서 예상 대상을 미리 추려서 넣어 놓고 업데이트로 진행한다.
+
+    df_BUFFER = pd.merge(df_CUR_BUFFER
+            , df_BUF_SALESPLANINVENTORY
+            , left_on=['AP2ID', 'ITEMID']
+            , right_on=['SALESID', 'ITEM']
+            , suffixes=['', '_X']
+    )
+    df_BUFFER = df_BUFFER[
+        pd.to_datetime(df_BUFFER['INVENTORYDATE']) <= pd.to_datetime(df_BUFFER['PROMISEDDELDATE'])
+    ]
+
+    df_BUFFER['SUM_QTY'] = df_BUFFER.groupby(['AP2ID', 'ITEMID'])['CONSUMEQTY'].transform('sum')
+
+    df_BUFFER = df_BUFFER[
+        df_BUFFER['SUM_QTY'] != 0
+    ]
+
+    df_BUFFER = pd.merge(df_BUFFER
+            , df_EXP_SOPROMISESRC[['SALESORDERID', 'SOLINENUM']]
+            , left_on=['SUBSOID', 'SOLINENUM']
+            , right_on=['SALESORDERID', 'SOLINENUM']
+            , how='left'
+            , indicator=True
+    )
+    df_BUFFER = df_BUFFER[
+        df_BUFFER['_merge'] == 'left_only'
+    ]
+
+    df_BUFFER = df_BUFFER[['SUBSOID'
+                , 'SOLINENUM'
+                , 'DEMANDPRIORITY'
+                , 'SALESID'
+                , 'ITEMID'
+                , 'LOCALSITEID'
+                , 'PROMISEDDELDATE'
+                , 'QTYPROMISED'
+                # , 'GBM'
+                # , 'ENTERPRISE'
+                , 'SOPROMISEID'
+                , 'AP2ID'
+                , 'GCID'
+                , 'PRODUCTGROUP'
+                , 'DEMANDTYPERANK'
+                , 'WEEKRANK'
+    ]].rename(columns={'SUBSOID':'SALESORDERID', 'LOCALSITEID':'SITEID'})
+
+    df_BUFFER['UPBY'] = '_BUFFER' # 나중에 변경 안된 놈은 제거하기 위한 플래그로 활용
+
+    df_EXP_SOPROMISESRC_BUFFER = pd.concat([df_EXP_SOPROMISESRC, df_BUFFER], ignore_index=True)
+    # df_EXP_SOPROMISESRC_BUFFER # 대상을 추가한 DF
+    # --------------------------------------------------------------------------------
+
+    # 넘파이 변환 처리
+    
+    if not 'UPBY' in df_EXP_SOPROMISESRC_BUFFER.columns:
+        df_EXP_SOPROMISESRC_BUFFER['UPBY'] = np.nan
+        df_EXP_SOPROMISESRC_BUFFER['UPBY'] = df_EXP_SOPROMISESRC_BUFFER['UPBY'].astype(str)
+
+    ndarr_exp_sopromise = df_EXP_SOPROMISESRC_BUFFER.to_numpy()
+
+    exp_sop_cols = df_EXP_SOPROMISESRC_BUFFER.columns
+    expSALESORDERID = exp_sop_cols.get_loc('SALESORDERID')
+    expSOLINENUM = exp_sop_cols.get_loc('SOLINENUM')
+    expQTYPROMISED = exp_sop_cols.get_loc('QTYPROMISED')
+    expUPBY = exp_sop_cols.get_loc('UPBY')
+
+    if not 'UPBY' in df_BUF_SALESPLANINVENTORY.columns:
+        df_BUF_SALESPLANINVENTORY['UPBY'] = np.nan
+        df_BUF_SALESPLANINVENTORY['UPBY'] = df_BUF_SALESPLANINVENTORY['UPBY'].astype(str)
+
+    ndarr_buf_inv = df_BUF_SALESPLANINVENTORY.to_numpy()
+
+    buf_inv_cols = df_BUF_SALESPLANINVENTORY.columns
+    invSALESID = buf_inv_cols.get_loc('SALESID')
+    invITEM = buf_inv_cols.get_loc('ITEM')
+    invINVENTORYDATE = buf_inv_cols.get_loc('INVENTORYDATE')
+    invCONSUMEQTY = buf_inv_cols.get_loc('CONSUMEQTY')
+    invUPBY = buf_inv_cols.get_loc('UPBY')
+
+
+    # --------------------------------------------------------------------------------
+    # -- DEMAND에 대해서 LOCAL재고가 있는지 체크하여 SPLIT 과정을 진행한다.
+    # -- DEMAND가 W+7부터 존재하고, LOCAL재고가 W+2에 있는 경우에는
+    # -- W+2부터 W+7까지의 LOCAL 재고를 소진해줘야 하기 때문에 W+7이전의 모든
+    # -- LOCAL재고를 합산하도록 로직을 처리한다.
+    # --------------------------------------------------------------------------------
+
+    for c1 in df_CUR_BUFFER.itertuples(index=False):
+        
+        # -- 해당DEMAND의 LOCAL 재고가 있는 지 파악.
+        condition = (
+            ( ndarr_buf_inv[:, invSALESID] == c1.AP2ID )
+            & ( ndarr_buf_inv[:, invITEM] == c1.ITEMID )
+            & ( ndarr_buf_inv[:, invINVENTORYDATE] <= c1.PROMISEDDELDATE )
+        )
+        V_CONSUMEQTY = np.nansum(ndarr_buf_inv[condition, invCONSUMEQTY])
+        
+        # -- case 1. local 재고가 ELS Fcst 물량 보다 작다면
+        if ( V_CONSUMEQTY < c1.QTYPROMISED ) & ( V_CONSUMEQTY != 0 ):
+            
+            V_INVENTORYDATE = c1.PROMISEDDELDATE
+
+            # -- 해당 주차의 LOCAL 창고의 재고+INTRANSIT 물량을 0 으로 변경한다.
+            # UPDATE_INVENTORY
+            condition = (
+                ( ndarr_buf_inv[:, invSALESID] == c1.AP2ID )
+                & ( ndarr_buf_inv[:, invITEM] == c1.ITEMID )
+                & ( ndarr_buf_inv[:, invINVENTORYDATE] <= c1.PROMISEDDELDATE )
+            )
+            ndarr_buf_inv[condition, invCONSUMEQTY] = 0
+            ndarr_buf_inv[condition, invUPBY] = V_PROGNAME + '0' # UPBY 추가
+            
+            condition = (
+                ( ndarr_exp_sopromise[:, expSALESORDERID] == c1.SALESORDERID )
+                & ( ndarr_exp_sopromise[:, expSOLINENUM] == c1.SOLINENUM )
+            )
+            ndarr_exp_sopromise[condition, expQTYPROMISED] = ( c1.QTYPROMISED - V_CONSUMEQTY )
+            ndarr_exp_sopromise[condition, expUPBY] = V_PROGNAME # UPBY 추가
+            
+            # -- 앞에서 빼준 ELS 물량 만큼 LOCALSITE로 DEMAND를 생성한다.
+            # ADD_SOPROMISE
+            condition = (
+                ( ndarr_exp_sopromise[:, expSALESORDERID] == c1.SUBSOID )
+                & ( ndarr_exp_sopromise[:, expSOLINENUM] == c1.SOLINENUM )
+                & ( ndarr_exp_sopromise[:, expUPBY] == '_BUFFER' ) # INSERT이기 때문에 한번만
+            )
+            ndarr_exp_sopromise[condition, expQTYPROMISED] = V_CONSUMEQTY
+            ndarr_exp_sopromise[condition, expUPBY] = V_PROGNAME # UPBY 추가 (_BUFFER로 추가된 놈이 바뀜)
+
+        # -- case 2. Local 창고 물량이 더 크다면
+        elif ( V_CONSUMEQTY >= c1.QTYPROMISED ) & ( V_CONSUMEQTY != 0 ) :
+            
+            V_SALESID       = c1.AP2ID
+            V_ITEM          = c1.ITEMID
+            V_INVENTORYDATE = c1.PROMISEDDELDATE
+            V_FCSTQTY       = c1.QTYPROMISED
+            
+            # -- ELS 물량 만큼 LOCAL SITEID로 INSERT해준다.
+            # ADD_SOPROMISE
+            condition = (
+                ( ndarr_exp_sopromise[:, expSALESORDERID] == c1.SUBSOID )
+                & ( ndarr_exp_sopromise[:, expSOLINENUM] == c1.SOLINENUM )
+                & ( ndarr_exp_sopromise[:, expUPBY] == '_BUFFER' ) # INSERT이기 때문에 한번만
+            )
+            ndarr_exp_sopromise[condition, expQTYPROMISED] = c1.QTYPROMISED
+            ndarr_exp_sopromise[condition, expUPBY] = V_PROGNAME  # UPBY 추가 (_BUFFER로 추가된 놈이 바뀜)
+            
+            # -- ELS DEMAND를 0으로 변경한다.
+            # UPDATE_SOPROMISE
+            condition = (
+                ( ndarr_exp_sopromise[:, expSALESORDERID] == c1.SALESORDERID )
+                & ( ndarr_exp_sopromise[:, expSOLINENUM] == c1.SOLINENUM )
+            )
+            ndarr_exp_sopromise[condition, expQTYPROMISED] = 0
+            ndarr_exp_sopromise[condition, expUPBY] = V_PROGNAME + '0' # UPBY 추가
+            
+            # ----------------------------------------------------------------------
+            # -- 해당 주차의 LOCAL 창고의 재고+INTRANSIT 물량.
+            # CURSOR CUR_INVENTORY IS
+            
+            # * 그룹핑 로직이 있어 필터링 후 DF로 변경하여 처리
+            condition = (
+                ( ndarr_buf_inv[:, invSALESID] == V_SALESID )
+                & ( ndarr_buf_inv[:, invITEM] == V_ITEM )
+                & ( ndarr_buf_inv[:, invINVENTORYDATE] <= V_INVENTORYDATE )
+                #& ( np.isin(ndarr_buf_inv[:, invITEM], ndarr_item ) ) # mst_item 조인 부분인데 필요없을 듯하고, 속도 문제도있어 제거
+            )
+            df_CUR_INVENTORY = pd.DataFrame(ndarr_buf_inv[condition], columns=buf_inv_cols.to_list())
+            
+            df_CUR_INVENTORY['AVAILQTY'] = df_CUR_INVENTORY['AVAILQTY'].astype(float)
+            df_CUR_INVENTORY['CONSUMEQTY'] = df_CUR_INVENTORY['CONSUMEQTY'].astype(float)
+            df_CUR_INVENTORY['INVENTORYDATE'] = pd.to_datetime(df_CUR_INVENTORY['INVENTORYDATE'], errors='coerce')
+            
+            # mst_item 조인 부분인데 필요없을 듯하고, 속도 문제도있어 제거(위와 여기 둘중)
+            # df_CUR_INVENTORY = pd.merge(df_cur_inv
+            #                             , df_in_MST_ITEM[['ITEM']]
+            #                             , on=['ITEM']
+            #                     )
+            
+            if len(df_CUR_INVENTORY) > 1: # 1건 이상인 경우만 그룹핑 처리
+                
+                df_CUR_INVENTORY = df_CUR_INVENTORY.groupby(['LOGISTICSSITEID'
+                                                , 'SALESSITEID'
+                                                , 'SALESID'
+                                                , 'ITEM']).agg({'INVENTORYDATE':'max'
+                                                                , 'AVAILQTY':'sum'
+                                                                , 'CONSUMEQTY':'sum' }).reset_index()
+                df_CUR_INVENTORY = df_CUR_INVENTORY.sort_values(by=['INVENTORYDATE'])
+                
+            # ------------------------------------------------------------------------
+            
+            # -- 해당 주차의 buf Table 의 재고 수량을 위에서 계산해 준 만큼 차감해 준다.
+            for c2 in df_CUR_INVENTORY.itertuples(index=False):
+
+                # --* FCST 물량이 LOCAL 재고 물량보다 크다면 LOCAL 재고 물량을 다 소진해 준다.
+                if V_FCSTQTY > c2.CONSUMEQTY:
+                    
+                    # --* 해당 주차까지의 누적재고를 0 으로 변경한다.
+                    # UPDATE_INVENTORY
+                    condition = (
+                        ( ndarr_buf_inv[:, invSALESID] == c1.AP2ID )
+                        & ( ndarr_buf_inv[:, invITEM] == c1.ITEMID )
+                        & ( ndarr_buf_inv[:, invINVENTORYDATE] <= c2.INVENTORYDATE )
+                    )
+                    ndarr_buf_inv[condition, invCONSUMEQTY] = 0
+                    ndarr_buf_inv[condition, invUPBY] = V_PROGNAME + '0' # UPBY 추가
+                    
+                # --* FCST <= LOCAL재고인 경우  LOCAL재고=LOCAL재고-FCST
+                # --* 로직의 복잡도 문제로 기존재고DATA삭제하고 신규로 넣는식으로 처리함.
+                elif ( V_FCSTQTY <= c2.CONSUMEQTY ) & ( V_FCSTQTY != 0 ):
+
+                    NEXT_QTY = c2.CONSUMEQTY - V_FCSTQTY
+                    
+                    # DELETE FROM BUF_SALESPLANINVENTORY
+                    condition = ~(
+                        ( ndarr_buf_inv[:, invSALESID] == c1.AP2ID )
+                        & ( ndarr_buf_inv[:, invITEM] == c1.ITEMID )
+                        & ( ndarr_buf_inv[:, invINVENTORYDATE] <= c2.INVENTORYDATE )
+                    )
+                    ndarr_buf_inv = ndarr_buf_inv[condition]
+
+                    # INSERT INTO BUF_SALESPLANINVENTORY
+                    # 컬럼 순서를 맞춰야함(# UPBY 추가)
+                    new_row = [c2.LOGISTICSSITEID, c2.SALESSITEID, c2.SALESID, c2.ITEM, c2.INVENTORYDATE, NEXT_QTY, NEXT_QTY, 'TRANSFER']
+                    ndarr_buf_inv = np.append(ndarr_buf_inv, [new_row], axis=0)
+                    
+
+    df_out_EXP_SOPROMISESRC = pd.DataFrame(ndarr_exp_sopromise, columns=exp_sop_cols.to_list())
+    
+    # 예상 대상 건 중 변경되지 않은 것은 제거
+    df_out_EXP_SOPROMISESRC = df_out_EXP_SOPROMISESRC[
+        df_out_EXP_SOPROMISESRC['UPBY'] != '_BUFFER'
+    ]
+    
+    # o9 컬럼 형태로 변환
+    df_out_EXP_SOPROMISESRC = gscm2o9(df_out_EXP_SOPROMISESRC, ND_D)
+    
+    logger.Note('ncp split reg end', 20)
+    
+    return df_out_EXP_SOPROMISESRC[ND_D.LIST_COLUMN]
