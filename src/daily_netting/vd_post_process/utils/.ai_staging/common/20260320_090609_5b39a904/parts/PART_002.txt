@@ -1,0 +1,25 @@
+        LIST_GSCM_COLUMN = [
+            'ENTERPRISE','SOPROMISEID','PLANID','SALESORDERID',
+            'SOLINENUM','ITEM','QTYPROMISED','PROMISEDDELDATE','SITEID',
+            'SHIPTOID','SALESID','SALESLEVEL','DEMANDTYPE','WEEK',
+            'CHANNELRANK','CUSTOMERRANK','PRODUCTRANK','DEMANDPRIORITY',
+            'TIEBREAK','GBM','GLOBALPRIORITY','LOCALPRIORITY',
+            'BUSINESSTYPE','ROUTING_PRIORITY','NO_SPLIT','MAP_SATISFY_SS',
+            'PREALLOC_ATTRIBUTE','BUILDAHEADTIME','TIMEUOM','AP2ID','GC',
+            'MEASURERANK','PREFERENCERANK','INITDTTM','INITBY','UPDTTM',
+            'UPBY','REASONCODE','OPTION_CODE','AP1ID',
+        ]
+    
+    ND_W = NettedDemandW
+    
+    df = df.copy()
+    if not is_o9:
+        for col in ND_W.LIST_GSCM_COLUMN:
+            if col not in df.columns:
+                df[col] = None
+    else:
+        for col in ND_W.LIST_COLUMN:
+            if col not in df.columns:
+                df[col] = None
+    
+    return df
