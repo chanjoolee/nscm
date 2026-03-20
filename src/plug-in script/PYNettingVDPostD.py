@@ -8,6 +8,13 @@ from netting_util.util import overrange_to_datetime
 from daily_netting.vd_post_process.accessor import Accessor
 from daily_netting.vd_post_process.processor import Processor
 
+LIST_VDOS_COLUMN = [
+    'Version.[Version Name]',
+    'Sales Domain.[Ship To]',
+    'Item.[Section]',
+    'Netting VD Online Sales Valid Flag',
+]
+
 nscm.logging.basicConfig(level=nscm.logging.DEBUG)
 logger = nscm.G_Logger('VD Post Process D')
 logger.Start()
@@ -70,6 +77,11 @@ if nscm.G_IS_Local:
 
     # general
     df_sales_order_lp = pd.read_csv(f'{current_path}\\{additional_path}\\df_sales_order_lp.csv', dtype=object)
+    path_vd_online_sales = f'{current_path}\\{additional_path}\\df_in_Netting_IF_VD_Online_Sales.csv'
+    if os.path.exists(path_vd_online_sales):
+        df_in_netting_if_vd_online_sales = pd.read_csv(path_vd_online_sales, dtype=object)
+    else:
+        df_in_netting_if_vd_online_sales = pd.DataFrame(columns=LIST_VDOS_COLUMN)
 
     print('csv load 완료')
     print('df type변환 시작')
@@ -102,11 +114,17 @@ if nscm.G_IS_Local:
     print('df_type 변환 완료')
 
 try:
+    df_in_netting_if_vd_online_sales
+except NameError:
+    df_in_netting_if_vd_online_sales = pd.DataFrame(columns=LIST_VDOS_COLUMN)
+
+try:
     df_list = [
         ('df_dim_item', df_dim_item),  ('df_dim_location', df_dim_location),  ('df_dim_netting_sales', df_dim_netting_sales), 
         ('df_dim_netting_sales_level', df_dim_netting_sales_level),  ('df_pre_demand', df_pre_demand),  ('df_plan', df_plan), 
         ('df_plan_option', df_plan_option),  ('df_priority_rank', df_priority_rank), ('df_dim_netting_lp_plan_batch', df_dim_netting_lp_plan_batch),
         ('df_sales_order_lp', df_sales_order_lp),
+        ('df_in_netting_if_vd_online_sales', df_in_netting_if_vd_online_sales),
     ]
     for name, df in df_list:
         logger.Note(f'{name} has {len(df)} rows', 20)
@@ -118,6 +136,7 @@ try:
         df_plan_option, df_priority_rank,
         df_dim_netting_lp_plan_batch,
         df_sales_order_lp,
+        df_in_netting_if_vd_online_sales,
     ) # 모든 df 데이터 가져가기
 
     # 전역 레퍼런스 삭제, gc 비우기
@@ -149,4 +168,3 @@ if nscm.G_IS_Local:
     # df_out_demand.to_csv(f'demand.csv', index=False)
     # df_out_demand_log.to_csv(f'demand_log.csv', index=False)
     pass
-

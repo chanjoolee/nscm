@@ -41,6 +41,17 @@ from daily_netting.vd_post_process.constant.vd_constant import SalesOrderLine as
 from daily_netting.vd_post_process.constant.vd_constant import TWOSSales as TWOSS
 from daily_netting.vd_post_process.utils.common import make_sequential_id
 
+COL_VDOS_VERSIONNAME = 'Version.[Version Name]'
+COL_VDOS_SHIPTO = 'Sales Domain.[Ship To]'
+COL_VDOS_SECTION = 'Item.[Section]'
+COL_VDOS_VALIDFLAG = 'Netting VD Online Sales Valid Flag'
+LIST_VDOS_COLUMN = [
+    COL_VDOS_VERSIONNAME,
+    COL_VDOS_SHIPTO,
+    COL_VDOS_SECTION,
+    COL_VDOS_VALIDFLAG,
+]
+
 class Accessor:
     '''
     input data, plan value 등에 접근하기 위한 클래스.
@@ -51,7 +62,7 @@ class Accessor:
             df_plan_option, df_priority_rank,
             df_dim_netting_lp_plan_batch,
             df_sales_order_lp,
-            df_in_netting_if_vd_online_sales,
+            df_in_netting_if_vd_online_sales=None,
             is_pre_demand: bool = True
         ) -> None:
 
@@ -71,6 +82,12 @@ class Accessor:
 
         # general
         self.df_sales_order_lp = df_sales_order_lp[SOLP.LIST_COLUMN]
+        if df_in_netting_if_vd_online_sales is None:
+            self.df_in_netting_if_vd_online_sales = pd.DataFrame(columns=LIST_VDOS_COLUMN)
+        else:
+            self.df_in_netting_if_vd_online_sales = (
+                df_in_netting_if_vd_online_sales.reindex(columns=LIST_VDOS_COLUMN).copy()
+            )
         
         self._convert_empty_type()
 
@@ -187,6 +204,73 @@ class Accessor:
         
         return df_ap1_short_reaon, df_ap1_delivery_plan, df_demand
 
+    def _get_vd_online_sales_target_weeks(self) -> set:
+        ts_start_date = pd.Timestamp(self.start_date)
+        set_target_week = {ts_start_date.strftime('%G%V')}
+
+        if str(self.plan_id)[-2:] in {'MO', 'TU'}:
+            set_target_week.add((ts_start_date + pd.Timedelta(days=7)).strftime('%G%V'))
+
+        return set_target_week
+
+    def _apply_vd_online_sales_qtypromised_adjustment(self, df_demand: pd.DataFrame) -> pd.DataFrame:
+        if self.division_id != 'D002' or df_demand.empty:
+            return df_demand
+
+        df_vd_online_sales = self.df_in_netting_if_vd_online_sales
+        if df_vd_online_sales.empty:
+            return df_demand
+
+        df_vd_online_sales = df_vd_online_sales.copy()
+        sr_version = df_vd_online_sales[COL_VDOS_VERSIONNAME].astype('string').str.strip().fillna('')
+        sr_valid_flag = (
+            df_vd_online_sales[COL_VDOS_VALIDFLAG].astype('string').str.strip().str.upper().fillna('')
+        )
+        df_vd_online_sales = df_vd_online_sales.loc[
+            sr_version.eq(str(self.plan_version)) & sr_valid_flag.eq('Y'),
+            [COL_VDOS_SHIPTO, COL_VDOS_SECTION],
+        ]
+
+        if df_vd_online_sales.empty:
+            return df_demand
+
+        df_vd_online_sales[COL_VDOS_SHIPTO] = df_vd_online_sales[COL_VDOS_SHIPTO].astype('string').str.strip()
+        df_vd_online_sales[COL_VDOS_SECTION] = df_vd_online_sales[COL_VDOS_SECTION].astype('string').str.strip()
+        df_vd_online_sales = df_vd_online_sales.drop_duplicates()
+
+        df_match = pd.DataFrame({
+            COL_VDOS_SHIPTO: df_demand[PD_.SALESID].astype('string').str.strip(),
+            COL_VDOS_SECTION: df_demand[I.SECTION].astype('string').str.strip(),
+        })
+        df_match = pd.merge(
+            df_match,
+            df_vd_online_sales,
+            how='left',
+            on=[COL_VDOS_SHIPTO, COL_VDOS_SECTION],
+            indicator=True,
+        )
+
+        sr_is_online_sales = df_match['_merge'].eq('both')
+        sr_is_target_week = pd.to_datetime(df_demand['SUNDAY'], errors='coerce').dt.strftime('%G%V').isin(
+            self._get_vd_online_sales_target_weeks()
+        )
+        sr_is_not_unf_ord = (
+            df_demand[PD_.DEMANDTYPE].astype('string').str.strip().fillna('').ne('UNF_ORD')
+        )
+        sr_add_qty = (
+            pd.to_numeric(df_demand[PD_.AP2SHORTQTY], errors='coerce').fillna(0)
+            + pd.to_numeric(df_demand[PD_.GCSHORTQTY], errors='coerce').fillna(0)
+        )
+        sr_qtypromised = pd.to_numeric(df_demand[PD_.QTYPROMISED], errors='coerce').fillna(0)
+        mask_adjust_target = sr_is_online_sales & sr_is_target_week & sr_is_not_unf_ord
+
+        if mask_adjust_target.any():
+            df_demand.loc[mask_adjust_target, PD_.QTYPROMISED] = (
+                sr_qtypromised.loc[mask_adjust_target] + sr_add_qty.loc[mask_adjust_target]
+            )
+
+        return df_demand
+
     def _make_short_reason_delivery_plan(self, df_common) -> Tuple[pd.DataFrame, pd.DataFrame]:
         '''
         ap1 short reason과 ap1 delivery plan을 만든다.
@@ -282,6 +366,7 @@ class Accessor:
             df_demand, self.df_dim_item[[I.ITEM, I.PRODUCTGROUP, I.SECTION]],
             how='left', left_on=[PD_.ITEM], right_on=[I.ITEM]
         ).drop(columns=[I.ITEM])
+        df_demand = self._apply_vd_online_sales_qtypromised_adjustment(df_demand)
 
         df_demand.rename(columns={
             # common -> Netted Demand
