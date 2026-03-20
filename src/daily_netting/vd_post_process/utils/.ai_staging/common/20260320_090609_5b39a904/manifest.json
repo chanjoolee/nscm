@@ -1,0 +1,15 @@
+{
+  "root_name": "common",
+  "source_file_name": "common.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-20 09:06:23",
+  "target_full_path": "src/daily_netting/vd_post_process/utils/common.py",
+  "staging_path": "src/daily_netting/vd_post_process/utils/.ai_staging/common/20260320_090609_5b39a904",
+  "parts_dir": "src/daily_netting/vd_post_process/utils/.ai_staging/common/20260320_090609_5b39a904/parts",
+  "part_files": [
+    "src/daily_netting/vd_post_process/utils/.ai_staging/common/20260320_090609_5b39a904/parts/PART_001.txt",
+    "src/daily_netting/vd_post_process/utils/.ai_staging/common/20260320_090609_5b39a904/parts/PART_002.txt"
+  ],
+  "part_count": 2,
+  "max_bytes": 24714
+}
