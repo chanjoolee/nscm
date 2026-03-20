@@ -1,0 +1,14 @@
+{
+  "root_name": "lp_order_netting",
+  "source_file_name": "lp_order_netting.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-20 09:28:33",
+  "target_full_path": "src/daily_netting/vd_post_process/process/lp_order_netting.py",
+  "staging_path": "src/daily_netting/vd_post_process/process/.ai_staging/lp_order_netting/20260320_092826_4330d723",
+  "parts_dir": "src/daily_netting/vd_post_process/process/.ai_staging/lp_order_netting/20260320_092826_4330d723/parts",
+  "part_files": [
+    "src/daily_netting/vd_post_process/process/.ai_staging/lp_order_netting/20260320_092826_4330d723/parts/PART_001.txt"
+  ],
+  "part_count": 1,
+  "max_bytes": 24714
+}
