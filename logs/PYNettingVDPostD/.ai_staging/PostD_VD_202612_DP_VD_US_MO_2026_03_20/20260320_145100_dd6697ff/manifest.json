@@ -1,0 +1,23 @@
+{
+  "root_name": "PostD_VD_202612_DP_VD_US_MO_2026_03_20",
+  "source_file_name": "PostD_VD.log",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-20 14:52:10",
+  "target_full_path": "logs/PYNettingVDPostD/PostD_VD_202612_DP_VD_US_MO_2026_03_20.log",
+  "staging_path": "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff",
+  "parts_dir": "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff/parts",
+  "part_files": [
+    "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff/parts/PART_001.txt",
+    "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff/parts/PART_002.txt",
+    "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff/parts/PART_003.txt",
+    "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff/parts/PART_004.txt",
+    "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff/parts/PART_005.txt",
+    "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff/parts/PART_006.txt",
+    "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff/parts/PART_007.txt",
+    "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff/parts/PART_008.txt",
+    "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff/parts/PART_009.txt",
+    "logs/PYNettingVDPostD/.ai_staging/PostD_VD_202612_DP_VD_US_MO_2026_03_20/20260320_145100_dd6697ff/parts/PART_010.txt"
+  ],
+  "part_count": 10,
+  "max_bytes": 24714
+}
