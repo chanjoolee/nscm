@@ -3,7 +3,15 @@
 
 """
 GitHub Contents API를 사용하여 파일을 업로드하는 스크립트
-- lauch.json 설정예시
+
+- direct upload 또는 chunk upload 지원
+- text 파일은 필요시 part 파일들 + manifest.json 생성
+- workflow dispatch 지원
+- Confluence uploader 와 유사한 chunk 기준 비교를 위해:
+  - --chunk-raw-bytes 추가
+  - --chunk-style {github, confluence} 추가
+
+launch.json 설정예시
         {
             "name": "GitHub Upload processor.py + Merge",
             "type": "python",
@@ -30,8 +38,23 @@ GitHub Contents API를 사용하여 파일을 업로드하는 스크립트
             ]
         }
 
-
+Confluence 와 유사하게 비교하고 싶을 때 예시
+            "args": [
+                "--owner", "chanjoolee",
+                "--repo", "nscm",
+                "--branch", "main",
+                "--file", "/Users/chanjoolee/workspace/etc/paste_01.txt",
+                "--publish-path", "src/etc/paste_01.txt",
+                "--mode", "text",
+                "--always-chunk-text",
+                "--chunk-raw-bytes", "40000",
+                "--chunk-style", "confluence",
+                "--sleep-secs", "0.5",
+                "--dispatch-after-upload",
+                "--dispatch-workflow", "merge_parts.yml"
+            ]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -126,6 +149,7 @@ def is_probably_text(file_path: Path, mode: str) -> bool:
 
 def iter_utf8_chunks(file_path: str, max_bytes: int) -> Iterator[str]:
     """
+    github 스타일
     - max_bytes 이내에서 가능하면 마지막 개행 기준으로 자름
     - UTF-8 경계 안전하게 맞춤
     - 각 chunk 끝에 개행 1개 보장
@@ -161,6 +185,37 @@ def iter_utf8_chunks(file_path: str, max_bytes: int) -> Iterator[str]:
 
         if not text.endswith("\n"):
             text += "\n"
+
+        yield text
+        i = end
+
+
+def iter_utf8_chunks_confluence_style(file_path: str, max_bytes: int) -> Iterator[str]:
+    """
+    confluence_uploader_v2.py 의 현재 main()에서 사용하는 chunking 방식과 최대한 유사하게:
+    - newline 기준으로 맞추지 않음
+    - trailing newline 강제 추가 없음
+    - UTF-8 경계만 안전하게 맞춤
+    """
+    data = Path(file_path).read_bytes()
+    i = 0
+    n = len(data)
+
+    while i < n:
+        end = min(i + max_bytes, n)
+        chunk = data[i:end]
+
+        while True:
+            try:
+                text = chunk.decode("utf-8")
+                break
+            except UnicodeDecodeError:
+                end -= 1
+                if end <= i:
+                    text = data[i:min(i + max_bytes, n)].decode("utf-8", errors="replace")
+                    end = min(i + max_bytes, n)
+                    break
+                chunk = data[i:end]
 
         yield text
         i = end
@@ -230,6 +285,9 @@ class GitHubContentsClient:
         commit_message: str,
     ) -> dict:
         url = self._url(owner, repo, repo_path)
+
+        # 현재 동작 유지: sha 조회 없이 create/replace 시도
+        # overwrite 가 필요하면 아래 주석을 풀고 existing 조회를 사용하면 된다.
         # existing = self.get_file_metadata(owner, repo, repo_path, branch)
         existing = None
         sha = existing.get("sha") if existing else None
@@ -322,6 +380,7 @@ def upload_chunked_text_file(
     local_file: Path,
     max_bytes: int,
     sleep_secs: float,
+    chunk_style: str,
     dispatch_after_upload: bool,
     dispatch_workflow: str,
 ) -> None:
@@ -330,7 +389,12 @@ def upload_chunked_text_file(
 
     new_part_files = []
 
-    for idx, chunk in enumerate(iter_utf8_chunks(str(local_file), max_bytes), start=1):
+    if chunk_style == "confluence":
+        chunk_iter = iter_utf8_chunks_confluence_style(str(local_file), max_bytes)
+    else:
+        chunk_iter = iter_utf8_chunks(str(local_file), max_bytes)
+
+    for idx, chunk in enumerate(chunk_iter, start=1):
         part_no = f"{idx:03d}"
         repo_part_path = join_repo_path(parts_dir, f"PART_{part_no}.txt")
 
@@ -358,6 +422,7 @@ def upload_chunked_text_file(
         "parts_dir": parts_dir,
         "part_files": new_part_files,
         "part_count": len(new_part_files),
+        "chunk_style": chunk_style,
         "max_bytes": max_bytes,
     }
 
@@ -408,11 +473,28 @@ def main():
         help="Optional override for final repo filename. Usually omit this.",
     )
 
-    ap.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
+    ap.add_argument(
+        "--max-bytes",
+        type=int,
+        default=DEFAULT_MAX_BYTES,
+        help="GitHub API payload safety limit. Default behavior converts this to a smaller safe raw-byte chunk size.",
+    )
+    ap.add_argument(
+        "--chunk-raw-bytes",
+        type=int,
+        default=None,
+        help="Actual raw text bytes per chunk. If set, use this directly instead of deriving from --max-bytes.",
+    )
     ap.add_argument("--sleep-secs", type=float, default=0.0)
 
     ap.add_argument("--mode", choices=["auto", "text", "binary"], default="auto")
     ap.add_argument("--always-chunk-text", action="store_true")
+    ap.add_argument(
+        "--chunk-style",
+        choices=["github", "confluence"],
+        default="github",
+        help="github: current newline-aware chunking, confluence: simpler UTF-8 boundary chunking like confluence_uploader_v2.py",
+    )
 
     ap.add_argument("--dispatch-after-upload", action="store_true")
     ap.add_argument("--dispatch-workflow", default="merge_parts.yml")
@@ -456,19 +538,22 @@ def main():
 
     is_text = is_probably_text(local_file, args.mode)
     file_size = local_file.stat().st_size
-    effective_max_bytes = effective_raw_bytes_for_github(args.max_bytes)
+    safe_raw_bytes = effective_raw_bytes_for_github(args.max_bytes)
+    chunk_raw_bytes = args.chunk_raw_bytes if args.chunk_raw_bytes is not None else safe_raw_bytes
 
     print(f"Local file     : {local_file}")
     print(f"Publish path   : {publish_path}")
     print(f"Staging path   : {staging_path}")
     print(f"CA bundle      : {args.ca_bundle if args.ca_bundle else '(not set)'}")
     print(f"Verify TLS     : {args.verify_tls}")
+    print(f"Chunk style    : {args.chunk_style}")
     print(f"Detected text  : {is_text}")
     print(f"File size      : {file_size}")
     print(f"Max payload    : {args.max_bytes}")
-    print(f"Safe raw bytes : {effective_max_bytes}")
+    print(f"Safe raw bytes : {safe_raw_bytes}")
+    print(f"Chunk raw bytes: {chunk_raw_bytes}")
 
-    should_chunk = is_text and (args.always_chunk_text or file_size > effective_max_bytes)
+    should_chunk = is_text and (args.always_chunk_text or file_size > chunk_raw_bytes)
 
     if should_chunk:
         upload_chunked_text_file(
@@ -479,13 +564,14 @@ def main():
             publish_path=publish_path,
             staging_path=staging_path,
             local_file=local_file,
-            max_bytes=effective_max_bytes,
+            max_bytes=chunk_raw_bytes,
             sleep_secs=args.sleep_secs,
+            chunk_style=args.chunk_style,
             dispatch_after_upload=args.dispatch_after_upload,
             dispatch_workflow=args.dispatch_workflow,
         )
     else:
-        if (not is_text) and file_size > effective_max_bytes:
+        if (not is_text) and file_size > chunk_raw_bytes:
             print("WARNING: binary file is larger than safe raw limit, but direct upload will still be attempted.")
         upload_direct_file(
             client=client,
