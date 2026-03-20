@@ -51,6 +51,7 @@ class Accessor:
             df_plan_option, df_priority_rank,
             df_dim_netting_lp_plan_batch,
             df_sales_order_lp,
+            df_in_netting_if_vd_online_sales,
             is_pre_demand: bool = True
         ) -> None:
 
