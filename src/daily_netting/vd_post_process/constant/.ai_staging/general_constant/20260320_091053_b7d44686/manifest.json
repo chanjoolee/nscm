@@ -1,0 +1,14 @@
+{
+  "root_name": "general_constant",
+  "source_file_name": "general_constant.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-20 09:11:00",
+  "target_full_path": "src/daily_netting/vd_post_process/constant/general_constant.py",
+  "staging_path": "src/daily_netting/vd_post_process/constant/.ai_staging/general_constant/20260320_091053_b7d44686",
+  "parts_dir": "src/daily_netting/vd_post_process/constant/.ai_staging/general_constant/20260320_091053_b7d44686/parts",
+  "part_files": [
+    "src/daily_netting/vd_post_process/constant/.ai_staging/general_constant/20260320_091053_b7d44686/parts/PART_001.txt"
+  ],
+  "part_count": 1,
+  "max_bytes": 24714
+}
