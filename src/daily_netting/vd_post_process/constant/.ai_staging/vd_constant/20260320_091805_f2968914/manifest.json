@@ -1,0 +1,14 @@
+{
+  "root_name": "vd_constant",
+  "source_file_name": "vd_constant.py",
+  "encoding": "utf-8",
+  "generated_at": "2026-03-20 09:18:12",
+  "target_full_path": "src/daily_netting/vd_post_process/constant/vd_constant.py",
+  "staging_path": "src/daily_netting/vd_post_process/constant/.ai_staging/vd_constant/20260320_091805_f2968914",
+  "parts_dir": "src/daily_netting/vd_post_process/constant/.ai_staging/vd_constant/20260320_091805_f2968914/parts",
+  "part_files": [
+    "src/daily_netting/vd_post_process/constant/.ai_staging/vd_constant/20260320_091805_f2968914/parts/PART_001.txt"
+  ],
+  "part_count": 1,
+  "max_bytes": 24714
+}
