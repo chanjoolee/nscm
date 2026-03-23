@@ -1,0 +1,259 @@
+CREATE OR REPLACE PROCEDURE WSCM01.SP_FN_SUMMARYDATA_NC (IN_TYPE VARCHAR2 DEFAULT 'NCP') IS
+/******************************************************************************
+   NAME:       WSCM01.SP_FN_SUMMARYDATA_NC
+   PURPOSE:    NEWFCST대상 발췌 및 NEWFCST분
+   REVISIONS:
+   VER     DATE        AUTHOR   DESCRIPTION
+   ------- ----------  -------  ------------------------------------
+   1.0     2019.07.03  HYEMI    신규 버전
+   1.1     2020.09.14  HYEMI    SKU 레벨 NEW FCST 숏 제외 임시로직
+ ******************************************************************************/
+ 
+    V_PGMNAME               VARCHAR2(30) := 'SP_FN_SUMMARYDATA_NC';
+ 
+    V_PLANID                EXP_SOPROMISESRCNCP.PLANID%TYPE; 
+    V_PLANWEEK              MST_PLAN.PLANWEEK%TYPE;
+    V_EFFSTARTDATE          MST_PLAN.EFFSTARTDATE %TYPE;
+    V_EFFENDDATE            MST_PLAN.EFFENDDATE %TYPE;
+    V_TYPE                  MST_PLAN.TYPE %TYPE;   
+   
+    V_PREPLANID             EXP_SOPROMISESRCNCP.PLANID%TYPE; 
+    V_WEEK1                 MST_WEEK.WEEK%TYPE; 
+    V_WEEK4                 MST_WEEK.WEEK%TYPE;   
+    
+    V_LOGMESSAGE        LONG;
+    V_ERRMESSAGE        VARCHAR2(2000);
+    V_LOGSEQ            NUMBER(10);
+    V_ERRORCNT          INTEGER:=0;
+    V_STARTDATE         DATE;
+    
+    --2018.12.20 추가
+    V_HORISONWEEK       NUMBER := 0;
+    V_ENDWEEK           NUMBER := 0;
+    
+BEGIN
+    
+    SELECT SEQ_LOG.NEXTVAL INTO V_LOGSEQ FROM DUAL;
+    SELECT SYSDATE INTO V_STARTDATE FROM DUAL;
+    
+    --! GET CURRENT RUNNING PLANID !--
+    SELECT PLANID, EFFSTARTDATE, EFFENDDATE, PLANWEEK, TYPE
+    INTO   V_PLANID, V_EFFSTARTDATE, V_EFFENDDATE, V_PLANWEEK, V_TYPE
+    FROM   MST_PLAN 
+    WHERE  ISRUNNING='Y'
+      AND  TYPE ='NCP';
+
+    --월,화에는 전전주 사용, 그 외에는 전주 사용
+    V_PREPLANID := TO_CHAR(V_EFFSTARTDATE - 7*1, 'IYYYIW');
+
+    V_WEEK1     := V_PLANWEEK;
+
+--    --2019.07.09( ENDHORIZON(V_HORISONWEEK) 미사용 컬럼,
+--                  ENDWEEK(V_ENDWEEK) 은 EFFSTARTDATE 부터 계산하므로 셋팅필요없이 전주기준으로적용)
+--    IF SUBSTR(V_PLANID,7,8) IN ('MO','TU') THEN
+--        V_HORISONWEEK := -1;
+--        V_ENDWEEK := -7;
+--    END IF;
+     
+     DBMS_OUTPUT.PUT_LINE('START : '||to_char(sysdate,'yyyy-mm-dd-HH24:mi:ss'));
+    
+     -- step 1. 4주이내 감소가 한주라도 있는 fcst에 대해 발라내기
+     -- site, item, week 기준이며, sales는 가용량때문에 생각하지 않는다..
+     -- 로직 적용하여 new fcst 분리후, EXP_SOPROMISESRCNCP 버프에서 sales도 감안하여 new fcst로 분리
+     -- 가용량   = DC + INTRANSIT + 확정선적(공장재고 +공장생산)
+     -- Realease = boddetail 의 max(frozon + LT) 이며, 최대 21을 넘지는 않는다.
+     BEGIN
+         --! NEW FCST NETTING 계산 과정 테이블 DELETE !--
+         DELETE FROM MST_NEWFCSTNETTING 
+         WHERE  PLANID = V_PLANID;
+         
+         --! NEW FCST NETTING 계산 과정 테이블에 가용량 + DEMAND INSERT !--
+         INSERT INTO MST_NEWFCSTNETTING
+         (  PLANID, SITEID, ITEM, WEEK, RELEASE, PREQTY, CURQTY, DIFF, NFSHORT, EXCEPNFSHORT, MRTF, ARTF, WEEKSUPPLY, MSUPPLY, ASUPPLY, MPDP, NEWDP, INITDTTM, INITBY )
+            WITH ITEMMASTER AS
+            (   -- PRODUCTGROUP, SITE 별 MASTER 필요
+                SELECT DISTINCT B.SECTION, B.PRODUCTGROUP, A.ITEM, A.SITEID
+                FROM   EXP_SOPROMISESRCNCP A, VUI_ITEMATTB B
+                WHERE  A.ITEM = B.ITEM
+                AND    NOT EXISTS (SELECT 'X' FROM V_MTA_SELLERMAP WHERE  ITEM = A.ITEM AND SITEID = A.SITEID)
+                AND    NOT EXISTS (SELECT ITEM, SITEID, SALESID FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SITEID = A.SITEID AND SALESID = A.SALESID)   -- eStore Netting제외 20220907 추가  
+                UNION 
+                SELECT DISTINCT B.SECTION, B.PRODUCTGROUP, A.ITEM, A.SITEID
+                FROM   EXP_DELIVERYPLAN A, VUI_ITEMATTB B
+                WHERE  A.PLANID = V_PREPLANID
+                AND    A.ITEM = B.ITEM
+                AND    NOT EXISTS (SELECT 'X' FROM V_MTA_SELLERMAP WHERE  ITEM = A.ITEM AND SITEID = A.SITEID)
+                AND    NOT EXISTS (SELECT ITEM, SITEID, SALESID FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SITEID = A.SITEID AND SALESID = A.SALESLEVEL)   -- eStore Netting제외 20220907 추가  
+                UNION 
+                SELECT DISTINCT B.SECTION, B.PRODUCTGROUP, A.REQITEM, A.REQSITEID
+                FROM   EXP_SHORTREASON A, VUI_ITEMATTB B
+                WHERE  A.PLANID = V_PREPLANID
+                AND    A.REQITEM = B.ITEM
+                AND    PROBLEMID = 1
+                AND    PROBLEMTYPE = 'NEW_FCST'
+                AND    NOT EXISTS (SELECT 'X' FROM V_MTA_SELLERMAP WHERE  ITEM = A.REQITEM AND SITEID = A.REQSITEID)
+                AND    NOT EXISTS (SELECT ITEM, SITEID, SALESID FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SITEID = A.SITEID AND SALESID = FN_EXTRACT(A.SALESORDERID, '::',6))   -- eStore Netting제외 20220907 추가 
+                UNION 
+--                SELECT A.SECTION, A.PRODUCTGROUP, NVL(B.HEADSKU, A.ITEM) ITEM, NVL( B.HEADSITEID, A.SITEID) SITEID
+--                FROM (
+--                BULK 모델로 MASTER 구성되야 아래에서 발췌 
+                    SELECT DISTINCT B.SECTION, B.PRODUCTGROUP, A.ITEM, A.SITEID
+                    FROM   MST_INVENTORY A, VUI_ITEMATTB B
+                    WHERE  A.PLANID = V_PLANID
+                    AND    A.ITEM = B.ITEM
+                    AND    NOT EXISTS (SELECT 'X' FROM V_MTA_SELLERMAP WHERE  ITEM = A.ITEM AND SITEID = A.SITEID)
+                    UNION 
+                    SELECT DISTINCT B.SECTION, B.PRODUCTGROUP, A.ITEM, A.TOSITEID
+                    FROM   MST_INTRANSIT A, VUI_ITEMATTB B
+                    WHERE  A.PLANID = V_PLANID
+                    AND    A.ITEM = B.ITEM
+                    AND    NOT EXISTS (SELECT 'X' FROM V_MTA_SELLERMAP WHERE  ITEM = A.ITEM AND SITEID = A.TOSITEID)
+                    UNION 
+                    SELECT DISTINCT B.SECTION, B.PRODUCTGROUP, A.ITEM, A.TOSITEID
+                    FROM   MST_DISTRIBUTIONORDERS A, VUI_ITEMATTB B
+                    WHERE  A.PLANID = V_PLANID
+                    AND    A.ITEM = B.ITEM
+                    AND    NOT EXISTS (SELECT 'X' FROM V_MTA_SELLERMAP WHERE  ITEM = A.ITEM AND SITEID = A.TOSITEID)
+--                    ) A,  ( SELECT  HEADSITEID, SITEID, HEADSKU, MAINSKU FROM MTA_SALESBOMMAP WHERE PRIORITY = 1) B--111117 MTA_SALESBOMMPA 테이블변경
+--                WHERE     A.ITEM   = B.MAINSKU(+)
+--                AND       A.SITEID = B.SITEID(+)
+            )
+            , HORIZON AS
+            ( -- PRODUCTGROUP, SITE별 구간 설정
+--              SELECT NVL(B.SECTION, A.SECTION) SECTION, NVL(B.PRODUCTGROUP, A.PRODUCTGROUP) PRODUCTGROUP, A.ITEM, NVL(B.SITEID, A.SITEID) SITEID, NVL(B.ENDWEEK, 4) ENDHORIZON , 
+--                     TO_CHAR(V_EFFSTARTDATE + 7*(NVL(B.ENDWEEK, 4)-1),'IYYYIW') ENDWEEK
+--              FROM   ITEMMASTER A, MTA_NEWFCSTNETTING B 
+--              WHERE  A.SITEID  = B.SITEID(+)
+--              AND    A.SECTION = B.SECTION (+)
+--              AND    A.PRODUCTGROUP = B.PRODUCTGROUP(+)
+              -- 북미 4대사업자  Commit process 적용 17.09.07
+              SELECT NVL(B.SECTION, A.SECTION) SECTION, NVL(B.PRODUCTGROUP, A.PRODUCTGROUP) PRODUCTGROUP, A.ITEM, NVL(B.SITEID, A.SITEID) SITEID, NVL(B.ENDWEEK, 4)+V_HORISONWEEK ENDHORIZON,
+                     TO_CHAR(V_EFFSTARTDATE + 7*(NVL(B.ENDWEEK, 4)-1)+V_ENDWEEK,'IYYYIW') ENDWEEK 
+              FROM   ITEMMASTER A, 
+                     (SELECT A.SECTION, A.SITEID, A.PRODUCTGROUP, A.ENDWEEK, B.CODE1  
+                      FROM   MTA_NEWFCSTNETTING A, MTA_CODEMAP B  --확인 : 동일하게 가나?
+                      WHERE  B.CATEGORY(+) = 'HC_WL_DP_SEA_COMMIT'
+                      AND    A.SITEID = B.TXT1(+)
+                      AND    A.PRODUCTGROUP = B.TXT2(+)
+                     ) B
+              WHERE A.SITEID  = B.SITEID(+)
+              AND   A.SECTION = B.SECTION (+)
+              AND   A.PRODUCTGROUP = B.PRODUCTGROUP(+)  
+              AND   SUBSTR(ITEM, -3) = NVL(B.CODE1(+), SUBSTR(ITEM, -3))
+            )
+            ,DATA_SRC AS (
+                SELECT   V_PLANID PLANID, A.SITEID, A.ITEM, W(PROMISEDSHIPPINGDATE) WEEK, QTYOPEN PREQTY , 0 CURQTY , 0 WEEKSUPPLY
+                FROM     EXP_DELIVERYPLAN A, HORIZON B
+                WHERE    PLANID     = V_PREPLANID
+                AND      SALESORDERID NOT LIKE '%@PRE'
+                AND      A.SITEID   = B.SITEID
+                AND      A.ITEM     = B.ITEM
+                AND      TO_CHAR(PROMISEDSHIPPINGDATE,'IYYYIW') BETWEEN V_WEEK1  AND  B.ENDWEEK
+                AND      NOT EXISTS (SELECT 'X' FROM V_MTA_SELLERMAP WHERE  ITEM = A.ITEM AND SITEID = A.SITEID)
+                AND      NOT EXISTS (SELECT 'X' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.ITEM AND ISVALID = 'Y') --E-STORE 20200807 추가
+                AND      NOT EXISTS (SELECT ITEM, SITEID, SALESID FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SITEID = A.SITEID AND SALESID = A.SALESLEVEL)   -- eStore Netting제외 20220907 추가
+                UNION ALL
+                SELECT   V_PLANID, A.SITEID, A.ITEM, TO_CHAR(PROMISEDDELDATE,'IYYYIW')  WEEK, 0, QTYPROMISED CURQTY , 0
+                FROM     EXP_SOPROMISESRCNCP A, HORIZON B
+                WHERE    PLANID     = V_PLANID
+                AND      SALESORDERID NOT LIKE '%@PRE'
+                AND      A.SITEID   = B.SITEID
+                AND      A.ITEM     = B.ITEM
+                AND      TO_CHAR(PROMISEDDELDATE,'IYYYIW')  BETWEEN V_WEEK1  AND   B.ENDWEEK
+                AND      NOT EXISTS (SELECT 'X' FROM V_MTA_SELLERMAP WHERE  ITEM = A.ITEM AND SITEID = A.SITEID)
+                AND      NOT EXISTS (SELECT 'X' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.ITEM AND ISVALID = 'Y') --E-STORE 20200807 추가
+                AND      NOT EXISTS (SELECT ITEM, SITEID, SALESID FROM MVES_ITEMSITE WHERE ITEM = A.ITEM AND SITEID = A.SITEID AND SALESID = A.SALESID)   -- eStore Netting제외 20220907 추가
+            ) 
+            SELECT /*+ NO_PUSH_PRED(B) */  A.PLANID, A.SITEID, A.ITEM, A.WEEK ,0 RELEASE-- RELEASE감안안함,  LEAST( NVL(RELEASEPERIOD, 0), 21)  RELEASE
+                   , SUM(PREQTY) PREQTY, SUM(CURQTY) CURQTY, SUM(CURQTY)-SUM(PREQTY) DIFF
+                   , SUM(NVL(NFSHORT,0)) NFSHORT, SUM(PREQTY) - SUM(NVL(NFSHORT,0)) EXCEPTNFSHORT , 0 MRTF , 0 ARTF 
+                   , SUM(WEEKSUPPLY) WEEKSUPPLY, 0 MSUPPLY, 0 ASUPPLY , 0 MPDP , 0 NEWDP,  SYSDATE, V_PGMNAME
+            FROM  ( 
+                   SELECT PLANID, SITEID, ITEM, WEEK, 
+                          SUM(PREQTY) PREQTY , SUM(CURQTY) CURQTY, SUM(WEEKSUPPLY) WEEKSUPPLY
+                   FROM(     
+                        SELECT PLANID, SITEID, ITEM, WEEK, PREQTY, CURQTY, WEEKSUPPLY
+                        FROM   DATA_SRC
+                        UNION ALL
+                        -- 1. 가용량 (INVENTORY + INTRANSIT + DISTRIBUTIONORDERS)
+                        SELECT A.PLANID, A.SITEID, A.ITEM, A.WEEK, 0 PREQTY, 0 CURQTY, A.QTY WEEKSUPPLY
+                        FROM MST_INVENTORY_DNE A, HORIZON B
+                        WHERE A.PLANID = V_PLANID
+                        AND A.SITEID = B.SITEID
+                        AND A.ITEM = B.ITEM
+                        AND A.WEEK BETWEEN V_WEEK1 AND B.ENDWEEK            
+                        AND NOT EXISTS (SELECT 'X' FROM V_MTA_SELLERMAP WHERE ITEM = A.ITEM AND SITEID = A.SITEID)
+                    ) A
+                    WHERE  NOT EXISTS (SELECT 'X' FROM MST_ITEM WHERE PRODUCTCODE = 'EBABX' AND  ITEM = A.ITEM) --박성완s W13부터 적용
+                    GROUP BY PLANID, SITEID, ITEM, WEEK
+                  ) A, 
+                 (SELECT V_PLANID PLANID, REQSITEID SITEID,  REQITEM ITEM, TO_CHAR(DUEDATE,'IYYYIW') WEEK, SUM(SHORTQTY) NFSHORT
+                  FROM   EXP_SHORTREASON A
+                  WHERE  PLANID    = V_PREPLANID
+                  AND    PROBLEMID = 1
+                  AND    PROBLEMTYPE = 'NEW_FCST'
+                  AND    NOT EXISTS (SELECT 'X' FROM MST_ITEM WHERE PRODUCTCODE = 'EBABX' AND ITEM = A.REQITEM) --박성완s W13부터 적용
+                  AND    NOT EXISTS (SELECT 'X' FROM V_MTA_SELLERMAP WHERE  ITEM = A.REQITEM AND SITEID = A.REQSITEID)
+                  AND    NOT EXISTS (SELECT 'X' FROM MTA_CUSTOMMODELMAP WHERE CUSTOMITEM = A.ITEM AND ISVALID = 'Y') --E-STORE 20200807 추가
+                  GROUP BY REQSITEID, REQITEM,TO_CHAR(DUEDATE,'IYYYIW')
+                  ) B,
+                  VUI_ITEMATTB C
+            WHERE  1 = 1
+            AND    A.PLANID = B.PLANID (+)
+            AND    A.SITEID = B.SITEID (+)
+            AND    A.ITEM   = B.ITEM(+)
+            AND    A.WEEK   = B.WEEK(+)
+            AND    A.ITEM   = C.ITEM
+            AND    NOT EXISTS (SELECT 'X' FROM MTA_CODEMAP WHERE CATEGORY = 'HC_WL_FN_EXCEPNEWFCST_NC' AND TXT1 = A.SITEID AND TXT2 = C.ATTB05 AND TXT3 = C.BASICNAME )
+            GROUP BY  A.PLANID, A.SITEID, A.ITEM, A.WEEK
+            ORDER BY  SITEID, ITEM, WEEK;  
+         
+            COMMIT;
+            
+            --20191224 S341,S34174WC TOTAL 추가
+            INSERT INTO MST_NEWFCSTNETTING (PLANID, SITEID, ITEM, WEEK, RELEASE, PREQTY, CURQTY, DIFF, NFSHORT, EXCEPNFSHORT, MRTF, ARTF, WEEKSUPPLY, MSUPPLY, ASUPPLY, MPDP, NEWDP, INITDTTM, INITBY)
+            SELECT DISTINCT PLANID, 'TOTAL' SITEID, ITEM, WEEK,
+               SUM(RELEASE) OVER (PARTITION BY ITEM, WEEK) RELEASE,
+               SUM(PREQTY) OVER (PARTITION BY ITEM, WEEK) PREQTY,
+               SUM(CURQTY) OVER (PARTITION BY ITEM, WEEK) CURQTY,
+               SUM(DIFF) OVER (PARTITION BY ITEM, WEEK) DIFF,
+               SUM(NFSHORT) OVER (PARTITION BY ITEM, WEEK) NFSHORT,
+               SUM(EXCEPNFSHORT) OVER (PARTITION BY ITEM, WEEK) EXCEPNFSHORT,
+               SUM(MRTF) OVER (PARTITION BY ITEM, WEEK) MRTF,
+               SUM(ARTF) OVER (PARTITION BY ITEM, WEEK) ARTF,
+               SUM(WEEKSUPPLY) OVER (PARTITION BY ITEM, WEEK) WEEKSUPPLY,
+               SUM(MSUPPLY) OVER (PARTITION BY ITEM, WEEK) MSUPPLY,
+               SUM(ASUPPLY) OVER (PARTITION BY ITEM, WEEK) ASUPPLY,
+               SUM(MPDP) OVER (PARTITION BY ITEM, WEEK) MPDP,
+               SUM(NEWDP) OVER (PARTITION BY ITEM, WEEK) NEWDP,
+               SYSDATE,
+               V_PGMNAME
+        FROM MST_NEWFCSTNETTING
+        where planid=V_PLANID
+        AND SITEID LIKE 'S341%';
+
+        COMMIT;
+         
+         
+        DBMS_OUTPUT.PUT_LINE('1. Decrease Data Load:  '||to_char(sysdate,'yyyy-mm-dd-HH24:mi:ss'));
+        
+     EXCEPTION 
+     WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: check '||SQLCODE||'_'||SQLERRM);
+
+        ROLLBACK;
+     END;
+    
+    V_LOGMESSAGE := V_LOGMESSAGE|| 'ERROR  COUNT : '||0; -- LOGMESSAGE
+    
+    SP_LOGGING_REG(V_LOGSEQ, V_PGMNAME,V_STARTDATE,V_ERRORCNT,V_LOGMESSAGE);
+    
+EXCEPTION
+    WHEN OTHERS THEN
+    
+        V_LOGMESSAGE := V_LOGMESSAGE||SUBSTR(SQLERRM,1,100); -- LOGMESSAGE
+        SP_LOGGING_REG(V_LOGSEQ, V_PGMNAME,V_STARTDATE,0,V_LOGMESSAGE);
+       DBMS_OUTPUT.PUT_LINE('Error: check '||SQLCODE||'_'||SQLERRM);
+              
+       ROLLBACK;
+END;
