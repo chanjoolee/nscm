@@ -1,0 +1,159 @@
+
+import pandas as pd
+import numpy as np
+
+from netting_util.conv_gscm_o9_cols import getcols, o92gscm, gscm2o9
+
+from daily_netting.da_post_process.constant.dim_constant import Item as VIA
+from daily_netting.da_post_process.constant.dim_constant import NettingLPPlanBatch as NLPPB
+from daily_netting.da_post_process.constant.dim_constant import NettingSales as NS
+from daily_netting.da_post_process.constant.general_constant import SalesOrderLP as SOLP
+from daily_netting.da_post_process.constant.ods_constant import NDEMAND_ADD as NSO
+from daily_netting.da_post_process.constant.ods_constant import NettedDemandD as ND_D
+
+
+def set_lp_order_netting_env(accessor: object) -> None:
+    pass
+
+
+def do_lp_order_netting(
+    df_in_EXP_SOPROMISENCP,
+    df_in_SALESORDER_LP,
+    df_in_VUI_ITEMATTB,
+    df_in_GUI_SALESHIERARCHY,
+    df_in_Netting_LP_Plan_Batch,
+):
+    df_in_EXP_SOPROMISENCP = o92gscm(df_in_EXP_SOPROMISENCP, ND_D)
+    df_in_VUI_ITEMATTB = o92gscm(df_in_VUI_ITEMATTB, VIA)
+    df_in_GUI_SALESHIERARCHY = o92gscm(df_in_GUI_SALESHIERARCHY, NS)
+    df_Netting_LP_Plan_Batch = o92gscm(df_in_Netting_LP_Plan_Batch, NLPPB)
+    df_in_SALESORDER_LP = o92gscm(df_in_SALESORDER_LP, SOLP)
+
+    df_in_EXP_SOPROMISENCP['QTYPROMISED'] = df_in_EXP_SOPROMISENCP['QTYPROMISED'].astype(int)
+
+    df_EXP_SOPROMISENCP = df_in_EXP_SOPROMISENCP[
+        df_in_EXP_SOPROMISENCP['SALESORDERID'].str.startswith(('COM_ORD', 'NEW_ORD', 'UNF_ORD'))
+        & (df_in_EXP_SOPROMISENCP['QTYPROMISED'] > 0)
+    ].reset_index(drop=True)
+
+    df_EXP_SOPROMISENCP_SRC = df_in_EXP_SOPROMISENCP[
+        ~df_in_EXP_SOPROMISENCP['SALESORDERID'].str.startswith(('COM_ORD', 'NEW_ORD', 'UNF_ORD'))
+    ].reset_index(drop=True)
+
+    df_EXP_SOPROMISENCP['PROMISEDDELWEEK'] = pd.to_datetime(
+        df_EXP_SOPROMISENCP['PROMISEDDELDATE']
+    ).dt.strftime('%G%V')
+    df_in_SALESORDER_LP['REQDELENDWEEK'] = pd.to_datetime(
+        df_in_SALESORDER_LP['REQDELENDDATE']
+    ).dt.strftime('%G%V')
+    df_in_SALESORDER_LP['QTY'] = df_in_SALESORDER_LP['QTY'].astype(int)
+
+    df_EXP_SOPROMISENCP_ORDER = pd.merge(
+        df_EXP_SOPROMISENCP,
+        df_in_SALESORDER_LP,
+        how='left',
+        left_on=['ITEMID', 'SALESID', 'SITEID', 'PROMISEDDELWEEK'],
+        right_on=['ITEM', 'SALESID', 'SITEID', 'REQDELENDWEEK'],
+        suffixes=['', '_B'],
+    )
+
+    df_EXP_SOPROMISENCP_ORDER['SUM_QTY'] = (
+        df_EXP_SOPROMISENCP_ORDER.sort_values(
+            by=['ITEM', 'SALESID', 'SITEID', 'REQDELENDWEEK', 'SALESORDERID', 'SOLINENUM']
+        )
+        .groupby(['ITEM', 'SALESID', 'SITEID', 'REQDELENDWEEK', 'SALESORDERID', 'SOLINENUM'])['QTY']
+        .cumsum()
+    )
+
+    df_EXP_SOPROMISENCP_ORDER['ASSIGN_QTY'] = np.minimum(
+        df_EXP_SOPROMISENCP_ORDER['QTY'],
+        np.maximum(
+            df_EXP_SOPROMISENCP_ORDER['QTYPROMISED']
+            - (df_EXP_SOPROMISENCP_ORDER['SUM_QTY'] - df_EXP_SOPROMISENCP_ORDER['QTY']),
+            0,
+        ),
+    )
+
+    df_EXP_SOPROMISE = df_EXP_SOPROMISENCP_ORDER[
+        ~(
+            df_EXP_SOPROMISENCP_ORDER['SONO'].notna()
+            & (df_EXP_SOPROMISENCP_ORDER['ASSIGN_QTY'] == 0)
+        )
+    ].reset_index(drop=True)
+
+    df_EXP_SOPROMISE['SOLINENUM'] = (
+        df_EXP_SOPROMISE.sort_values(by=['SALESORDERID', 'SOLINENUM'])
+        .groupby(['SALESORDERID'])
+        .cumcount()
+        + 1
+    )
+
+    df_EXP_SOPROMISE.loc[df_EXP_SOPROMISE['SONO'].notna(), 'QTYPROMISED'] = df_EXP_SOPROMISE[
+        'ASSIGN_QTY'
+    ]
+    df_EXP_SOPROMISE = pd.concat([df_EXP_SOPROMISENCP_SRC, df_EXP_SOPROMISE], ignore_index=True)
+
+    df_out_EXP_SOPROMISENCP_LP = pd.merge(
+        df_EXP_SOPROMISE,
+        df_in_GUI_SALESHIERARCHY[['SALESID', 'AP2ID']],
+        on=['SALESID'],
+        suffixes=['', '_LP'],
+    )
+
+    df_Netting_LP_Plan_Batch['SALESLEVEL'] = df_Netting_LP_Plan_Batch['SALESID'].str[0]
+
+    df_Netting_LP_lv2 = df_Netting_LP_Plan_Batch[
+        df_Netting_LP_Plan_Batch['SALESLEVEL'] == '2'
+    ]
+    df_Netting_LP_lv3 = df_Netting_LP_Plan_Batch[
+        df_Netting_LP_Plan_Batch['SALESLEVEL'] == '3'
+    ]
+
+    df_Netting_LP_lv2_ap2 = pd.merge(
+        df_Netting_LP_lv2,
+        df_in_GUI_SALESHIERARCHY[['AP2ID', 'GCID']],
+        left_on=['SALESID'],
+        right_on=['GCID'],
+    )[['AP2ID', 'SCENARIO', 'TENANT']]
+
+    df_Netting_LP_lv3_ap2 = pd.merge(
+        df_Netting_LP_lv3,
+        df_in_GUI_SALESHIERARCHY[['AP2ID']],
+        left_on=['SALESID'],
+        right_on=['AP2ID'],
+    )[['AP2ID', 'SCENARIO', 'TENANT']]
+
+    df_Netting_LP_Plan_Batch = pd.concat(
+        [df_Netting_LP_lv2_ap2, df_Netting_LP_lv3_ap2],
+        ignore_index=True,
+    ).drop_duplicates()
+    df_Netting_LP_Plan_Batch = df_Netting_LP_Plan_Batch[
+        df_Netting_LP_Plan_Batch['AP2ID'].notna()
+    ]
+
+    df_out_EXP_SOPROMISENCP_LP = pd.merge(
+        df_out_EXP_SOPROMISENCP_LP,
+        df_Netting_LP_Plan_Batch,
+        left_on=['AP2ID_LP'],
+        right_on=['AP2ID'],
+        how='left',
+        suffixes=['', '_C'],
+    )
+
+    df_out_EXP_SOPROMISENCP_LP = df_out_EXP_SOPROMISENCP_LP.drop(
+        ['AP2ID_LP', 'AP2ID_C'],
+        axis=1,
+    )
+
+    df_EXP_SOPROMISE = gscm2o9(df_out_EXP_SOPROMISENCP_LP, ND_D)
+    df_EXP_SOPROMISE = gscm2o9(df_EXP_SOPROMISE, NSO)
+    df_EXP_SOPROMISE = gscm2o9(df_EXP_SOPROMISE, NLPPB)
+    df_EXP_SOPROMISE = df_EXP_SOPROMISE.rename(
+        columns={
+            NLPPB.SCENARIO: NSO.SCENARIO,
+            NLPPB.TENANT: NSO.TENANT,
+        }
+    )
+
+    LIST_COLUMN = ND_D.LIST_COLUMN + NSO.LIST_COLUMN
+    return df_EXP_SOPROMISE[LIST_COLUMN]
