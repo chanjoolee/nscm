@@ -218,11 +218,18 @@ class ShortReasonD:
     PROBLEMID = 'Netting Short Reason Problem ID D'                       ;    PROBLEMID_IDX = 4
     PROBLEMTYPE = 'Netting Short Reason Problem Type D'                   ;    PROBLEMTYPE_IDX = 5
     SHORTQTY = 'Netting Short Reason Short Qty D'                         ;    SHORTQTY_IDX = 6
+    SRCITEM = 'Netting Short Reason Source Item D'                        ;    SRCITEM_IDX = 7
 
-    LIST_COLUMN = [
+    LIST_BASE_COLUMN = [
         REQSITEID, REQITEM, SALESID, DUEDATE, PROBLEMID,
         PROBLEMTYPE, SHORTQTY,
     ]
+
+    OPTIONAL_COLUMN_GROUPS = (
+        (SRCITEM,),
+    )
+
+    LIST_COLUMN = LIST_BASE_COLUMN + [SRCITEM]
 
 class DistributionOrdersD:
     ''' Constants of Netting IF Distribution Orders D '''

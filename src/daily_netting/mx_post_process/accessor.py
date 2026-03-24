@@ -132,7 +132,9 @@ class Accessor:
         self.df_new_fcst_period = df_new_fcst_period[NFP.LIST_COLUMN]
         self.df_available_resource = df_available_resource[AR_.LIST_COLUMN]
         self.df_delivery_plan = df_delivery_plan[DP_.LIST_COLUMN]
-        self.df_short_reason = df_short_reason[SR_.LIST_COLUMN]
+        self.df_short_reason = _select_columns_with_optional_groups(
+            df_short_reason, SR_.LIST_BASE_COLUMN, SR_.OPTIONAL_COLUMN_GROUPS
+        )
         self.df_distribution_orders = df_distribution_orders[DO_.LIST_COLUMN]
         self.df_distribution_orders_sell = df_distribution_orders_sell[DOS_.LIST_COLUMN]
 

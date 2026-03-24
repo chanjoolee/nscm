@@ -310,16 +310,31 @@ def create_mst_newfcstnetting(
     df_exp_shortreason_view = df_exp_shortreason[df_exp_shortreason[SR_.PROBLEMID] == 1]
     df_exp_shortreason_view = df_exp_shortreason_view[df_exp_shortreason_view[SR_.PROBLEMTYPE] == 'NEW_FCST']
 
+    required_shortreason_columns = [
+        SR_.REQSITEID, SR_.REQITEM, SR_.DUEDATE, SR_.SHORTQTY, SR_.SRCITEM
+    ]
+    missing_shortreason_columns = [
+        column for column in required_shortreason_columns if column not in df_exp_shortreason_view.columns
+    ]
+    if missing_shortreason_columns:
+        raise KeyError(
+            'EXP_SHORTREASON source item column is required for SP_FN_SUMMARYDATA_NC logic. '
+            f'Missing columns: {", ".join(missing_shortreason_columns)}'
+        )
+
     #not exists MST_ITEM 조인 조건 처리
-    df_exp_shortreason_view = df_exp_shortreason_view[~df_exp_shortreason_view[SR_.REQITEM].isin(df_mst_item_sub)]
+    df_exp_shortreason_view = df_exp_shortreason_view[
+        ~df_exp_shortreason_view[SR_.REQITEM].isin(df_mst_item_sub[VIA.ITEM])
+    ]
 
     #not exists V_MTA_SELLERMAP 조인 조건 처리
     df_exp_shortreason_view = df_exp_shortreason_view[
         ~(df_exp_shortreason_view[SR_.REQITEM] + df_exp_shortreason_view[SR_.REQSITEID]).isin(df_sellermap_itemsite)]
 
-    #net exists MTA_CUSTOMMODELMAP 조인 조건 처리
-    #프로시저에는 WHERE CUSTOMITEM = A.ITEM인데 잘못된 거라함. REQITEM이 맞다함
-    df_exp_shortreason_view = df_exp_shortreason_view[~df_exp_shortreason_view[SR_.REQITEM].isin(df_custommodelmap_itemview[CMM.CUSTOMITEM])]
+    #not exists MTA_CUSTOMMODELMAP 조인 조건 처리
+    df_exp_shortreason_view = df_exp_shortreason_view[
+        ~df_exp_shortreason_view[SR_.SRCITEM].isin(df_custommodelmap_itemview[CMM.CUSTOMITEM])
+    ]
 
     df_exp_shortreason_view['WEEK'] = pd.to_datetime(df_exp_shortreason_view[SR_.DUEDATE]).dt.strftime('%G%V')
 
