@@ -50,6 +50,26 @@ from daily_netting.mx_post_process.constant.mx_constant import RBMaster as RBM
 from daily_netting.mx_post_process.constant.mx_constant import ShortReasonDPGuide as SRDPG
 from daily_netting.mx_post_process.utils.common import make_sequential_id
 
+def _select_columns_with_optional_groups(
+        df: pd.DataFrame, required_columns: list, optional_column_groups: tuple
+    ) -> pd.DataFrame:
+    list_selected = list(required_columns)
+    set_selected = set(list_selected)
+
+    for column_group in optional_column_groups:
+        for column in column_group:
+            if column in df.columns and column not in set_selected:
+                list_selected.append(column)
+                set_selected.add(column)
+                break
+
+    for column in df.columns:
+        if 'CDC' in str(column).upper() and column not in set_selected:
+            list_selected.append(column)
+            set_selected.add(column)
+
+    return df[list_selected]
+
 class Accessor:
     '''
     input data, plan value 등에 접근하기 위한 클래스.
@@ -92,9 +112,13 @@ class Accessor:
         self.df_custom_model_map = df_custom_model_map[CMM.LIST_COLUMN]
         self.df_sales_bom_map = df_sales_bom_map[SBOMM.LIST_COLUMN]
         self.df_model_eop = df_model_eop[MEOP.LIST_COLUMN]
-        self.df_inventory = df_inventory[Inv_.LIST_COLUMN]
+        self.df_inventory = _select_columns_with_optional_groups(
+            df_inventory, Inv_.LIST_COLUMN, Inv_.OPTIONAL_COLUMN_GROUPS
+        )
         self.df_intransit = df_intransit[Int_.LIST_COLUMN]
-        self.df_inventory_sell = df_inventory_sell[InvS_.LIST_COLUMN]
+        self.df_inventory_sell = _select_columns_with_optional_groups(
+            df_inventory_sell, InvS_.LIST_COLUMN, InvS_.OPTIONAL_COLUMN_GROUPS
+        )
         self.df_intransit_sell = df_intransit_sell[IntS_.LIST_COLUMN]
         self.df_code_map = df_code_map[CM.LIST_COLUMN]
         self.df_es_item_site = df_es_item_site[ESIS.LIST_COLUMN]
@@ -436,11 +460,15 @@ class Accessor:
                 RBM.FLAG: bool,
             })
         if self.df_inventory.empty:
-            self.df_inventory = self.df_inventory.astype({
+            dict_inventory_type = {
                 Inv_.AVAILQTY: 'float64',
                 Inv_.BOHADDQTY: 'float64',
                 Inv_.W0BOHADDQTY: 'float64',
-            })
+            }
+            for column in self.df_inventory.columns:
+                if 'CDC' in str(column).upper():
+                    dict_inventory_type[column] = 'float64'
+            self.df_inventory = self.df_inventory.astype(dict_inventory_type)
         if self.df_intransit.empty:
             self.df_intransit = self.df_intransit.astype({
                 Int_.INTRANSITQTY: 'float64',
@@ -456,11 +484,15 @@ class Accessor:
                 MEOP.EOP_CHG_DATE: 'datetime64[ns]',
             })
         if self.df_inventory_sell.empty:
-            self.df_inventory_sell = self.df_inventory_sell.astype({
+            dict_inventory_sell_type = {
                 InvS_.AVAILQTY: 'float64',
                 InvS_.BOHADDQTY: 'float64',
                 InvS_.W0BOHADDQTY: 'float64',
-            })
+            }
+            for column in self.df_inventory_sell.columns:
+                if 'CDC' in str(column).upper():
+                    dict_inventory_sell_type[column] = 'float64'
+            self.df_inventory_sell = self.df_inventory_sell.astype(dict_inventory_sell_type)
         if self.df_intransit_sell.empty:
             self.df_intransit_sell = self.df_intransit_sell.astype({
                 IntS_.INTRANSITQTY: 'float64',

@@ -109,6 +109,24 @@ class InventoryD:
     BOHADDQTY = 'Netting Inventory BOH Add Qty D'                         ;    BOHADDQTY_IDX = 5
     W0BOHADDQTY = 'Netting Inventory W0 BOH Add Qty D'                    ;    W0BOHADDQTY_IDX = 6
 
+    CDCAVAILQTY_CANDIDATES = (
+        'CDCAVAILQTY',
+        'Netting Inventory CDC Qty D',
+    )
+    CDCBOHADDQTY_CANDIDATES = (
+        'CDCBOHADDQTY',
+        'Netting Inventory CDC BOH Add Qty D',
+    )
+    W0CDCBOHADDQTY_CANDIDATES = (
+        'W0CDCBOHADDQTY',
+        'Netting Inventory W0 CDC BOH Add Qty D',
+    )
+    OPTIONAL_COLUMN_GROUPS = (
+        CDCAVAILQTY_CANDIDATES,
+        CDCBOHADDQTY_CANDIDATES,
+        W0CDCBOHADDQTY_CANDIDATES,
+    )
+
     LIST_COLUMN = [
         SITEID, ITEM, ONHANDDATE, TOSITEID, AVAILQTY,
         BOHADDQTY, W0BOHADDQTY,
@@ -137,6 +155,27 @@ class InventorySellD:
     AVAILQTY = 'Netting Inventory Sell Qty D'                             ;    AVAILQTY_IDX = 5
     BOHADDQTY = 'Netting Inventory Sell BOH Add Qty D'                    ;    BOHADDQTY_IDX = 6
     W0BOHADDQTY = 'Netting Inventory Sell W0 BOH Add Qty D'               ;    W0BOHADDQTY_IDX = 7
+
+    CDCAVAILQTY_CANDIDATES = (
+        'CDCAVAILQTY',
+        'Netting Inventory Sell CDC Qty D',
+        'Netting Inventory CDC Qty D',
+    )
+    CDCBOHADDQTY_CANDIDATES = (
+        'CDCBOHADDQTY',
+        'Netting Inventory Sell CDC BOH Add Qty D',
+        'Netting Inventory CDC BOH Add Qty D',
+    )
+    W0CDCBOHADDQTY_CANDIDATES = (
+        'W0CDCBOHADDQTY',
+        'Netting Inventory Sell W0 CDC BOH Add Qty D',
+        'Netting Inventory W0 CDC BOH Add Qty D',
+    )
+    OPTIONAL_COLUMN_GROUPS = (
+        CDCAVAILQTY_CANDIDATES,
+        CDCBOHADDQTY_CANDIDATES,
+        W0CDCBOHADDQTY_CANDIDATES,
+    )
 
     LIST_COLUMN = [
         SITEID, ITEM, ONHANDDATE, TOSITEID, SALESID,

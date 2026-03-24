@@ -1,6 +1,7 @@
 '''
 EOP Netting에 사용되는 상수, 함수 등이 정의된 모듈
 '''
+from typing import Optional, Sequence
 from math import floor
 from itertools import groupby
 
@@ -493,6 +494,49 @@ def _filter_seller_map(
     
     return df_to_filter.copy()
 
+def _resolve_optional_column(
+        df: DF, candidates: Sequence[str],
+        include_tokens: Sequence[str], exclude_tokens: Sequence[str] = (),
+    ) -> Optional[str]:
+    for candidate in candidates:
+        if candidate in df.columns:
+            return candidate
+
+    for column in df.columns:
+        upper_column = str(column).upper()
+        if all(token in upper_column for token in include_tokens) and \
+           all(token not in upper_column for token in exclude_tokens):
+            return column
+
+    return None
+
+def _sum_qty_columns(df: DF, columns: Sequence[Optional[str]]) -> pd.Series:
+    result = pd.Series(0.0, index=df.index)
+
+    for column in columns:
+        if column is None or column not in df.columns:
+            continue
+        result = result.add(
+            pd.to_numeric(df[column], errors='coerce').fillna(0),
+            fill_value=0,
+        )
+
+    return result
+
+def _build_inventory_availqty(
+        df_inventory: DF, normal_columns: Sequence[str],
+        cdc_columns: Sequence[Optional[str]], org_siteid_column: str,
+    ) -> pd.Series:
+    normal_qty = _sum_qty_columns(df_inventory, normal_columns)
+
+    if any(column is None for column in cdc_columns):
+        return normal_qty
+
+    cdc_qty = _sum_qty_columns(df_inventory, cdc_columns)
+    mask_cdc_site = df_inventory[org_siteid_column].isin(['L101', 'L999'])
+
+    return normal_qty.where(~mask_cdc_site, cdc_qty)
+
 def _make_eop_dataframe(
         df_inbound: DF, df_custom_model_map: DF, df_inventory_sum: DF, df_model_eop: DF,
         df_sales_bom_map: DF, df_seller_map: DF, is_seller_case: bool,
@@ -630,9 +674,13 @@ def _make_inventory(
     is_seller_case = True -> sales_id포한한 sell 컬럼들 사용
     is_seller_case = False -> sales_id 없는 컬럼 사용
     '''
+    STR_ORG_SITEID = 'ORG_SITEID'
     inv_siteid, inv_item, inv_tositeid = Inv_.SITEID, Inv_.ITEM, Inv_.TOSITEID
     inv_availqty, inv_bohaddqty = Inv_.AVAILQTY, Inv_.BOHADDQTY
     inv_w0bohaddqty, inv_salesid = Inv_.W0BOHADDQTY, ''
+    inv_cdcavailqty_candidates = Inv_.CDCAVAILQTY_CANDIDATES
+    inv_cdcbohaddqty_candidates = Inv_.CDCBOHADDQTY_CANDIDATES
+    inv_w0cdcbohaddqty_candidates = Inv_.W0CDCBOHADDQTY_CANDIDATES
 
     int_tositeid, int_item = Int_.TOSITEID, Int_.ITEM
     int_intransitqty, int_salesid = Int_.INTRANSITQTY, ''
@@ -641,9 +689,25 @@ def _make_inventory(
         inv_siteid, inv_item, inv_tositeid = InvS_.SITEID, InvS_.ITEM, InvS_.TOSITEID
         inv_availqty, inv_bohaddqty = InvS_.AVAILQTY, InvS_.BOHADDQTY
         inv_w0bohaddqty, inv_salesid = InvS_.W0BOHADDQTY, InvS_.SALESID
+        inv_cdcavailqty_candidates = InvS_.CDCAVAILQTY_CANDIDATES
+        inv_cdcbohaddqty_candidates = InvS_.CDCBOHADDQTY_CANDIDATES
+        inv_w0cdcbohaddqty_candidates = InvS_.W0CDCBOHADDQTY_CANDIDATES
 
         int_tositeid, int_item = IntS_.TOSITEID, IntS_.ITEM
         int_intransitqty, int_salesid = IntS_.INTRANSITQTY, IntS_.SALESID
+
+    inv_cdcavailqty = _resolve_optional_column(
+        df_inventory, inv_cdcavailqty_candidates,
+        include_tokens=('CDC', 'QTY'), exclude_tokens=('BOH', 'W0'),
+    )
+    inv_cdcbohaddqty = _resolve_optional_column(
+        df_inventory, inv_cdcbohaddqty_candidates,
+        include_tokens=('CDC', 'BOH'), exclude_tokens=('W0',),
+    )
+    inv_w0cdcbohaddqty = _resolve_optional_column(
+        df_inventory, inv_w0cdcbohaddqty_candidates,
+        include_tokens=('CDC', 'BOH', 'W0'),
+    )
     
     list_inv_init_column = [
                             inv_siteid, inv_item, inv_tositeid,
@@ -655,10 +719,14 @@ def _make_inventory(
         list_inv_init_column.append(inv_salesid)
         list_inv_final_column.append(inv_salesid)
         list_int_init_column.append(int_salesid)
+    for cdc_column in [inv_cdcavailqty, inv_cdcbohaddqty, inv_w0cdcbohaddqty]:
+        if cdc_column is not None and cdc_column not in list_inv_init_column:
+            list_inv_init_column.append(cdc_column)
 
     df_inventory_view = df_inventory[list_inv_init_column].rename(columns={
                             inv_siteid: EOP.SITEID,
                         })
+    df_inventory_view[STR_ORG_SITEID] = df_inventory_view[EOP.SITEID]
     df_inventory_view = pd.merge(
             df_inventory_view, df_location[[L.SITEID, L.TYPE]],
             how='inner', left_on=EOP.SITEID, right_on=L.SITEID
@@ -677,9 +745,12 @@ def _make_inventory(
             df_inventory_view, df_seller_map,
             (inv_item, EOP.SITEID), is_seller_case
         )
-    df_filtered_inventory[EOP.AVAILQTY] = df_filtered_inventory[inv_availqty] \
-                                        + df_filtered_inventory[inv_bohaddqty] \
-                                        + df_filtered_inventory[inv_w0bohaddqty]
+    df_filtered_inventory[EOP.AVAILQTY] = _build_inventory_availqty(
+        df_filtered_inventory,
+        normal_columns=(inv_availqty, inv_bohaddqty, inv_w0bohaddqty),
+        cdc_columns=(inv_cdcavailqty, inv_cdcbohaddqty, inv_w0cdcbohaddqty),
+        org_siteid_column=STR_ORG_SITEID,
+    )
     df_filtered_inventory = df_filtered_inventory[list_inv_final_column]
     df_filtered_inventory = df_filtered_inventory.rename(columns={
                                 inv_item: EOP.ITEM,
